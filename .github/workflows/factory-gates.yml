@@ -114,7 +114,12 @@ jobs:
       # Until M0 adds the solution there is no global.json and nothing to run.
       - name: Is there a .NET solution yet?
         id: dotnet
-        run: if [ -f global.json ]; then echo "present=true" >> "$GITHUB_OUTPUT"; else echo "No global.json yet: nothing to run." >> "$GITHUB_STEP_SUMMARY"; fi
+        run: |
+          if [ -f global.json ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No global.json yet, so there is nothing to run." >> "$GITHUB_STEP_SUMMARY"
+          fi
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
         if: steps.dotnet.outputs.present == 'true'
         with:
