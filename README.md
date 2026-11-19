@@ -10,6 +10,7 @@ YAF is a set of .NET libraries for building backend services as bounded contexts
 - security, privacy and telemetry plumbing that is part of the design from the start
 
 > **Status:** pre-alpha. The repository has the specification and no code yet. The framework will be built from the specification, milestone by milestone.
+> The software factory is installed and its gates are being trialled; the first milestone (M0, the repository skeleton) comes next.
 
 ## Specification
 
@@ -31,6 +32,7 @@ The framework is built by a software factory (ADR-0029): separate agents write a
 
 - Agents start from [`AGENTS.md`](AGENTS.md). It loads the root instructions from the bundle and maps the bundle's paths to this repository.
 - The kit is described in [`docs/spec/factory/README.md`](docs/spec/factory/README.md). Its gate scripts, policy and prompts are used in place. `.github/workflows/factory-*.yml` and `.github/CODEOWNERS` are installed from it.
+- For now the two model reviews run on a maintainer's machine (`.github/scripts/local-review.mjs`), not in CI; see "Model reviews run locally" in [`AGENTS.md`](AGENTS.md). They are meant to move back to CI.
 - `.claude/agents/`, `.claude/skills/`, `.agents/skills/`, `.claude/settings.json` and the GitHub templates are generated references to `docs/spec/`. After changing their source, run `node .github/scripts/sync-references.mjs`.
 
 ## Planned platform
