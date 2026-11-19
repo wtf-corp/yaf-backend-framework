@@ -2,6 +2,12 @@
 # are used in place from docs/spec/factory/.github/factory/, and third-party actions are pinned by commit SHA.
 # Review of a spec or a plan by an agent against the quality checklists (ADR-0024, ADR-0025, ADR-0029).
 # Reports check `factory/doc-review`. Same layout and the same restrictions as factory-pr-review.yml.
+#
+# TEMPORARILY DISABLED. The model review does not run in CI: the factory-review environment has no working
+# API account yet. Check `factory/doc-review` is run on a maintainer's machine by .github/scripts/local-review.mjs and
+# posted by the reviewer app (see "Model reviews run locally" in AGENTS.md). This should move back to CI:
+# fix the account, set repository variable FACTORY_REVIEW_IN_CI=true, point `factory/doc-review` in the main ruleset
+# back at GitHub Actions (integration_id 15368), and delete the local script.
 name: factory-doc-review
 
 on:
@@ -18,7 +24,8 @@ concurrency:
 jobs:
   review:
     name: doc-review
-    if: ${{ !github.event.pull_request.draft && !github.event.pull_request.head.repo.fork }}
+    # Off unless FACTORY_REVIEW_IN_CI is 'true' (see the note at the top of this file).
+    if: ${{ vars.FACTORY_REVIEW_IN_CI == 'true' && !github.event.pull_request.draft && !github.event.pull_request.head.repo.fork }}
     runs-on: ubuntu-latest
     environment: factory-review
     permissions:

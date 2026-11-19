@@ -6,6 +6,12 @@
 # skills, settings) are the reviewed ones. The pull request head is in pr/ and is data.
 # The agent gets read-only tools and cannot run the pull request's code: the model credential is in
 # its environment, and code under review must never be able to read it.
+#
+# TEMPORARILY DISABLED. The model review does not run in CI: the factory-review environment has no working
+# API account yet. Check `factory/review` is run on a maintainer's machine by .github/scripts/local-review.mjs and
+# posted by the reviewer app (see "Model reviews run locally" in AGENTS.md). This should move back to CI:
+# fix the account, set repository variable FACTORY_REVIEW_IN_CI=true, point `factory/review` in the main ruleset
+# back at GitHub Actions (integration_id 15368), and delete the local script.
 name: factory-pr-review
 
 on:
@@ -22,7 +28,8 @@ concurrency:
 jobs:
   review:
     name: review
-    if: ${{ !github.event.pull_request.draft && !github.event.pull_request.head.repo.fork }}
+    # Off unless FACTORY_REVIEW_IN_CI is 'true' (see the note at the top of this file).
+    if: ${{ vars.FACTORY_REVIEW_IN_CI == 'true' && !github.event.pull_request.draft && !github.event.pull_request.head.repo.fork }}
     runs-on: ubuntu-latest
     environment: factory-review           # holds the one secret this job may see: the model API key, with a spending limit
     permissions:
