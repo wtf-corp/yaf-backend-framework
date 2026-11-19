@@ -36,7 +36,9 @@
       "Bash(gh variable delete *)",
       "Bash(gh workflow disable *)",
       "Bash(dotnet nuget push *)",
-      "Bash(npx semantic-release*)"
+      "Bash(npx semantic-release*)",
+      "Read(~/.wtf-corp/yaf-factory/**)",
+      "Bash(node .github/scripts/factory-token.mjs *--print*)"
     ]
   }
 }
