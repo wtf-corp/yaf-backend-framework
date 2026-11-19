@@ -65,6 +65,7 @@ jobs:
         uses: anthropics/claude-code-action@f431adaf77e0fecf918431e75a2b5b45b85af002 # v1.0.283
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          show_full_output: true   # DIAGNOSTIC, do not merge
           github_token: ${{ github.token }}
           allowed_bots: yaf-factory
           prompt: ${{ steps.inputs.outputs.prompt }}
