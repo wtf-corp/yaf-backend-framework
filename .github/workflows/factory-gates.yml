@@ -103,6 +103,8 @@ jobs:
           node-version: 22
       - name: Tests of the gate scripts (of this pull request's version)
         run: node --test "docs/spec/factory/.github/factory/tests/*.test.mjs"
+      - name: Tests of this repository's own scripts (of this pull request's version)
+        run: node --test ".github/scripts/tests/*.test.mjs"
 
   # Executed evidence for the reviewer's claim "this test fails without the change".
   # REPORT ONLY for now: it never fails the pull request. It runs the pull request's code, so it has
