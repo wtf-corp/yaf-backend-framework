@@ -1,0 +1,53 @@
+# Code owners. Branch rules require a code owner's approving review for a pull request that touches
+# any path below (ADR-0023, ADR-0029). Everything else merges on the factory's checks:
+# tier low and medium automatically, tier high after `factory/human-approval`.
+#
+# Replace @yaf/maintainers with the real team. The team must contain humans only: no app, no bot,
+# no machine user. An approving review is the one thing an agent cannot produce.
+#
+# Keep this list in step with `sensitivePaths` in .github/factory/policy.json. The policy is wider on
+# purpose: it also makes paths tier high that need a human review without needing a code OWNER
+# (for example Directory.Packages.props, where a patch update must be able to merge automatically).
+
+# What is to be built, and the decisions
+/specs/**/spec.md                          @yaf/maintainers
+/specs/0000-framework/                     @yaf/maintainers
+/adr/                                      @yaf/maintainers
+
+# The factory itself, CI and agent instructions
+/.github/                                  @yaf/maintainers
+/.claude/                                  @yaf/maintainers
+/.agents/                                  @yaf/maintainers
+AGENTS.md                                  @yaf/maintainers
+/CLAUDE.md                                 @yaf/maintainers
+
+# Guards
+BannedSymbols.txt                          @yaf/maintainers
+.editorconfig                              @yaf/maintainers
+/tests/Architecture.Tests/                 @yaf/maintainers
+/src/Analyzers/                            @yaf/maintainers
+/Directory.Build.props                     @yaf/maintainers
+/Directory.Build.targets                   @yaf/maintainers
+/src/Directory.Build.props                 @yaf/maintainers
+/nuget.config                              @yaf/maintainers
+/global.json                               @yaf/maintainers
+
+# Release
+/.releaserc.json                           @yaf/maintainers
+/package.json                              @yaf/maintainers
+/build/release/                            @yaf/maintainers
+
+# Security and compliance
+/src/Http/Authentication/                  @yaf/maintainers
+/src/Application/Authorization/            @yaf/maintainers
+/src/Application/Context/                  @yaf/maintainers
+/src/Infrastructure/Cryptography/          @yaf/maintainers
+/src/Infrastructure/Redaction/             @yaf/maintainers
+/src/Persistence.EfCore/Protection/        @yaf/maintainers
+/src/Persistence.EfCore/Tenancy/           @yaf/maintainers
+/src/Persistence.EfCore/Audit/             @yaf/maintainers
+/src/Persistence.EfCore.PostgreSql/Tenancy/ @yaf/maintainers
+/src/Persistence.EfCore.PostgreSql/Audit/  @yaf/maintainers
+/src/Privacy/                              @yaf/maintainers
+/src/Privacy.EfCore/                       @yaf/maintainers
+**/Migrations/                             @yaf/maintainers

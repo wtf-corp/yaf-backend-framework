@@ -1,0 +1,113 @@
+# Deterministic gates of the factory (ADR-0029): tier, ticket, size, delta, guards, plan gate, human approval.
+# No agent runs here. The scripts and the policy come from the BASE branch; the pull request head is
+# checked out in pr/ and is only read. Nothing from pr/ is executed in the `gates` job.
+name: factory-gates
+
+on:
+  pull_request:
+    branches: [main, next]
+    types: [opened, reopened, synchronize, edited, labeled, unlabeled, ready_for_review]
+  pull_request_review:
+    types: [submitted, dismissed]
+  merge_group:
+
+permissions: {}
+
+concurrency:
+  group: factory-gates-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  gates:
+    name: gates
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write   # tier label
+      issues: write          # labels are set through the issues API
+      checks: write          # the factory/* check runs
+    outputs:
+      tier: ${{ steps.gates.outputs.tier }}
+      kind: ${{ steps.gates.outputs.kind }}
+    steps:
+      - name: Check out the base branch (scripts and policy)
+        uses: actions/checkout@v4          # pin by commit SHA when installing (spec/17: third-party actions are pinned)
+        with:
+          ref: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          persist-credentials: false
+      - name: Check out the pull request head as data
+        if: github.event_name != 'merge_group'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: pr
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run the gates
+        id: gates
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node .github/factory/gates.mjs --pr-dir pr
+
+  skills-mirror:
+    name: skills-mirror
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: pr
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: .claude/skills must mirror .agents/skills
+        run: node .github/factory/sync-skills.mjs --check --root pr
+
+  self-test:
+    name: factory-self-test
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Tests of the gate scripts (of this pull request's version)
+        run: node --test ".github/factory/tests/*.test.mjs"
+
+  # Executed evidence for the reviewer's claim "this test fails without the change".
+  # REPORT ONLY for now: it never fails the pull request. It runs the pull request's code, so it has
+  # no secrets and a read-only token. Make it a required check once its results have been trusted for a while.
+  test-evidence:
+    name: factory/test-evidence
+    if: github.event_name == 'pull_request' && !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Changed tests must fail on the base version of the code
+        run: bash .github/factory/test-evidence.sh "${{ github.event.pull_request.base.sha }}"

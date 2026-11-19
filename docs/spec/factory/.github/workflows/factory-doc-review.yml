@@ -1,0 +1,85 @@
+# Review of a spec or a plan by an agent against the quality checklists (ADR-0024, ADR-0025, ADR-0029).
+# Reports check `factory/doc-review`. Same layout and the same restrictions as factory-pr-review.yml.
+name: factory-doc-review
+
+on:
+  pull_request:
+    branches: [main, next]
+    types: [opened, reopened, synchronize, ready_for_review]
+
+permissions: {}
+
+concurrency:
+  group: factory-doc-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    name: doc-review
+    if: ${{ !github.event.pull_request.draft && !github.event.pull_request.head.repo.fork }}
+    runs-on: ubuntu-latest
+    environment: factory-review
+    permissions:
+      contents: read
+      pull-requests: write
+      checks: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: pr
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Kind of pull request and the reviewer the policy assigns
+        id: scope
+        run: node .github/factory/scope.mjs --pr-dir pr --role docReviewer
+      - name: Prompt and verdict schema from the base branch
+        id: inputs
+        if: steps.scope.outputs.kind != 'code'
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          KIND: ${{ steps.scope.outputs.kind }}
+        run: |
+          {
+            echo 'prompt<<FACTORY_PROMPT_EOF'
+            cat .github/factory/prompts/doc-review.md
+            echo
+            echo "Pull request: #${PR_NUMBER} in ${GITHUB_REPOSITORY}. Kind: ${KIND}. Base commit: ${BASE_SHA}. Head commit: ${HEAD_SHA}."
+            echo 'FACTORY_PROMPT_EOF'
+            echo "schema=$(tr -d '\n' < .github/factory/doc-review.schema.json)"
+          } >> "$GITHUB_OUTPUT"
+      - name: Review (Claude)
+        id: review
+        if: steps.scope.outputs.kind != 'code' && steps.scope.outputs.agent == 'claude'
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ github.token }}
+          allowed_bots: yaf-factory
+          prompt: ${{ steps.inputs.outputs.prompt }}
+          claude_args: >-
+            --model ${{ steps.scope.outputs.model }}
+            --max-turns 40
+            --allowedTools "Read,Grep,Glob,Bash(git -C pr diff *),Bash(git -C pr log *),Bash(git -C pr show *),mcp__github_inline_comment__create_inline_comment"
+            --json-schema '${{ steps.inputs.outputs.schema }}'
+      - name: Another vendor's reviewer is not wired in
+        if: steps.scope.outputs.kind != 'code' && steps.scope.outputs.agent != 'claude'
+        run: |
+          echo "The policy assigns agent '${{ steps.scope.outputs.agent }}' to this review. Add a step that runs it with" \
+               "prompts/doc-review.md and produces JSON matching doc-review.schema.json in REVIEW_OUTPUT." >&2
+          exit 1
+      - name: Report the verdict as a check and a summary comment
+        if: always() && steps.scope.outputs.kind != 'code'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REVIEW_OUTPUT: ${{ steps.review.outputs.structured_output }}
+        run: node .github/factory/post-review.mjs --check factory/doc-review
