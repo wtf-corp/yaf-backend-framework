@@ -4,7 +4,7 @@ What the plan in [`plan.md`](./plan.md) relies on. The implementers of T1 and T2
 
 Each fact carries its provenance:
 
-- **[repo]** read in this repository on 2026-11-19, at commit `2d5ac1b` (pull request #2). The implementer re-reads the cited file and quotes the file, not this summary, where they differ.
+- **[repo]** read in this repository on 2026-11-19, at commit `2d5ac1b` (pull request #2); the local-review stopgap was read on `main` at `a3adfe0` (pull request #6). The implementer re-reads the cited file and quotes the file, not this summary, where they differ.
 - **[owner]** reported by the human owner from setting this repository up on 2026-11-19. An agent cannot re-check these: the deny rules of `.claude/settings.json` block `gh api *rulesets*`, `gh api *environments*`, `gh secret *`, `gh variable set *`, `gh label *` and `gh repo edit *`.
 - **[docs]** third-party behaviour checked against the vendor's documentation on 2026-11-19; the source is given.
 - **[assumed]** not stated by either; the runbook must mark it as something to confirm.
@@ -21,6 +21,7 @@ The runbook is generic. It uses these placeholders and gives this repository's v
 | `<maintainer-login>` | `mika666` | [repo] `policy.json` `humans.logins` |
 | `<app-slug>` / bot login | `yaf-factory` / `yaf-factory[bot]` | [repo] `policy.json` `bots.factory`; [owner] |
 | `<app-id>` | `5834995`. An identifier, not a secret: it is shown on the app's settings page, stored in variable `FACTORY_APP_ID`, and is what the token procedure of section 5 uses as `iss` | [owner] |
+| `<reviewer-app-slug>` / `<reviewer-app-id>` | `yaf-reviewer` / `5837737`. Also an identifier, not a secret. Only this repository's temporary local review needs it (section 3, item 8) | [owner]; [repo] `AGENTS.md` |
 | `<project-number>` | `1` (Project "YAF factory") | [owner] |
 | `<bundle>` | `docs/spec` | [repo] `AGENTS.md` path map |
 
@@ -55,7 +56,7 @@ GitHub runs only real files in `.github/workflows/`, and Windows has no symlinks
 3. Third-party actions pinned by commit SHA, with the version as a trailing comment. The pins on 2026-11-19 were `actions/checkout` v4.4.0, `actions/setup-node` v4.4.0, `actions/setup-dotnet` v4.3.1, `actions/create-github-app-token` v1.12.0 and `anthropics/claude-code-action` v1.0.283. The runbook points at the files for the SHAs instead of repeating them: they change with every update.
 4. In `factory-gates.yml`, job `test-evidence` skips until `global.json` exists (M0 adds the solution).
 
-Which workflow uses which environment: `factory-automerge.yml`, `factory-tickets.yml` and `factory-status.yml` use `factory-merge` (variables `FACTORY_APP_ID`, `FACTORY_PROJECT_OWNER`, `FACTORY_PROJECT_NUMBER`, `FACTORY_PAUSED`; secret `FACTORY_APP_PRIVATE_KEY`). `factory-pr-review.yml` and `factory-doc-review.yml` use `factory-review` (secret `ANTHROPIC_API_KEY`), pass `github_token: ${{ github.token }}` and `allowed_bots: yaf-factory` to the action.
+Since pull request #6 the two review workflows run only when repository variable `FACTORY_REVIEW_IN_CI` is `true` (section 3, item 8). Which workflow uses which environment: `factory-automerge.yml`, `factory-tickets.yml` and `factory-status.yml` use `factory-merge` (variables `FACTORY_APP_ID`, `FACTORY_PROJECT_OWNER`, `FACTORY_PROJECT_NUMBER`, `FACTORY_PAUSED`; secret `FACTORY_APP_PRIVATE_KEY`). `factory-pr-review.yml` and `factory-doc-review.yml` use `factory-review` (secret `ANTHROPIC_API_KEY`), pass `github_token: ${{ github.token }}` and `allowed_bots: yaf-factory` to the action.
 
 **Code owners:** `.github/CODEOWNERS` is installed from the kit with the team set to `@<org>/<team>` and with `/docs/spec/` added, because the bundle (specification, ADRs, agent guidance, the kit with its live policy and scripts) lives there. Its header says the team must hold humans only and needs write access, or GitHub ignores the entries.
 
@@ -95,22 +96,29 @@ Without the explicit patterns the policy file itself is classified tier low, bec
 The agent's `.claude/settings.json` denies `gh secret`, `gh variable set`, rulesets, environments, `gh label` and `gh repo edit` [repo]. An agent assisting the setup hands these commands to the human. The runbook says so at the top of the section.
 
 1. **Labels, Project, variables.** `gh auth refresh -h github.com -s project`, then `bash docs/spec/factory/.github/factory/setup-github.sh` from the repository root. The script needs `gh` and `jq`, is idempotent, and created: 18 labels (from `labels.json`), the Project "YAF factory" (#1) with Status options Backlog / Ready / In progress / In review / Done, linked to the repository, and the variables `FACTORY_PROJECT_OWNER`, `FACTORY_PROJECT_NUMBER` and `FACTORY_PAUSED=false` [repo: `setup-github.sh`, `labels.json`].
-2. **The `main` ruleset**, applied with `gh api -X POST repos/<org>/<repo>/rulesets --input ruleset-main.json`. JSON in section 4.
+2. **The `main` ruleset**, applied with `gh api -X POST repos/<org>/<repo>/rulesets --input ruleset-main.json`. JSON in section 4. Then check that it is the only one: `gh api repos/<org>/<repo>/rules/branches/main` must show rules from exactly one ruleset (section 6).
 3. **Repository settings.** `gh repo edit --enable-auto-merge`. The repository merges by squash only and deletes branches on merge. Flags per the `gh` manual [docs: https://cli.github.com/manual/gh_repo_edit]: `--enable-squash-merge`, `--enable-merge-commit=false`, `--enable-rebase-merge=false`, `--delete-branch-on-merge`, `--enable-auto-merge`. Whether the owner set the merge methods with these flags or in the web settings is not recorded [assumed]; both give the same result.
 4. **Team access.** Team `<team>` gets access to the repository. Maintain is recommended; Admin works but is broader than needed.
 5. **The GitHub App** (`<app-slug>`). Permissions as in the kit README's checklist, item 2: Contents, Pull requests, Issues read and write; Projects read and write (organisation); Checks and Metadata read. Not Administration, Workflows, Secrets, Environments or Members. Installed on selected repositories only. Its App ID is stored as variable `FACTORY_APP_ID`. Its bot login must equal `bots.factory` in the policy. Not a member of the maintainers team; on no bypass list.
-6. **Environment `factory-merge`.** Deployment branches: custom branch policies allowing only `main`. Secret `FACTORY_APP_PRIVATE_KEY` (the content of the app's `.pem`). Recommended: untick "Allow administrators to bypass configured protection rules".
+6. **Environment `factory-merge`.** Deployment branches: custom branch policies allowing only `main`. Secret `FACTORY_APP_PRIVATE_KEY` (the content of the app's private key, pasted at the prompt). Recommended: untick "Allow administrators to bypass configured protection rules".
 7. **Environment `factory-review`.** Secret `ANTHROPIC_API_KEY`: a dedicated key, ideally in its own Console workspace with a monthly spending limit.
    - Considered and rejected: a Claude subscription token (`claude setup-token`, passed as action input `claude_code_oauth_token`). It shares the subscriber's usage limits, it is tied to a personal account, and it makes the installed workflows differ from the kit. The input exists [docs: https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md, "Claude Code OAuth token (alternative to anthropic_api_key)"].
    - Secrets are set interactively: `gh secret set <NAME> --env <ENV> -R <org>/<repo>`, then paste at the prompt. Never from a file left on disk, never on the command line.
+8. **This repository's temporary state: the model reviews run locally.** The intended setup, and the one to port, is item 7: the two review workflows run in CI with the key in `factory-review`. Here that account did not work yet, so since pull request #6 [repo: `AGENTS.md`, "Model reviews run locally (temporary)"; `.github/scripts/local-review.mjs`]:
+   - a second GitHub App, `yaf-reviewer` (App ID 5837737), with Checks write, Pull requests write and Contents read, posts `factory/review` and `factory/doc-review` [owner];
+   - the ruleset pins those two checks to that app and leaves the other eight on GitHub Actions (section 4);
+   - the CI review jobs are off unless repository variable `FACTORY_REVIEW_IN_CI` is `true`;
+   - the orchestrator runs `node .github/scripts/local-review.mjs <pr-number>` with a token of the reviewer app. The factory app cannot write checks, and that stays so: the identity that opens pull requests must not be able to pass its own review.
+
+   The runbook presents this as this repository's current state, in a few lines, and points to `AGENTS.md` and `.github/scripts/local-review.mjs` instead of repeating them. Both go away when the reviews move back to CI (section 7).
 
 ## 4. The `main` ruleset
 
 Endpoint and field names [docs: https://docs.github.com/en/rest/repos/rules, "Create a repository ruleset", API version 2022-11-28]: `name` and `enforcement` are required; `conditions.ref_name.include` accepts `~DEFAULT_BRANCH`; rule types `deletion` and `non_fast_forward` take no parameters; `pull_request` requires `dismiss_stale_reviews_on_push`, `require_code_owner_review`, `require_last_push_approval`, `required_approving_review_count` (0–10) and `required_review_thread_resolution`, and accepts `allowed_merge_methods` (`merge`, `squash`, `rebase`); `required_status_checks` requires `required_status_checks` (items `context`, optional `integration_id`) and `strict_required_status_checks_policy`.
 
-What the owner applied [owner]: target the default branch, no bypass actors; rules `deletion` and `non_fast_forward`; `pull_request` with 0 required approvals, code-owner review required, stale reviews dismissed, squash as the only merge method; `required_status_checks`, strict, with the nine names of `policy.json` `checks` plus `references`, each pinned to `integration_id` 15368 (GitHub Actions).
+What the owner applied [owner]: target the default branch, no bypass actors; rules `deletion` and `non_fast_forward`; `pull_request` with 0 required approvals, code-owner review required, stale reviews dismissed, squash as the only merge method; `required_status_checks`, strict, with the nine names of `policy.json` `checks` plus `references`. Eight are pinned to `integration_id` 15368 (GitHub Actions). `factory/review` and `factory/doc-review` were first pinned to 15368 too and are now pinned to 5837737, the reviewer app, for as long as the reviews run locally (section 3, item 8).
 
-The file below is the one the owner applied on 2026-11-19 with `gh api -X POST repos/<org>/<repo>/rulesets --input ruleset-main.json` (ruleset id 27648742) [owner], reflowed to fewer lines; the values are unchanged.
+The file below is the ruleset as it stands on 2026-11-19 (ruleset id 27648742) [owner]: the file the owner applied with `gh api -X POST repos/<org>/<repo>/rulesets --input ruleset-main.json`, reflowed to fewer lines, with the two review checks re-pinned. The runbook shows it as applied here and says in one line that a repository whose reviews run in CI uses 15368 for all ten.
 
 ```json
 {
@@ -138,8 +146,8 @@ The file below is the one the owner applied on 2026-11-19 with `gh api -X POST r
           { "context": "factory/size", "integration_id": 15368 },
           { "context": "factory/delta", "integration_id": 15368 },
           { "context": "factory/guards", "integration_id": 15368 },
-          { "context": "factory/review", "integration_id": 15368 },
-          { "context": "factory/doc-review", "integration_id": 15368 },
+          { "context": "factory/review", "integration_id": 5837737 },
+          { "context": "factory/doc-review", "integration_id": 5837737 },
           { "context": "factory/plan-gate", "integration_id": 15368 },
           { "context": "factory/human-approval", "integration_id": 15368 },
           { "context": "references", "integration_id": 15368 } ] } }
@@ -151,7 +159,7 @@ This layout is 32 lines, 34 with its fence; the runbook uses it as is to stay wi
 
 Notes for the runbook:
 
-- Required checks pinned to `integration_id` 15368 must be reported by GitHub Actions. The gates report their `factory/*` check runs with `github.token` [repo: `factory-gates.yml` grants `checks: write` to the `gates` job; the review workflows pass `github.token`], so they should qualify. Whether this settles the kit README's open point "Check runs created with the workflow token satisfy a required status check" is known only once trial 1 merges through the ruleset; at planning time it had not (see section 5).
+- A required check pinned to an `integration_id` must be reported by that app: 15368 is GitHub Actions, 5837737 is this repository's reviewer app. The gates report their `factory/*` check runs with `github.token` [repo: `factory-gates.yml` grants `checks: write` to the `gates` job], so they should qualify for 15368. The kit README's open point "Check runs created with the workflow token satisfy a required status check" is not settled by trial 1: pull request #3 merged while the ruleset was disabled (section 5).
 - `references` is a job name, reported by Actions itself.
 - "The author cannot approve" is GitHub's own behaviour, not a ruleset field.
 - The kit README also asks for the build, test, security and title jobs of `ci.yml`: not yet, see section 7.
@@ -160,7 +168,7 @@ Notes for the runbook:
 
 **Why.** Gate trials need pull requests authored by the app, so that a human's review counts: an author cannot approve their own pull request. The kit README says the same for agents ("authenticate locally with a token of this app, never with your login").
 
-**How.** A dependency-free Node script (Node 22+, about 85 lines) mints an installation token and runs a command with it: `node app-token.mjs --key <private-key.pem> -- gh pr create …`. The script is **not in the repository**, by the owner's decision of 2026-11-19: not here, not in the runbook. The runbook describes the steps below and links nothing; a maintainer who needs the script writes it from them. What the owner's script did [owner], with the API facts each [docs]:
+**How.** A dependency-free Node script (Node 22+, about 85 lines) mints an installation token and runs a command with it. The private key comes in on standard input (`--key -`), for example in PowerShell: `Get-Clipboard -Raw | node app-token.mjs --app-id <app-id> --key - -- gh pr create …`, and the clipboard is cleared afterwards. The script is **not in the repository**, by the owner's decision of 2026-11-19: not here, not in the runbook. The runbook describes the steps below and links nothing; a maintainer who needs the script writes it from them. What the owner's script did [owner], with the API facts each [docs]:
 
 1. Build a JWT signed RS256 with the app's private key: header `alg: RS256`; claims `iat` (60 seconds in the past, for clock drift), `exp` (at most 10 minutes ahead; the owner's script used 9), `iss` (the App ID; the client ID also works and is what the documentation recommends). Sent as `Authorization: Bearer <jwt>`. Source: https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-a-json-web-token-jwt-for-a-github-app. Node's built-in `crypto` signs RS256, so no dependency is needed.
 2. `GET /repos/{owner}/{repo}/installation` with the JWT → the installation `id`.
@@ -172,13 +180,14 @@ Notes for the runbook:
    - `GIT_CONFIG_KEY_1=credential.helper`, `GIT_CONFIG_VALUE_1=` a helper that answers `username=x-access-token` and `password=$GH_TOKEN`
 
    The pairs are zero-indexed, override configuration files, and are overridden by `git -c` [docs: https://git-scm.com/docs/git-config, "ENVIRONMENT"]. An empty `credential.helper` resets the list, and a value starting with `!` is a shell snippet [docs: https://git-scm.com/docs/gitcredentials, "Configuration Options" and "Custom Helpers"]. The helper string used is `!f() { echo username=x-access-token; echo "password=$GH_TOKEN"; }; f` [owner: `git ls-remote` and `git push` authenticated as the app with it].
-6. The private key is read from a path given at run time, outside the repository. The token is never written to disk and expires by itself. It is printed only when the script is run with `--print`, which is meant for the human's own terminal: never in CI, a log or an agent session.
+6. **Where the key is.** The app keys (factory and reviewer) are held in a key manager or the operating system's credential store, never as files: the owner moved both out of the filesystem on 2026-11-19, and no key file is left on disk [owner]. The key is passed to the script at run time through standard input and is not written anywhere. If a key is lost, a fresh one is generated on the app's settings page and the old one deleted; nothing depends on keeping a copy. This is the default of `18` §4, "Agent identity for local work": "a short-lived token minted from the app's key held in the operating system's credential store", with no long-lived secret on disk [repo: `docs/spec/spec/18-build-plan.md`]. Passing the key through the clipboard exposes it to whatever reads the clipboard until it is cleared; fetching it straight from the key manager's CLI is a possible later improvement.
+7. The token is never written to disk and expires by itself. It is printed only when the script is run with `--print`, which is meant for the human's own terminal: never in CI, a log or an agent session.
 
 **The trial list.** These seven are the kit README's "Install at M0" step 7. The README's "Verify before relying on it" is a different list: assumptions about GitHub, the action and the kit's own logic that the kit could not test. The runbook does not work through it; it says that the list stays open and links it. The full gate acceptance criteria are `17` §7 (`docs/spec/spec/17-ci-release-docs.md`), which are M0's exit criteria; the runbook links them and does not repeat them.
 
 | Trial | Expected | State on 2026-11-19 |
 |---|---|---|
-| A trivial docs pull request | Tier low, merges by itself | Pull request #3, opened by the app: every deterministic gate passed (tier low, trivial accepted, auto-merge armed); `factory/review` failed on its first model API call (key or account setup in `factory-review`), so it had not merged at planning time |
+| A trivial docs pull request | Tier low, merges by itself | **To repeat.** Pull request #3, opened by the app, passed every deterministic gate (tier low, trivial accepted, auto-merge armed) and failed `factory/review` on its first model API call. It then merged unreviewed, when the ruleset was disabled for a break-glass merge and its armed auto-merge fired (section 6). That proves nothing about the gates |
 | A file under `src/Http/Authentication/` | Tier high, waits for a human; the human's approval satisfies `factory/human-approval`, a bot's does not | On the list |
 | A pull request over 400 changed lines | `factory/size` fails; `size-accepted` applied by the app does not help; applied by a human maintainer it does, and the tier stays high | On the list |
 | `tier:low` put on a tier-high pull request | Still high | On the list |
@@ -186,20 +195,24 @@ Notes for the runbook:
 | `FACTORY_PAUSED=true` | Auto-merge stops being enabled | On the list |
 | Delta trials: a declared public API line, then an undeclared one | Medium merges by itself; undeclared fails `factory/delta` and is tier high | Once the first plan exists |
 
-The owner's notes record only trial 1 as started. The runbook presents the table as a checklist with a column for the pull request that proved each, and does not claim results the notes do not hold.
+No trial counts as passed. The runbook presents the table as a checklist with a column for the pull request that proved each, and does not claim results the notes do not hold.
 
 ## 6. Gotchas [owner, unless marked]
 
 - **Every non-spec, non-plan pull request needs a ticket or must be trivial.** `factory/ticket` passes for a code pull request only when it closes exactly one open ticket created from a plan on the base branch, or carries a `Trivial because:` line, is not tier high and has at most 20 changed lines [repo: `ticket.mjs`]. So the first real change after the install needs a merged plan first; this runbook's own plan is that case.
 - **A single maintainer login cannot approve its own pull requests.** With one human login, the maintainer's own pull requests to code-owned or tier-high paths cannot be approved. The work goes through the app (section 5), or a second human login is added to the team and to `humans.logins`.
 - **Git Bash rewrites `gh api /path`** as a Windows path. Drop the leading slash: `gh api repos/<org>/<repo>/…`.
-- **`integration_id` 15368** pins a required check to GitHub Actions; a check of the same name reported by another app does not satisfy it.
+- **`integration_id`** pins a required check to one app (15368 is GitHub Actions); a check of the same name reported by another app does not satisfy it.
+- **Disabling a ruleset for a break-glass merge releases every open pull request that has auto-merge armed.** Pull request #3 merged unreviewed that way. Before a break-glass, cancel auto-merge on the open pull requests or set `FACTORY_PAUSED=true`, and remember that pausing does not disarm auto-merge already enabled (kit README, "Running the orchestrator").
+- **Rulesets stack.** An old default ruleset (1 required approval, Copilot review) was still active next to the factory ruleset, so one approval blocked every auto-merge. `gh api repos/<org>/<repo>/rules/branches/main` must show rules from exactly one ruleset.
+- **App keys are not kept as files:** section 5, step 6.
 - **`**` and dot-folders** in policy globs: section 2.
 - **Replacing policy entries** instead of adding to them broke the kit's tests: section 2.
 
 ## 7. Still to do in this repository [owner]
 
-- Getting the model review to pass: on pull request #3 `factory/review` failed on its first model API call (key or account setup in environment `factory-review`). `factory/doc-review` uses the same key, so no spec, plan or code pull request can merge until this is fixed.
+- Moving the model reviews back to CI: fix the account behind `factory-review`, set `FACTORY_REVIEW_IN_CI=true`, point `factory/review` and `factory/doc-review` in the ruleset back at GitHub Actions (15368), delete `local-review.mjs` and the `AGENTS.md` section [repo: `AGENTS.md`].
+- Repeating trial 1, then trials 2–7.
 - `ci.yml` in M0, and adding its checks (build, test, security, title) to the `main` ruleset.
 - A ruleset for `next` after `1.0.0`.
 - Optionally a merge queue.
@@ -217,5 +230,5 @@ Checked by running the kit's own code against the plan's paths on 2026-11-19:
 ## 9. Not available at planning time, and open points
 
 - There is no docs build yet: no `docs/docfx.json`, no `toc.yml`. The DocFX site is created in M14 (`18` §2); `17` §5 lists its folders (`articles/`, `api/`, `compliance/`, `reference/`). ADR-0025 names the docs build as the verification of a pure documentation ticket; the plan substitutes checks that run today.
-- The results of trials 2–7, and the merge of trial 1.
+- The results of all seven trials (trial 1 has to be repeated).
 - **Open point: the token script's long-term home.** A reviewed, tier-high file under `.github/`, in a plan of its own. Until then it is in no repository file: section 5 holds the description only.
