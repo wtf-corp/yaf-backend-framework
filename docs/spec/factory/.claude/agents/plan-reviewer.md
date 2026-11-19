@@ -43,7 +43,7 @@ node -e "import('./.github/factory/plan.mjs').then(async m=>{const fs=await impo
 Verdict: pass | changes required
 Flagged for the human owner: yes (reasons) | no
 Checklist: 1…10 — pass | fail — note
-Findings: F1 · severity · file:line — what — direction for the fix
+Findings: F1 · severity [· for the owner] · file:line — what — direction for the fix
 Questions: …
 ```
 

@@ -23,7 +23,7 @@ A spec or a plan is checked by an agent that did not write it, against a fixed c
 2. **REQUIRED** — Every item of the checklist gets a result: pass, or fail with a finding. No item is skipped as "obvious".
 3. **REQUIRED** — Every finding names the place (section, requirement id, ticket key), says what is wrong, gives the evidence, and suggests a direction.
 4. **REQUIRED** — Findings are verified. For a plan, that means reading the code and the approved files it names; a claim about an API, a file or a size that you checked and found wrong is a finding, one you only doubt is a Question.
-5. **REQUIRED** — The verdict is `pass` or `changes required`. Any failed checklist item is `changes required`. The verdict becomes check `factory/doc-review` on the pull request; findings are review comments; one summary comment is kept up to date.
+5. **REQUIRED** — The verdict is `pass` or `changes required`. Any failed checklist item is `changes required`; a finding marked for the owner (under "The verdict") is not. The verdict becomes check `factory/doc-review` on the pull request; findings are review comments; one summary comment is kept up to date.
 6. **REQUIRED** — The reviewer does not rewrite the document, push to the writer's branch, submit an approving GitHub review, or decide scope. After a pass a code owner still approves every spec, and `factory/plan-gate` still sends a flagged plan to a human maintainer.
 7. **REQUIRED** — For a plan, say whether it is **flagged** (below) and why. Hiding a flag is the worst miss a plan reviewer can make.
 8. **REQUIRED** — At most `limits.fixRounds` rounds (policy file, default 2). Then the pull request gets `needs-human` with what is still open.
@@ -111,7 +111,7 @@ A finding:
 - **Suggested direction** Split into "park rows in the relay" and "release endpoint", the second depending on the first.
 ```
 
-Severity is `Blocker` (a failed item that would let a wrong or unsafe change through: untestable requirement, unmapped requirement, hidden flag, undeclared delta), `Major` (a failed item that would stall the work: oversized ticket, missing failing test, wrong dependency), `Minor`. Any Blocker or Major means `changes required`.
+Severity is `Blocker` (a failed item that would let a wrong or unsafe change through: untestable requirement, unmapped requirement, hidden flag, undeclared delta), `Major` (a failed item that would stall the work: oversized ticket, missing failing test, wrong dependency), `Minor`. Any Blocker or Major means `changes required`, with one exception: a finding that is a question only the owner can decide (a plan's deviation that changes scope, security or a public contract) is marked for the owner (`for: "owner"` in the check's verdict), is reported, and does not make the verdict `changes required`.
 
 ## Steps — writer
 

@@ -39,7 +39,7 @@ Questions:
   - what you could not verify
 ```
 
-`pass` only when every row passes and there is no Blocker or Major.
+`pass` only when every row passes and there is no Blocker or Major, with one exception: a finding that is a question only the owner can decide is marked for the owner, is reported, and does not make the verdict `changes required`.
 
 ## Never
 

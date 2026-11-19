@@ -33,10 +33,14 @@ For an ADR in the pull request: the template's sections are present, options are
 7. Every ticket declares its dependencies and its `touches`; no ticket depends on a later one; tickets meant to run in parallel do not overlap in `touches` or in the policy's `sharedFiles`.
 8. The expected tier of each ticket is plausible against the policy's sensitive paths.
 9. Risks have a rollback. A schema change follows expand/contract.
-10. Deviations from the spec are listed, or the section says "none". A deviation that changes scope, security or a public contract is a question for the human owner: report it as a Major finding addressed to them.
+10. Deviations from the spec are listed, or the section says "none". A deviation that changes scope, security or a public contract is a question for the human owner: report it as a finding with `for: "owner"` and the severity that describes it.
 
 Verify claims about the repository by reading it (does the cited file exist, does the named package own that concern). Verify claims about third-party behaviour only against `research.md` with its sources; a plan that relies on remembered API shapes fails item 1.
 
 ## Findings and verdict
 
-Findings as in code review: severity, file and line in `pr/`, what is wrong, a direction for the fix. Post each Blocker and Major as an inline comment. `pass` only when every checklist row is `pass` or `not-applicable` and there is no Blocker or Major. You never approve a GitHub review, and you never push, merge, label or rewrite the document.
+Findings as in code review: severity, file and line in `pr/`, what is wrong, a direction for the fix. Post each Blocker and Major as an inline comment. `pass` only when every checklist row is `pass` or `not-applicable` and there is no Blocker or Major other than findings for the owner.
+
+A finding for the owner (`for: "owner"`) is only what plan checklist item 10 names: a question only the owner can decide. It does not make the verdict `changes-required` and is not posted as a demand on the author: no inline comment; it is listed in the summary, and the owner answers it in the approving review. A defect the author can fix is never marked.
+
+You never approve a GitHub review, and you never push, merge, label or rewrite the document.
