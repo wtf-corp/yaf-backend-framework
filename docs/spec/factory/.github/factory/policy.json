@@ -3,8 +3,10 @@
   "version": 1,
   "pauseVariable": "FACTORY_PAUSED",
   "humans": {
-    "team": "maintainers",
-    "logins": []
+    "team": "admins",
+    "logins": [
+      "mika666"
+    ]
   },
   "bots": {
     "factory": "yaf-factory[bot]",
@@ -32,14 +34,17 @@
       "**/PublicAPI.*.txt",
       "**/*.openapi.json",
       "docs/api/**",
-      ".claude/skills/**"
+      ".claude/skills/**",
+      ".agents/skills/**"
     ]
   },
   "docPaths": {
     "spec": [
       "specs/**/spec.md",
       "specs/0000-framework/**",
-      "adr/**"
+      "adr/**",
+      "docs/spec/spec/**",
+      "docs/spec/adr/**"
     ],
     "plan": [
       "specs/**/plan.md",
@@ -80,7 +85,10 @@
     "global.json",
     "specs/**/spec.md",
     "specs/0000-framework/**",
-    "adr/**"
+    "adr/**",
+    "docs/spec/**",
+    "docs/spec/factory/.github/**",
+    "docs/spec/factory/.claude/**"
   ],
   "dependencyPatchFiles": [
     "Directory.Packages.props",
