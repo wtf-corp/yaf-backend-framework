@@ -76,8 +76,16 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
+      # The base branch's script judges the pull request. Only while the base has no script yet (the pull
+      # request that installs it) is the pull request's own copy used; this job holds no secret.
       - name: References to docs/spec must be in step with their sources
-        run: node .github/scripts/sync-references.mjs --check --root pr
+        run: |
+          script=.github/scripts/sync-references.mjs
+          if [ ! -f "$script" ]; then
+            echo "::notice::$script is not on the base branch yet; using the pull request's copy."
+            script=pr/.github/scripts/sync-references.mjs
+          fi
+          node "$script" --check --root pr
 
   self-test:
     name: factory-self-test
