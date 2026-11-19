@@ -2,7 +2,7 @@
 
 Ready-to-copy files that implement the software factory of ADR-0029 with Claude Code and GitHub Actions: agent definitions for each role, the gate workflows, the scripts and policy they run on, and the templates.
 
-**None of this has been run against a real repository.** The scripts pass their own unit tests (31 tests, `node --test`) and every script parses; the workflows, the setup script and the agent definitions are written from documentation and have never executed. Treat the first milestone as the kit's acceptance test (see "Install at M0", step 7) and read "Verify before relying on it".
+**None of this has been run against a real repository.** The scripts pass their own unit tests (`node --test`) and every script parses; the workflows, the setup script and the agent definitions are written from documentation and have never executed. Treat the first milestone as the kit's acceptance test (see "Install at M0", step 7) and read "Verify before relying on it".
 
 The rules the kit implements are tool-neutral and live in the ADRs (0023–0029), `AGENTS.md` and the skills. This kit is one implementation of them. Another agent vendor can take a role by producing the same outputs (see "Tuning the policy").
 
@@ -211,7 +211,7 @@ Nothing here has been run. Confirm these first; each is a place where the kit as
 - **Merge queue**: available on your plan; `merge_group` runs of `factory-gates.yml`; whether code-owner review and the queue interact as expected.
 - **Auto-merge enabled by an app token** leads to a merge whose push to `main` starts `ci.yml` and its release job.
 - **`workflow_run`** payload: `factory-automerge.yml` finds the pull request from the head commit through the API.
-- **Projects**: `gh project` commands with an app installation token for an organisation project; the `updateProjectV2Field` GraphQL mutation with `singleSelectOptions` used by `setup-github.sh`; a user-owned (not organisation) project needs a different token.
+- **Projects**: `gh project` commands with an app installation token for an organisation project; the `updateProjectV2Field` GraphQL mutation with `singleSelectOptions` used by `setup-github.sh`; a user-owned (not organisation) project needs a different token. `gh project item-add` can fail with "Content already exists in this project" for an issue the Project already holds (seen when the Project's own workflow adds the issue at the same moment); `addItem` in `project.mjs` then looks the item up in the item list.
 - **Sub-issues and issue dependencies REST endpoints** (`…/sub_issues`, `…/dependencies/blocked_by`) and their payloads. Failures are warnings.
 - **Issue search** finds the hidden HTML-comment markers (`create-tickets.mjs` searches the marker text and then confirms it in the body). Search indexing lags by seconds; a re-run within that window could create a duplicate.
 - **Timeline API** returns `labeled` events with the actor and its `type` for pull requests.
