@@ -1,0 +1,62 @@
+name: Ticket
+description: One unit of work for the factory — one concern, one pull request. Tickets of a plan are created by a workflow; use this form only for work outside a plan.
+title: "fix(scope): "
+labels: ["factory"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The title is the Conventional Commit title the pull request will carry.
+        A ticket created by hand has no plan: it can be worked only if it is trivial (ADR-0023) or after a plan that lists it is merged.
+  - type: input
+    id: plan
+    attributes:
+      label: Plan
+      description: "`specs/NNNN-slug/plan.md#Tn`, or `none (trivial)`"
+    validations:
+      required: true
+  - type: textarea
+    id: requirements
+    attributes:
+      label: Requirements
+      description: Requirement and scenario ids of the spec, or the sections of `specs/0000-framework/` this serves.
+    validations:
+      required: true
+  - type: input
+    id: blocked
+    attributes:
+      label: Blocked by
+      description: "Written as `Blocked by: #1, #2` or `Blocked by: nothing`. The status automation reads this line."
+      value: "Blocked by: nothing"
+    validations:
+      required: true
+  - type: textarea
+    id: touches
+    attributes:
+      label: Touches
+      description: Paths or areas the change is allowed to touch. Tickets that overlap do not run in parallel.
+    validations:
+      required: true
+  - type: textarea
+    id: failing-test
+    attributes:
+      label: Failing test first
+      description: The test to write first and why it fails today.
+    validations:
+      required: true
+  - type: textarea
+    id: verify
+    attributes:
+      label: Verify
+      description: The command that proves the ticket, with the expected result.
+      render: shell
+    validations:
+      required: true
+  - type: dropdown
+    id: tier
+    attributes:
+      label: Expected tier
+      description: An estimate. The classifier decides on the pull request and can only be raised.
+      options: [low, medium, high]
+    validations:
+      required: true

@@ -1,0 +1,58 @@
+# Code owners. Installed from docs/spec/factory/.github/CODEOWNERS, with the team set and the paths of the
+# specification bundle pointed at docs/spec/, where it is kept in this repository.
+#
+# Branch rules require a code owner's approving review for a pull request that touches any path below
+# (ADR-0023, ADR-0029). Everything else merges on the factory's checks: tier low and medium automatically,
+# tier high after `factory/human-approval`.
+#
+# The team must contain humans only: no app, no bot, no machine user, and it needs write access to this
+# repository or GitHub ignores the entries. An approving review is the one thing an agent cannot produce.
+#
+# Keep this list in step with `sensitivePaths` in docs/spec/factory/.github/factory/policy.json. The policy is
+# wider on purpose: it also makes paths tier high that need a human review without needing a code OWNER
+# (for example Directory.Packages.props, where a patch update must be able to merge automatically).
+
+# What is to be built, and the decisions: the specification bundle (spec, ADRs, agent guidance,
+# the factory kit with its live policy and gate scripts) and feature specs
+/docs/spec/                                @wtf-corp/admins
+/specs/**/spec.md                          @wtf-corp/admins
+/specs/0000-framework/                     @wtf-corp/admins
+/adr/                                      @wtf-corp/admins
+
+# The factory itself, CI and agent instructions
+/.github/                                  @wtf-corp/admins
+/.claude/                                  @wtf-corp/admins
+/.agents/                                  @wtf-corp/admins
+AGENTS.md                                  @wtf-corp/admins
+/CLAUDE.md                                 @wtf-corp/admins
+
+# Guards
+BannedSymbols.txt                          @wtf-corp/admins
+.editorconfig                              @wtf-corp/admins
+/tests/Architecture.Tests/                 @wtf-corp/admins
+/src/Analyzers/                            @wtf-corp/admins
+/Directory.Build.props                     @wtf-corp/admins
+/Directory.Build.targets                   @wtf-corp/admins
+/src/Directory.Build.props                 @wtf-corp/admins
+/nuget.config                              @wtf-corp/admins
+/global.json                               @wtf-corp/admins
+
+# Release
+/.releaserc.json                           @wtf-corp/admins
+/package.json                              @wtf-corp/admins
+/build/release/                            @wtf-corp/admins
+
+# Security and compliance
+/src/Http/Authentication/                  @wtf-corp/admins
+/src/Application/Authorization/            @wtf-corp/admins
+/src/Application/Context/                  @wtf-corp/admins
+/src/Infrastructure/Cryptography/          @wtf-corp/admins
+/src/Infrastructure/Redaction/             @wtf-corp/admins
+/src/Persistence.EfCore/Protection/        @wtf-corp/admins
+/src/Persistence.EfCore/Tenancy/           @wtf-corp/admins
+/src/Persistence.EfCore/Audit/             @wtf-corp/admins
+/src/Persistence.EfCore.PostgreSql/Tenancy/ @wtf-corp/admins
+/src/Persistence.EfCore.PostgreSql/Audit/  @wtf-corp/admins
+/src/Privacy/                              @wtf-corp/admins
+/src/Privacy.EfCore/                       @wtf-corp/admins
+**/Migrations/                             @wtf-corp/admins

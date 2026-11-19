@@ -1,0 +1,137 @@
+# Installed from docs/spec/factory/.github/workflows/factory-gates.yml: the factory's scripts, policy, prompts and schemas
+# are used in place from docs/spec/factory/.github/factory/, and third-party actions are pinned by commit SHA.
+# Deterministic gates of the factory (ADR-0029): tier, ticket, size, delta, guards, plan gate, human approval.
+# No agent runs here. The scripts and the policy come from the BASE branch; the pull request head is
+# checked out in pr/ and is only read. Nothing from pr/ is executed in the `gates` job.
+name: factory-gates
+
+on:
+  pull_request:
+    branches: [main, next]
+    types: [opened, reopened, synchronize, edited, labeled, unlabeled, ready_for_review]
+  pull_request_review:
+    types: [submitted, dismissed]
+  merge_group:
+
+permissions: {}
+
+concurrency:
+  group: factory-gates-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  gates:
+    name: gates
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write   # tier label
+      issues: write          # labels are set through the issues API
+      checks: write          # the factory/* check runs
+    outputs:
+      tier: ${{ steps.gates.outputs.tier }}
+      kind: ${{ steps.gates.outputs.kind }}
+    steps:
+      - name: Check out the base branch (scripts and policy)
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          persist-credentials: false
+      - name: Check out the pull request head as data
+        if: github.event_name != 'merge_group'
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: pr
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - name: Run the gates
+        id: gates
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node docs/spec/factory/.github/factory/gates.mjs --pr-dir pr
+
+  # The kit and the agent guidance live in docs/spec/. The files tools read from fixed places
+  # (.claude/agents, .claude/skills, .agents/skills, .claude/settings.json, the GitHub templates) are
+  # generated references to it; this replaces the kit's skills-mirror job.
+  references:
+    name: references
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: pr
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      # The base branch's script judges the pull request. Only while the base has no script yet (the pull
+      # request that installs it) is the pull request's own copy used; this job holds no secret.
+      - name: References to docs/spec must be in step with their sources
+        run: |
+          script=.github/scripts/sync-references.mjs
+          if [ ! -f "$script" ]; then
+            echo "::notice::$script is not on the base branch yet; using the pull request's copy."
+            script=pr/.github/scripts/sync-references.mjs
+          fi
+          node "$script" --check --root pr
+
+  self-test:
+    name: factory-self-test
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - name: Tests of the gate scripts (of this pull request's version)
+        run: node --test "docs/spec/factory/.github/factory/tests/*.test.mjs"
+
+  # Executed evidence for the reviewer's claim "this test fails without the change".
+  # REPORT ONLY for now: it never fails the pull request. It runs the pull request's code, so it has
+  # no secrets and a read-only token. Make it a required check once its results have been trusted for a while.
+  test-evidence:
+    name: factory/test-evidence
+    if: github.event_name == 'pull_request' && !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      # Until M0 adds the solution there is no global.json and nothing to run.
+      - name: Is there a .NET solution yet?
+        id: dotnet
+        run: |
+          if [ -f global.json ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No global.json yet, so there is nothing to run." >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        if: steps.dotnet.outputs.present == 'true'
+        with:
+          global-json-file: global.json
+      - name: Changed tests must fail on the base version of the code
+        if: steps.dotnet.outputs.present == 'true'
+        run: bash docs/spec/factory/.github/factory/test-evidence.sh "${{ github.event.pull_request.base.sha }}"

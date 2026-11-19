@@ -1,0 +1,92 @@
+# Installed from docs/spec/factory/.github/workflows/factory-pr-review.yml: the factory's scripts, policy, prompts and schemas
+# are used in place from docs/spec/factory/.github/factory/, and third-party actions are pinned by commit SHA.
+# Independent pull-request review by an agent (ADR-0027, ADR-0029). Reports check `factory/review`.
+#
+# Layout: the BASE branch is at the workspace root, so the instructions the agent loads (AGENTS.md,
+# skills, settings) are the reviewed ones. The pull request head is in pr/ and is data.
+# The agent gets read-only tools and cannot run the pull request's code: the model credential is in
+# its environment, and code under review must never be able to read it.
+name: factory-pr-review
+
+on:
+  pull_request:
+    branches: [main, next]
+    types: [opened, reopened, synchronize, ready_for_review]
+
+permissions: {}
+
+concurrency:
+  group: factory-pr-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    name: review
+    if: ${{ !github.event.pull_request.draft && !github.event.pull_request.head.repo.fork }}
+    runs-on: ubuntu-latest
+    environment: factory-review           # holds the one secret this job may see: the model API key, with a spending limit
+    permissions:
+      contents: read
+      pull-requests: write                # inline comments and the summary comment
+      checks: write                       # the factory/review check run
+    steps:
+      - name: Check out the base branch (instructions, skills, scripts, policy)
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+      - name: Check out the pull request head as data
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: pr
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - name: Kind of pull request and the reviewer the policy assigns
+        id: scope
+        run: node docs/spec/factory/.github/factory/scope.mjs --pr-dir pr --role prReviewer
+      - name: Prompt and verdict schema from the base branch
+        id: inputs
+        if: steps.scope.outputs.kind == 'code'
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          {
+            echo 'prompt<<FACTORY_PROMPT_EOF'
+            cat docs/spec/factory/.github/factory/prompts/pr-review.md
+            echo
+            echo "Pull request: #${PR_NUMBER} in ${GITHUB_REPOSITORY}. Base commit: ${BASE_SHA}. Head commit: ${HEAD_SHA}."
+            echo 'FACTORY_PROMPT_EOF'
+            echo "schema=$(tr -d '\n' < docs/spec/factory/.github/factory/review.schema.json)"
+          } >> "$GITHUB_OUTPUT"
+      - name: Review (Claude)
+        id: review
+        if: steps.scope.outputs.kind == 'code' && steps.scope.outputs.agent == 'claude'
+        uses: anthropics/claude-code-action@f431adaf77e0fecf918431e75a2b5b45b85af002 # v1.0.283
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ github.token }}
+          allowed_bots: yaf-factory            # the app that opens the factory's pull requests; verify the expected name format
+          prompt: ${{ steps.inputs.outputs.prompt }}
+          claude_args: >-
+            --model ${{ steps.scope.outputs.model }}
+            --max-turns 60
+            --allowedTools "Read,Grep,Glob,Bash(git -C pr diff *),Bash(git -C pr log *),Bash(git -C pr show *),mcp__github_inline_comment__create_inline_comment"
+            --json-schema '${{ steps.inputs.outputs.schema }}'
+      - name: Another vendor's reviewer is not wired in
+        if: steps.scope.outputs.kind == 'code' && steps.scope.outputs.agent != 'claude'
+        run: |
+          echo "policy.roles.prReviewer.agent is '${{ steps.scope.outputs.agent }}'. Add a step here that runs that agent with" \
+               "prompts/pr-review.md and produces JSON matching review.schema.json in REVIEW_OUTPUT." >&2
+          exit 1
+      - name: Report the verdict as a check and a summary comment
+        if: always() && steps.scope.outputs.kind == 'code'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REVIEW_OUTPUT: ${{ steps.review.outputs.structured_output }}
+        run: node docs/spec/factory/.github/factory/post-review.mjs --check factory/review

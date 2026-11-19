@@ -1,0 +1,24 @@
+name: Epic
+description: Parent issue of a milestone or a spec. Its tickets are sub-issues. Normally created by the factory-tickets workflow from a merged plan.
+title: ""
+labels: ["factory", "epic"]
+body:
+  - type: input
+    id: plan
+    attributes:
+      label: Plan
+      description: "`specs/NNNN-slug/plan.md`"
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal and exit criteria
+      description: What is true when every ticket is done. For an initial-build milestone, the exit criteria of the build plan row.
+    validations:
+      required: true
+  - type: textarea
+    id: human-check
+    attributes:
+      label: Human check at the end
+      description: What the human owner looks at before the next milestone starts.
