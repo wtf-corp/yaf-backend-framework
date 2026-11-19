@@ -10,6 +10,7 @@ YAF is a set of .NET libraries for building backend services as bounded contexts
 - security, privacy and telemetry plumbing that is part of the design from the start
 
 > **Status:** pre-alpha. The repository has the specification and no code yet. The framework will be built from the specification, milestone by milestone.
+> The software factory is installed and its gates are being trialled; the first milestone (M0, the repository skeleton) comes next.
 
 ## Specification
 
