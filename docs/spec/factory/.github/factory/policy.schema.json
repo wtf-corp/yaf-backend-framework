@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "YAF factory policy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "pauseVariable", "humans", "bots", "humanOnlyLabels", "limits", "size", "docPaths", "sensitivePaths", "tiers", "delta", "roles", "checks"],
+  "$defs": {
+    "globs": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "role": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["agent", "model"],
+      "properties": {
+        "agent": { "type": "string", "description": "Which vendor's agent plays the role. The shipped workflows and agent definitions implement 'claude'." },
+        "model": { "type": "string", "description": "Model alias or full id passed to that agent." },
+        "modelByTier": { "type": "object", "additionalProperties": false, "description": "Optional override of model by the ticket's expected tier (implementer only): a harder ticket gets a stronger model.", "properties": { "low": { "type": "string" }, "medium": { "type": "string" }, "high": { "type": "string" } } }
+      }
+    }
+  },
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": { "const": 1 },
+    "pauseVariable": { "type": "string" },
+    "humans": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["team", "logins"],
+      "properties": {
+        "team": { "type": "string", "description": "Team slug of the human maintainers; used when logins is empty and the token can read team membership." },
+        "logins": { "type": "array", "items": { "type": "string" }, "description": "Explicit maintainer logins. When non-empty this list alone decides who is a human maintainer." }
+      }
+    },
+    "bots": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["factory", "gates"],
+      "properties": { "factory": { "type": "string" }, "gates": { "type": "string" } }
+    },
+    "humanOnlyLabels": { "$ref": "#/$defs/globs" },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["parallelImplementers", "fixRounds"],
+      "properties": {
+        "parallelImplementers": { "type": "integer", "minimum": 1 },
+        "fixRounds": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "size": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["soft", "hard", "exclude"],
+      "properties": {
+        "soft": { "type": "integer", "minimum": 1 },
+        "hard": { "type": "integer", "minimum": 1 },
+        "exclude": { "$ref": "#/$defs/globs" }
+      }
+    },
+    "docPaths": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["spec", "plan"],
+      "properties": { "spec": { "$ref": "#/$defs/globs" }, "plan": { "$ref": "#/$defs/globs" } }
+    },
+    "sensitivePaths": { "$ref": "#/$defs/globs" },
+    "dependencyPatchFiles": { "$ref": "#/$defs/globs" },
+    "sharedFiles": { "$ref": "#/$defs/globs" },
+    "tiers": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["low", "medium"],
+      "properties": {
+        "low": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["types", "paths"],
+          "properties": { "types": { "$ref": "#/$defs/globs" }, "paths": { "$ref": "#/$defs/globs" } }
+        },
+        "medium": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["types"],
+          "properties": { "types": { "$ref": "#/$defs/globs" } }
+        }
+      }
+    },
+    "delta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sources", "flaggingCategories"],
+      "properties": {
+        "sources": { "type": "object", "additionalProperties": { "$ref": "#/$defs/globs" } },
+        "flaggingCategories": { "$ref": "#/$defs/globs" }
+      }
+    },
+    "roles": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["orchestrator", "specWriter", "specReviewer", "planner", "planReviewer", "implementer", "codeReviewer", "prReviewer"],
+      "properties": {
+        "orchestrator": { "$ref": "#/$defs/role" },
+        "specWriter": { "$ref": "#/$defs/role" },
+        "specReviewer": { "$ref": "#/$defs/role" },
+        "planner": { "$ref": "#/$defs/role" },
+        "planReviewer": { "$ref": "#/$defs/role" },
+        "implementer": { "$ref": "#/$defs/role" },
+        "codeReviewer": { "$ref": "#/$defs/role" },
+        "prReviewer": { "$ref": "#/$defs/role" }
+      }
+    },
+    "checks": { "$ref": "#/$defs/globs" }
+  }
+}

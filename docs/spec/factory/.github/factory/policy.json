@@ -1,0 +1,194 @@
+{
+  "$schema": "./policy.schema.json",
+  "version": 1,
+  "pauseVariable": "FACTORY_PAUSED",
+  "humans": {
+    "team": "maintainers",
+    "logins": []
+  },
+  "bots": {
+    "factory": "yaf-factory[bot]",
+    "gates": "github-actions[bot]"
+  },
+  "humanOnlyLabels": [
+    "guard-change",
+    "major-release",
+    "size-accepted"
+  ],
+  "limits": {
+    "parallelImplementers": 3,
+    "fixRounds": 2
+  },
+  "size": {
+    "soft": 200,
+    "hard": 400,
+    "exclude": [
+      "**/*.g.cs",
+      "**/*.Designer.cs",
+      "**/*ModelSnapshot.cs",
+      "**/packages.lock.json",
+      "package-lock.json",
+      "**/*.approved.*",
+      "**/PublicAPI.*.txt",
+      "**/*.openapi.json",
+      "docs/api/**",
+      ".claude/skills/**"
+    ]
+  },
+  "docPaths": {
+    "spec": [
+      "specs/**/spec.md",
+      "specs/0000-framework/**",
+      "adr/**"
+    ],
+    "plan": [
+      "specs/**/plan.md",
+      "specs/**/research.md"
+    ]
+  },
+  "sensitivePaths": [
+    "src/Http/Authentication/**",
+    "src/Application/Authorization/**",
+    "src/Application/Context/**",
+    "src/Persistence.EfCore*/Tenancy/**",
+    "src/Infrastructure/Cryptography/**",
+    "src/Persistence.EfCore/Protection/**",
+    "src/Persistence.EfCore*/Audit/**",
+    "src/Privacy*/**",
+    "src/Infrastructure/Redaction/**",
+    "src/Analyzers/**",
+    "**/Migrations/**",
+    ".github/**",
+    ".claude/**",
+    ".agents/**",
+    "AGENTS.md",
+    "**/AGENTS.md",
+    "CLAUDE.md",
+    "**/BannedSymbols.txt",
+    ".editorconfig",
+    "**/.editorconfig",
+    "tests/Architecture.Tests/**",
+    ".releaserc.json",
+    "package.json",
+    "build/release/**",
+    "Directory.Build.props",
+    "Directory.Build.targets",
+    "Directory.Packages.props",
+    "**/Directory.Build.props",
+    "**/Directory.Build.targets",
+    "nuget.config",
+    "global.json",
+    "specs/**/spec.md",
+    "specs/0000-framework/**",
+    "adr/**"
+  ],
+  "dependencyPatchFiles": [
+    "Directory.Packages.props",
+    "**/packages.lock.json",
+    "package-lock.json"
+  ],
+  "sharedFiles": [
+    "Directory.Packages.props",
+    "**/PublicAPI.Unshipped.txt",
+    "**/errors.approved.txt",
+    "**/Migrations/**"
+  ],
+  "tiers": {
+    "low": {
+      "types": [
+        "fix",
+        "perf",
+        "refactor",
+        "docs",
+        "test",
+        "chore",
+        "style",
+        "build"
+      ],
+      "paths": [
+        "docs/**",
+        "tests/**",
+        "samples/**",
+        "**/*.md"
+      ]
+    },
+    "medium": {
+      "types": [
+        "feat"
+      ]
+    }
+  },
+  "delta": {
+    "sources": {
+      "publicApi": [
+        "**/PublicAPI.Unshipped.txt",
+        "**/PublicAPI.Shipped.txt"
+      ],
+      "errorCodes": [
+        "**/errors.approved.txt"
+      ],
+      "contracts": [
+        "**/contracts.approved.txt"
+      ],
+      "configuration": [
+        "**/configuration.approved.txt"
+      ],
+      "telemetry": [
+        "**/telemetry.approved.txt"
+      ]
+    },
+    "flaggingCategories": [
+      "publicApi",
+      "schema",
+      "dependencies"
+    ]
+  },
+  "roles": {
+    "orchestrator": {
+      "agent": "claude",
+      "model": "opus"
+    },
+    "specWriter": {
+      "agent": "claude",
+      "model": "opus"
+    },
+    "specReviewer": {
+      "agent": "claude",
+      "model": "opus"
+    },
+    "planner": {
+      "agent": "claude",
+      "model": "fable"
+    },
+    "planReviewer": {
+      "agent": "claude",
+      "model": "fable"
+    },
+    "implementer": {
+      "agent": "claude",
+      "model": "opus",
+      "modelByTier": {
+        "high": "fable"
+      }
+    },
+    "codeReviewer": {
+      "agent": "claude",
+      "model": "opus"
+    },
+    "prReviewer": {
+      "agent": "claude",
+      "model": "fable"
+    }
+  },
+  "checks": [
+    "factory/tier",
+    "factory/ticket",
+    "factory/size",
+    "factory/delta",
+    "factory/guards",
+    "factory/review",
+    "factory/doc-review",
+    "factory/plan-gate",
+    "factory/human-approval"
+  ]
+}

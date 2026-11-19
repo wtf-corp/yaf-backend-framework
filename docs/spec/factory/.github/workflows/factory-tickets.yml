@@ -1,0 +1,55 @@
+# Creates the tickets of a plan once the plan is on main (ADR-0029). Idempotent.
+name: factory-tickets
+
+on:
+  push:
+    branches: [main]
+    paths: ['specs/**/plan.md']
+  workflow_dispatch:
+    inputs:
+      plan:
+        description: Path of a plan.md to create tickets from
+        required: true
+
+permissions: {}
+
+concurrency:
+  group: factory-tickets
+  cancel-in-progress: false
+
+jobs:
+  create:
+    name: create-tickets
+    runs-on: ubuntu-latest
+    environment: factory-merge
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - id: app
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.FACTORY_APP_ID }}
+          private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
+      - name: Create issues for the changed plans
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          FACTORY_PROJECT_OWNER: ${{ vars.FACTORY_PROJECT_OWNER }}
+          FACTORY_PROJECT_NUMBER: ${{ vars.FACTORY_PROJECT_NUMBER }}
+          PLAN_INPUT: ${{ inputs.plan }}
+        run: |
+          set -euo pipefail
+          if [ -n "${PLAN_INPUT:-}" ]; then
+            plans="$PLAN_INPUT"
+          else
+            plans=$(git diff --name-only --diff-filter=AM HEAD~1 HEAD -- 'specs/**/plan.md' | tr '\n' ' ')
+          fi
+          if [ -z "${plans// /}" ]; then echo "no plan changed"; exit 0; fi
+          # shellcheck disable=SC2086
+          node .github/factory/create-tickets.mjs $plans

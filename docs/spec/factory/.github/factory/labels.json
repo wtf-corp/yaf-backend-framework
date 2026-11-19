@@ -1,0 +1,20 @@
+[
+  { "name": "factory", "color": "1f6feb", "description": "Worked by the factory" },
+  { "name": "epic", "color": "5319e7", "description": "Parent issue of a milestone or spec" },
+  { "name": "factory-digest", "color": "bfd4f2", "description": "The issue the daily digest is posted to" },
+  { "name": "tier:low", "color": "0e8a16", "description": "Merges automatically on green checks" },
+  { "name": "tier:medium", "color": "fbca04", "description": "Merges automatically when the delta equals the approved plan" },
+  { "name": "tier:high", "color": "b60205", "description": "Needs a human maintainer's review" },
+  { "name": "type:feat", "color": "c5def5", "description": "New behaviour" },
+  { "name": "type:fix", "color": "c5def5", "description": "Defect fix" },
+  { "name": "type:refactor", "color": "c5def5", "description": "No behaviour change" },
+  { "name": "type:docs", "color": "c5def5", "description": "Documentation" },
+  { "name": "type:test", "color": "c5def5", "description": "Tests only" },
+  { "name": "type:chore", "color": "c5def5", "description": "Maintenance" },
+  { "name": "needs-human", "color": "d93f0b", "description": "Fix rounds exhausted, an escalation or a question; raises the tier to high" },
+  { "name": "blocked", "color": "000000", "description": "Cannot proceed; the reason is in a comment" },
+  { "name": "size-accepted", "color": "e99695", "description": "HUMAN ONLY: accepts a pull request over the hard size limit" },
+  { "name": "guard-change", "color": "e99695", "description": "HUMAN ONLY: accepts a change that weakens a guard" },
+  { "name": "major-release", "color": "e99695", "description": "HUMAN ONLY: the planned merge of next into main" },
+  { "name": "dependency-advisory", "color": "f9d0c4", "description": "Open NuGet advisory found by the daily audit" }
+]

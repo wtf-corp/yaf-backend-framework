@@ -1,0 +1,43 @@
+# Keeps the Project's Status field in step with the tickets: closed → Done, unblocked → Ready.
+# "In progress" and "In review" are set by the orchestrator (status.mjs set), which is where those
+# transitions happen. Issue events run from the default branch, so the app credential is never
+# exposed to a pull request.
+name: factory-status
+
+on:
+  issues:
+    types: [closed, reopened, labeled, unlabeled]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: factory-status
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: sync-status
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.issue.labels.*.name, 'factory')
+    runs-on: ubuntu-latest
+    environment: factory-merge
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - id: app
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.FACTORY_APP_ID }}
+          private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
+      - name: Sync
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          FACTORY_PROJECT_OWNER: ${{ vars.FACTORY_PROJECT_OWNER }}
+          FACTORY_PROJECT_NUMBER: ${{ vars.FACTORY_PROJECT_NUMBER }}
+        run: node .github/factory/status.mjs sync
