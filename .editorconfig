@@ -36,7 +36,10 @@ dotnet_naming_symbols.private_fields.applicable_accessibilities = private
 dotnet_naming_style.underscore_camel_case.required_prefix = _
 dotnet_naming_style.underscore_camel_case.capitalization = camel_case
 
+[{src,samples,templates}/**.cs]
 # Async methods end in Async. The CancellationToken-last rule is CA1068, on through AnalysisMode All.
+# Not for tests/: test methods are named Method_Scenario_Expected (AGENTS.md; async examples in the
+# yaf-testing and yaf-use-cases skills have no suffix). Whether tests take the suffix is the owner's call.
 dotnet_naming_rule.async_methods_end_in_async.symbols = async_methods
 dotnet_naming_rule.async_methods_end_in_async.style = async_suffix
 dotnet_naming_rule.async_methods_end_in_async.severity = error
