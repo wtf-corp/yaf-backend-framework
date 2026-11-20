@@ -38,14 +38,22 @@ export function humanApprovalVerdict(tier, approver) {
 }
 
 /**
- * The logins to request a review from. needed: a human must approve the pull request. approver: approvingHuman's
- * result. requestedUsers, requestedTeams: the logins and team slugs whose review is requested now.
- * humans: the policy's `humans`. Nobody once a human has approved, and nobody while a team's review is requested
- * (GitHub's own request to the code owners). Never the author, anyone already requested, or anyone who has
- * submitted a review of the head commit.
+ * Whom to request a review from → { reviewers: logins, teams: slugs }. needed: a human must approve the pull
+ * request. approver: approvingHuman's result. requestedUsers, requestedTeams: the logins and team slugs whose
+ * review is requested now. humans: the policy's `humans`. Nobody once a human has approved, and nobody while a
+ * team's review is requested (GitHub's own request to the code owners). Never the author, anyone already
+ * requested, or anyone who has submitted a review of the head commit. With no logins in the policy the team is
+ * asked instead, unless somebody other than the author or a bot has reviewed the head commit: who is on the team
+ * is not known here.
  */
 export function reviewersToRequest({ needed, approver, author, requestedUsers, requestedTeams, reviews, headSha, humans }) {
-  if (!needed || approver || requestedTeams.length > 0) return [];
-  const reviewed = reviews.filter((r) => r.user && r.state !== 'PENDING' && r.commit_id === headSha).map((r) => r.user.login);
-  return humans.logins.filter((login) => login !== author && !requestedUsers.includes(login) && !reviewed.includes(login));
+  if (!needed || approver || requestedTeams.length > 0) return { reviewers: [], teams: [] };
+  const onHead = reviews.filter((r) => r.user && r.state !== 'PENDING' && r.commit_id === headSha);
+  const reviewed = onHead.map((r) => r.user.login);
+  if (humans.logins.length === 0) {
+    const byOthers = onHead.some((r) => r.user.login !== author && r.user.type !== 'Bot');
+    return { reviewers: [], teams: byOthers ? [] : [humans.team] };
+  }
+  const reviewers = [...new Set(humans.logins)].filter((login) => login !== author && !requestedUsers.includes(login) && !reviewed.includes(login));
+  return { reviewers, teams: [] };
 }

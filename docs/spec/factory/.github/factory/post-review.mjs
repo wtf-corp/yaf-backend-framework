@@ -122,9 +122,9 @@ if (process.argv[1]?.endsWith('post-review.mjs')) {
       const approver = approvingHuman(reviews, { author, headSha: pr.head.sha, isHuman: makeHumanCheck(policy) });
       const requestedUsers = live.requested_reviewers.map((u) => u.login);
       const requestedTeams = live.requested_teams.map((t) => t.slug);
-      const reviewers = reviewersToRequest({ needed, approver, author, requestedUsers, requestedTeams, reviews, headSha: pr.head.sha, humans: policy.humans });
-      // With no logins in the policy, the team is asked instead, under the same conditions.
-      const teams = needed && !approver && requestedTeams.length === 0 && policy.humans.logins.length === 0 ? [policy.humans.team] : [];
+      // Known limit: with no logins in the policy, approvingHuman rests on a team-membership lookup that fails
+      // closed, so an approval may be missed and the team asked once more. That costs a notification, no more.
+      const { reviewers, teams } = reviewersToRequest({ needed, approver, author, requestedUsers, requestedTeams, reviews, headSha: pr.head.sha, humans: policy.humans });
       if (reviewers.length + teams.length > 0) {
         api(`repos/${repo}/pulls/${pr.number}/requested_reviewers`, { method: 'POST', body: { reviewers, team_reviewers: teams } });
         console.log(`review requested from ${[...reviewers, ...teams].join(', ')}`);
