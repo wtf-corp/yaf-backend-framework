@@ -18,6 +18,10 @@
       "Bash(node .github/scripts/factory-token.mjs --app factory -- gh issue view *)",
       "Bash(node .github/scripts/factory-token.mjs --app factory -- gh issue list *)",
       "Bash(node .github/scripts/factory-token.mjs --app factory -- gh pr edit * --add-label needs-human)",
+      "Bash(dotnet restore *)",
+      "Bash(dotnet build *)",
+      "Bash(dotnet test *)",
+      "Bash(dotnet format *)",
       "PowerShell(node --test *)",
       "PowerShell(node docs/spec/factory/.github/factory/size.mjs *)",
       "PowerShell(node .github/scripts/sync-references.mjs *)",
@@ -34,7 +38,11 @@
       "PowerShell(node .github/scripts/factory-token.mjs --app factory -- gh pr diff *)",
       "PowerShell(node .github/scripts/factory-token.mjs --app factory -- gh issue view *)",
       "PowerShell(node .github/scripts/factory-token.mjs --app factory -- gh issue list *)",
-      "PowerShell(node .github/scripts/factory-token.mjs --app factory -- gh pr edit * --add-label needs-human)"
+      "PowerShell(node .github/scripts/factory-token.mjs --app factory -- gh pr edit * --add-label needs-human)",
+      "PowerShell(dotnet restore *)",
+      "PowerShell(dotnet build *)",
+      "PowerShell(dotnet test *)",
+      "PowerShell(dotnet format *)"
     ],
     "deny": [
       "Bash(gh pr merge *)",
