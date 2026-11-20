@@ -1,4 +1,5 @@
-// What is in flight: the next action for an open factory pull request (specs/0003-unattended-orchestration, U4).
+// What is in flight: the next action for an open factory pull request (specs/0003-unattended-orchestration, U4),
+// and what a ticket's worktree needs (U5b).
 // Pure: everything it decides from is handed in, and so is the time.
 
 const REVIEWS = ['factory/review', 'factory/doc-review'];
@@ -63,6 +64,46 @@ export function nextAction(pr, policy, now) {
   if (pr.labels.includes('tier:high') && !pr.approved) return result('human', 'tier high: waiting for a human maintainer\'s approval of the head commit');
   if (failed('factory/human-approval')) return result('human', 'factory/human-approval failed');
   if (flagged) return result('human', 'a flagged plan: waiting for a human maintainer\'s approval');
-  const pending = ['factory/human-approval', 'factory/plan-gate'].filter((name) => !completed(name));
+  const pending = [...GATES, ...JOBS, 'factory/human-approval', 'factory/plan-gate'].filter((name) => !completed(name));
   return result('wait', pending.length ? `not reported yet: ${pending.join(', ')}` : 'the checks are green: GitHub merges');
+}
+
+/**
+ * `git worktree list --porcelain` → [{ path, branch, head, locked }], the main checkout included.
+ * branch: the short name, or null for a detached worktree.
+ */
+export function parseWorktrees(porcelain) {
+  const worktrees = [];
+  for (const line of porcelain.split(/\r?\n/)) {
+    const [key, value] = line.split(/ (.*)/s);
+    if (key === 'worktree') worktrees.push({ path: value, branch: null, head: null, locked: false });
+    else if (key === 'HEAD') worktrees.at(-1).head = value;
+    else if (key === 'branch') worktrees.at(-1).branch = value.replace(/^refs\/heads\//, '');
+    else if (key === 'locked') worktrees.at(-1).locked = true;
+  }
+  return worktrees;
+}
+
+/**
+ * What a ticket's worktree needs: the first row that applies of the plan's worktree-state table (U5b).
+ * w: { worktree ({ head, locked }, as parseWorktrees gives it), ticketLabels,
+ *      pr (the branch's pull request: { labels, merged, open }, or null),
+ *      review (markers.mjs localReview for the ticket's comments and the worktree's head),
+ *      awaitingPush (markers.mjs findMarker 'awaiting-push' for that head: the comment or null),
+ *      originHead (the branch's commit on origin, or null) }
+ * policy: the factory policy (limits.fixRounds).
+ * → { state: 'human' | 'working' | 'remove' | 'local-review' | 'local-fix' | 'push-owed' | 'open-pr' | 'in-flight',
+ *     round, findings (the marker's, for local-fix), exhausted (local-fix at the limit: needs-human, no further fix),
+ *     notified (push-owed: the owner was told about this head) }
+ */
+export function worktreeState(w, policy) {
+  const result = (state, extra = {}) => ({ state, round: null, findings: null, exhausted: false, notified: false, ...extra });
+  const { verdict, round, findings } = w.review;
+  if ([...w.ticketLabels, ...(w.pr?.labels ?? [])].includes('needs-human')) return result('human');
+  if (w.worktree.locked) return result('working');
+  if (w.pr?.merged) return result('remove');
+  if (verdict === 'changes-required') return result('local-fix', { round, findings, exhausted: round >= policy.limits.fixRounds });
+  if (verdict !== 'ready') return result('local-review');
+  if (w.originHead !== w.worktree.head) return result('push-owed', { notified: Boolean(w.awaitingPush) });
+  return result(w.pr?.open ? 'in-flight' : 'open-pr');
 }
