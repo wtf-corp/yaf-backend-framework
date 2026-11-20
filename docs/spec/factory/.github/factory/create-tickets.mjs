@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { api, repoSlug, loadPolicy } from './lib.mjs';
 import { parseTickets, ticketProblems } from './plan.mjs';
-import { addItem, setStatus } from './project.mjs';
+import { addItem, setStatus, statuses } from './project.mjs';
 
 export const ticketMarker = (folder, key) => `<!-- factory:ticket ${folder}#${key} -->`;
 export const epicMarker = (folder) => `<!-- factory:epic ${folder} -->`;
@@ -32,6 +32,15 @@ export function ticketBody(folder, t, blockedBy, epicNumber) {
     '',
     'Status, evidence and deviations are recorded on this issue and its pull request.',
   ].join('\n');
+}
+
+/**
+ * The first status of a ticket that already exists: the one it would have got when created, or null
+ * when it is closed or has a status, so a re-run never moves a ticket. current: Map<number, status>.
+ */
+export function firstStatus(issue, blockedBy, current) {
+  if (issue.state !== 'open' || current.get(issue.number)) return null;
+  return blockedBy.length ? 'Backlog' : 'Ready';
 }
 
 function findByMarker(repo, marker) {
@@ -66,6 +75,7 @@ function createFromPlan(planFile, policy) {
   addItem(epic.html_url);
 
   const numbers = new Map();
+  let current = null; // the Project's statuses: read once per plan, and only when a ticket exists
   for (const t of tickets) {
     let issue = findByMarker(repo, ticketMarker(folder, t.key));
     const blockedBy = t.dependsOn.map((k) => numbers.get(k)).filter(Boolean);
@@ -84,6 +94,9 @@ function createFromPlan(planFile, policy) {
       setStatus(issue.html_url, blockedBy.length ? 'Backlog' : 'Ready');
     } else {
       console.log(`${t.key} exists as #${issue.number}`);
+      current ??= statuses();
+      const status = firstStatus(issue, blockedBy, current);
+      if (status) setStatus(issue.html_url, status);
     }
     numbers.set(t.key, issue.number);
     numbers.set(t.key + ':id', issue.id);

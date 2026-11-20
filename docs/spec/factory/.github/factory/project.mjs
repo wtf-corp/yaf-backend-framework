@@ -28,10 +28,31 @@ function meta() {
   return cached;
 }
 
-/** Adds an issue (by URL) to the project; returns the item id. Adding twice returns the same item. */
-export function addItem(issueUrl) {
+function sleep(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+/**
+ * Adds an issue (by URL) to the project; returns the item id. Adding twice returns the same item,
+ * but when the project's own workflow adds the issue at the same moment, item-add fails with
+ * "Content already exists in this project". The item is then looked up in the list, which may not
+ * show it at once: three reads, two seconds apart, before the error is thrown again.
+ * `gh` and `wait` are parameters so that a test passes fakes.
+ */
+export function addItem(issueUrl, { gh = ghJson, wait = sleep } = {}) {
   const { owner, number } = project();
-  return ghJson(['project', 'item-add', number, '--owner', owner, '--url', issueUrl]).id;
+  try {
+    return gh(['project', 'item-add', number, '--owner', owner, '--url', issueUrl]).id;
+  } catch (e) {
+    if (!String(e.message).includes('already exists in this project')) throw e;
+    for (let read = 1; read <= 3; read++) {
+      if (read > 1) wait(2000);
+      const items = gh(['project', 'item-list', number, '--owner', owner, '--limit', '2000']).items;
+      const item = items.find((i) => i.content?.url === issueUrl);
+      if (item) return item.id;
+    }
+    throw e;
+  }
 }
 
 export function setStatus(issueUrl, status) {
