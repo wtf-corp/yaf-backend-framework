@@ -39,21 +39,30 @@ export function planGateConclusion(checkRuns, gatesBot) {
   const slug = gatesBot.replace(/\[bot\]$/, '');
   const mine = checkRuns.filter((c) => c.name === 'factory/plan-gate' && c.app?.slug === slug);
   if (mine.length === 0) return null;
-  return mine.reduce((a, b) => ((b.started_at ?? '') >= (a.started_at ?? '') ? b : a)).conclusion ?? null;
+  const at = (c) => c.started_at ?? '';
+  const newer = (a, b) => (at(a) === at(b) ? a.id > b.id : at(a) > at(b)); // the same start: the highest id
+  return mine.reduce((a, b) => (newer(b, a) ? b : a)).conclusion ?? null;
 }
 
-/** The command part. gh: (...args) => stdout. → the decision, or null when no open pull request has that head. */
+/** The command part. gh: (...args) => stdout. → one { number, action, reason } per open pull request with that head. */
 export function automerge({ repo, headSha, paused, gatesConclusion, policy, gh, log = console.log }) {
   const get = (endpoint) => JSON.parse(gh('api', endpoint));
-  const list = (endpoint) => JSON.parse(gh('api', endpoint, '--paginate', '--slurp')).flat();
+  // Every pull request whose head is the commit the gates ran on. Read through the API, never from the event's free text.
+  const found = JSON.parse(gh('api', `repos/${repo}/commits/${headSha}/pulls`, '--paginate', '--slurp')).flat()
+    .filter((p) => p.state === 'open' && p.head.sha === headSha);
+  if (found.length === 0) log(`no open pull request for ${headSha}`);
+  return found.map((f) => {
+    const pr = get(`repos/${repo}/pulls/${f.number}`);
+    const decision = decideOne({ repo, headSha, paused, gatesConclusion, policy, gh }, pr);
+    log(`#${pr.number}: ${decision.action} (${decision.reason})`);
+    return { number: pr.number, ...decision };
+  });
+}
 
-  // The pull request whose head is the commit the gates ran on. Read through the API, never from the event's free text.
-  const found = list(`repos/${repo}/commits/${headSha}/pulls`).find((p) => p.state === 'open' && p.head.sha === headSha);
-  if (!found) {
-    log(`no open pull request for ${headSha}`);
-    return null;
-  }
-  const pr = get(`repos/${repo}/pulls/${found.number}`);
+function decideOne({ repo, headSha, paused, gatesConclusion, policy, gh }, pr) {
+  // A push since the list was read: the reviews and checks of headSha say nothing about this head. Its own gates run decides.
+  if (pr.state !== 'open' || pr.head.sha !== headSha) return none(`the head is no longer ${headSha}`);
+  const list = (endpoint) => JSON.parse(gh('api', endpoint, '--paginate', '--slurp')).flat();
   const reviews = list(`repos/${repo}/pulls/${pr.number}/reviews?per_page=100`);
   const files = list(`repos/${repo}/pulls/${pr.number}/files?per_page=100`).map((f) => f.filename);
   const kind = prKind(files, policy);
@@ -74,7 +83,6 @@ export function automerge({ repo, headSha, paused, gatesConclusion, policy, gh, 
   // Arming names the commit the decision was made on: a push in between is not armed by it.
   if (decision.action === 'arm') gh('pr', 'merge', String(pr.number), '--repo', repo, '--auto', '--squash', '--match-head-commit', headSha);
   if (decision.action === 'disarm') gh('pr', 'merge', String(pr.number), '--repo', repo, '--disable-auto');
-  log(`#${pr.number}: ${decision.action} (${decision.reason})`);
   return decision;
 }
 

@@ -86,7 +86,7 @@ test('paused: disarm still happens, arm does not', () => {
   assert.equal(action(['needs-human', 'tier:low'], [], { gatesConclusion: undefined, paused: true, armed: true }), 'disarm');
 });
 
-const run = (slug, conclusion, started_at, name = 'factory/plan-gate') => ({ name, conclusion, started_at, app: { slug } });
+const run = (slug, conclusion, started_at, name = 'factory/plan-gate', id = 1) => ({ id, name, conclusion, started_at, app: { slug } });
 
 test('a plan gate from another app does not count', () => {
   const gates = policy.bots.gates; // github-actions[bot] → app slug github-actions
@@ -96,20 +96,27 @@ test('a plan gate from another app does not count', () => {
   // the newest run of the gates' app counts, whatever the order; one still running has no conclusion
   assert.equal(planGateConclusion([run('github-actions', 'success', '2026-11-20T11:00:00Z'), run('github-actions', 'failure', '2026-11-20T10:00:00Z')], gates), 'success');
   assert.equal(planGateConclusion([run('github-actions', 'success', '2026-11-20T10:00:00Z'), run('github-actions', null, '2026-11-20T11:00:00Z')], gates), null);
+  // the same start time: the highest id is the newest
+  const tie = (conclusion, id) => run('github-actions', conclusion, '2026-11-20T11:00:00Z', 'factory/plan-gate', id);
+  assert.equal(planGateConclusion([tie('failure', 9), tie('success', 8)], gates), 'failure');
+  assert.equal(planGateConclusion([tie('success', 8), tie('failure', 9)], gates), 'failure');
 });
 
 // The command part, with gh injected: answers by endpoint, records every call.
-function fakeGh({ labels, reviews = [], files = ['src/Core/A.cs'], checkRuns = [], autoMerge = null, head = 'h2' }) {
+// listed: further pull requests the commit's list returns. fetchedHead: the head the single read returns (a push in between).
+function fakeGh({ labels, reviews = [], files = ['src/Core/A.cs'], checkRuns = [], autoMerge = null, head = 'h2', fetchedHead = head, listed = [] }) {
   const pr = { number: 7, state: 'open', draft: false, head: { sha: head }, user: { login: AUTHOR }, labels: labels.map((name) => ({ name })), auto_merge: autoMerge };
   const calls = [];
   const gh = (...args) => {
     calls.push(args.join(' '));
     if (args[0] !== 'api') return '';
     const endpoint = args[1];
-    if (endpoint.endsWith('/commits/h2/pulls')) return JSON.stringify([[pr]]);
-    if (endpoint.endsWith('/pulls/7')) return JSON.stringify(pr);
-    if (endpoint.includes('/pulls/7/reviews')) return JSON.stringify([reviews]);
-    if (endpoint.includes('/pulls/7/files')) return JSON.stringify([files.map((filename) => ({ filename }))]);
+    if (endpoint.endsWith('/commits/h2/pulls')) return JSON.stringify([[pr, ...listed]]);
+    if (endpoint.endsWith('/pulls/7')) return JSON.stringify({ ...pr, head: { sha: fetchedHead } });
+    const other = listed.find((p) => endpoint.endsWith(`/pulls/${p.number}`));
+    if (other) return JSON.stringify(other);
+    if (endpoint.includes('/reviews')) return JSON.stringify([reviews]);
+    if (endpoint.includes('/files')) return JSON.stringify([files.map((filename) => ({ filename }))]);
     if (endpoint.includes('/commits/h2/check-runs')) return JSON.stringify([{ check_runs: checkRuns }]);
     throw new Error(`unexpected: ${endpoint}`);
   };
@@ -117,8 +124,8 @@ function fakeGh({ labels, reviews = [], files = ['src/Core/A.cs'], checkRuns = [
 }
 const command = (state, extra = {}) => {
   const fake = fakeGh(state);
-  const decision = automerge({ repo: 'o/r', headSha: 'h2', paused: false, gatesConclusion: 'success', policy, gh: fake.gh, log: () => {}, ...extra });
-  return { decision, merges: fake.merges() };
+  const decisions = automerge({ repo: 'o/r', headSha: 'h2', paused: false, gatesConclusion: 'success', policy, gh: fake.gh, log: () => {}, ...extra });
+  return { decisions, merges: fake.merges() };
 };
 
 test('the command arms the head commit it decided on, disarms, or calls nothing', () => {
@@ -133,5 +140,21 @@ test('the command arms the head commit it decided on, disarms, or calls nothing'
   assert.deepEqual(command({ ...plan, checkRuns: [run('yaf-reviewer', 'success', '2026-11-20T11:00:00Z')] }).merges, []);
   assert.deepEqual(command({ ...plan, checkRuns: [run('github-actions', 'success', '2026-11-20T11:00:00Z')] }).merges, [ARM]);
   // no open pull request with that head: nothing is read further and nothing is called
-  assert.equal(command({ labels: ['tier:low'], head: 'h3' }).decision, null);
+  assert.deepEqual(command({ labels: ['tier:low'], head: 'h3' }).decisions, []);
+});
+
+test('a push between the list and the read is not armed', () => {
+  const moved = command({ labels: ['tier:high'], reviews: [approval], fetchedHead: 'h3' });
+  assert.deepEqual(moved.merges, []);
+  assert.deepEqual(moved.decisions.map((d) => d.action), ['none']);
+  assert.match(moved.decisions[0].reason, /no longer h2/);
+  assert.deepEqual(command({ labels: ['tier:low'], fetchedHead: 'h3' }).merges, []);
+});
+
+test('every open pull request on the head commit is decided on its own', () => {
+  // #7 is tier low; #8 has the same head (say, to next), is tier high, unapproved and armed by hand
+  const second = { number: 8, state: 'open', draft: false, head: { sha: 'h2' }, user: { login: AUTHOR }, labels: [{ name: 'tier:high' }], auto_merge: { merge_method: 'squash' } };
+  const both = command({ labels: ['tier:low'], listed: [second, { ...second, number: 9, state: 'closed' }] });
+  assert.deepEqual(both.decisions.map((d) => [d.number, d.action]), [[7, 'arm'], [8, 'disarm']]);
+  assert.deepEqual(both.merges, ['pr merge 7 --repo o/r --auto --squash --match-head-commit h2', 'pr merge 8 --repo o/r --disable-auto']);
 });
