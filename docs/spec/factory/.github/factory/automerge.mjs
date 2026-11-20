@@ -1,5 +1,5 @@
 // Decides whether the pull request of a head commit is armed for automatic merge (squash), disarmed, or left alone.
-// Run by factory-automerge.yml after every gates run, from the default branch, with the factory app's token.
+// To be run by factory-automerge.yml after every gates run, from the default branch, with the factory app's token.
 //   HEAD_SHA=<sha> FACTORY_PAUSED=<true|false> GATES_CONCLUSION=<conclusion> node .github/factory/automerge.mjs
 import { loadPolicy, repoSlug, run, makeHumanCheck } from './lib.mjs';
 import { prKind, TIERS } from './classify.mjs';
@@ -44,7 +44,10 @@ export function planGateConclusion(checkRuns, gatesBot) {
   return mine.reduce((a, b) => (newer(b, a) ? b : a)).conclusion ?? null;
 }
 
-/** The command part. gh: (...args) => stdout. → one { number, action, reason } per open pull request with that head. */
+/**
+ * The command part. gh: (...args) => stdout. → one { number, action, reason } per open pull request with that head.
+ * A pull request whose calls fail gets the action 'failed' and does not stop the others.
+ */
 export function automerge({ repo, headSha, paused, gatesConclusion, policy, gh, log = console.log }) {
   const get = (endpoint) => JSON.parse(gh('api', endpoint));
   // Every pull request whose head is the commit the gates ran on. Read through the API, never from the event's free text.
@@ -52,10 +55,14 @@ export function automerge({ repo, headSha, paused, gatesConclusion, policy, gh, 
     .filter((p) => p.state === 'open' && p.head.sha === headSha);
   if (found.length === 0) log(`no open pull request for ${headSha}`);
   return found.map((f) => {
-    const pr = get(`repos/${repo}/pulls/${f.number}`);
-    const decision = decideOne({ repo, headSha, paused, gatesConclusion, policy, gh }, pr);
-    log(`#${pr.number}: ${decision.action} (${decision.reason})`);
-    return { number: pr.number, ...decision };
+    let decision;
+    try {
+      decision = decideOne({ repo, headSha, paused, gatesConclusion, policy, gh }, get(`repos/${repo}/pulls/${f.number}`));
+    } catch (e) {
+      decision = { action: 'failed', reason: e.message };
+    }
+    log(`#${f.number}: ${decision.action} (${decision.reason})`);
+    return { number: f.number, ...decision };
   });
 }
 
@@ -89,7 +96,7 @@ function decideOne({ repo, headSha, paused, gatesConclusion, policy, gh }, pr) {
 if (process.argv[1]?.endsWith('automerge.mjs')) {
   const headSha = process.env.HEAD_SHA;
   if (!headSha) throw new Error('HEAD_SHA is not set');
-  automerge({
+  const decisions = automerge({
     repo: repoSlug(),
     headSha,
     paused: process.env.FACTORY_PAUSED === 'true',
@@ -97,4 +104,5 @@ if (process.argv[1]?.endsWith('automerge.mjs')) {
     policy: loadPolicy(),
     gh: (...args) => run('gh', args),
   });
+  if (decisions.some((d) => d.action === 'failed')) process.exitCode = 1;
 }
