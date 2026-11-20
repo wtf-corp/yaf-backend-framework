@@ -8,7 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { APPS, buildJwt, childEnv, gitRefusal, keyFileProblem, loadKey, mintToken, parseArgs, repoFromRemote, runCommand } from '../factory-token.mjs';
+import { APPS, buildJwt, childEnv, gitRefusal, keyFileProblem, loadKey, mintToken, parseArgs, repoFromRemote, runCommand, withoutToken } from '../factory-token.mjs';
 
 const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
 const pem = privateKey.export({ type: 'pkcs8', format: 'pem' });
@@ -245,6 +245,31 @@ test('childEnv leaves other variables alone', () => {
 test('childEnv sets GITHUB_REPOSITORY only when it is not set', () => {
   assert.equal(asApp({}).GITHUB_REPOSITORY, REPO);
   assert.equal(asApp({ GITHUB_REPOSITORY: 'other-owner/other-repo' }).GITHUB_REPOSITORY, 'other-owner/other-repo');
+});
+
+test('withoutToken removes what childEnv added', () => {
+  const given = { PATH: '/usr/bin', HOME: '/home/someone', FACTORY_PROJECT_NUMBER: '7' };
+  const asGiven = asApp(given);
+  const before = { ...asGiven };
+  const env = withoutToken(asGiven);
+  for (const name of Object.keys(env)) assert.doesNotMatch(name, /^(GH_TOKEN|GITHUB_TOKEN|GIT_CONFIG_.*)$/);
+  assert.ok(!JSON.stringify(env).includes(FAKE_TOKEN), 'no value holds the token');
+  const { GIT_AUTHOR_NAME, GIT_AUTHOR_EMAIL, GIT_COMMITTER_NAME, GIT_COMMITTER_EMAIL } = asGiven;
+  assert.equal(GIT_AUTHOR_NAME, `${APPS.factory.slug}[bot]`);
+  assert.deepEqual(env, {
+    ...given, GITHUB_REPOSITORY: REPO, GIT_TERMINAL_PROMPT: '0',
+    GIT_AUTHOR_NAME, GIT_AUTHOR_EMAIL, GIT_COMMITTER_NAME, GIT_COMMITTER_EMAIL,
+  }, 'everything else stays, the commit identity included');
+  assert.deepEqual(asGiven, before, 'the given environment is not changed');
+});
+
+test('withoutToken removes the variables in any case and leaves other variables alone', () => {
+  const given = {
+    Path: '/usr/bin', gh_token: FAKE_TOKEN, Github_Token: FAKE_TOKEN,
+    git_config_count: '1', Git_Config_Key_0: 'credential.helper', git_config_value_0: FAKE_TOKEN,
+    GIT_CONFIG_GLOBAL: '/some/file', GH_TOKEN_NOTE: 'kept',
+  };
+  assert.deepEqual(withoutToken(given), { Path: '/usr/bin', GIT_CONFIG_GLOBAL: '/some/file', GH_TOKEN_NOTE: 'kept' });
 });
 
 test('repoFromRemote reads owner/name from an HTTPS or SSH GitHub URL, with or without .git', () => {
