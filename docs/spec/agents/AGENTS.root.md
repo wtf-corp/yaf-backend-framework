@@ -55,7 +55,7 @@ Every step has its own agent with a fresh context; **the writer never judges its
 
 **Tickets.** A merged plan becomes GitHub issues, one per row of its Tickets table; they are the source of truth for status, evidence and deviations (there is no `tasks.md`, progress log or `review.md`). Status: `Backlog → Ready → In progress → In review → Done`; `needs-human` and `blocked` are labels. Branch `<type>/<issue>-<slug>`; the pull request body has `Closes #<issue>` and `Plan: specs/NNNN-slug/plan.md#T3`.
 
-**Small pull requests.** One ticket is one pull request. Above 200 changed hand-written lines the reviewer asks why it was not split; above 400 the size check fails and a human decides.
+**Small pull requests.** One ticket is one pull request. By default, above 200 changed hand-written lines the reviewer asks why it was not split; above 400 the size check fails and a human decides. This repository uses 400 and 1000 during the initial build, until `1.0.0`.
 
 **Who merges.** A script computes the risk tier from `.github/factory/policy.json` and the diff. Tier low and medium merge automatically on green checks. Tier high (security- and privacy-sensitive paths, guard files, CI and agent instructions, breaking changes, new dependencies, an API or schema change the plan did not declare, oversize) waits for a human maintainer. You may ask for a higher tier; nothing lowers it.
 

@@ -29,7 +29,7 @@ For a trivial change (ADR-0023) there is no plan and no ticket; the loop and the
 3. **REQUIRED** — Write the test first. Run it. See it fail **for the expected reason**.
 4. **REQUIRED** — Implement the minimum that makes it pass. Nothing speculative.
 5. **REQUIRED** — Surgical diffs: every changed line traces to the ticket. Stay inside the ticket's `touches`; needing a file outside it is a finding to report, not a licence.
-6. **REQUIRED** — Stay within the size limits (`size.soft` 200, `size.hard` 400 changed hand-written lines by default). If the ticket cannot be done under the hard limit, stop and report how it should be split.
+6. **REQUIRED** — Stay within the size limits (`size.soft` 200, `size.hard` 400 changed hand-written lines by default; this repository uses 400 and 1000 during the initial build, until `1.0.0`). If the ticket cannot be done under the hard limit, stop and report how it should be split.
 7. **REQUIRED** — Never weaken a guard to get green. Stop and ask.
 8. **REQUIRED** — Updating an `*.approved.*` file is deliberate and explained in the pull request. An added public member, error code, configuration key or migration must be in the plan's `factory:delta` block; one that is not is an undeclared delta — stop and report it.
 9. **REQUIRED** — Never invent facts about third-party APIs. Check documentation or source.

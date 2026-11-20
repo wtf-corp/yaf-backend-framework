@@ -144,7 +144,7 @@ Done by hand, by the human owner with an agent assisting. The factory does not i
    - a docs change → tier low, merges by itself;
    - a `feat` with a public API line declared in a merged plan → tier medium, merges by itself; the same with an undeclared line → `factory/delta` fails and the tier is high;
    - a change under `src/Http/Authentication/` → tier high, waits; a bot "approval" does not satisfy `factory/human-approval`; yours does;
-   - a 500-line change → `factory/size` fails; `size-accepted` applied by the app does not help, applied by you it does (and the tier stays high);
+   - a change over the hard limit (400 changed hand-written lines by default; this repository uses 1000, with a soft limit of 400, during the initial build, until `1.0.0`) → `factory/size` fails; `size-accepted` applied by the app does not help, applied by you it does (and the tier stays high);
    - `tier:low` put on a tier-high pull request → still high;
    - a pull request that edits `policy.json` to shrink `sensitivePaths` and touches a sensitive path → still judged by the base policy;
    - `FACTORY_PAUSED=true` → nothing auto-merges.

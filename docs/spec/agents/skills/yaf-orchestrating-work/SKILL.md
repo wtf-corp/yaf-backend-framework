@@ -77,7 +77,7 @@ Worktree: <path>   Branch: feat/123-typed-id-converters   Base: main (or: stacke
 Touches (stay inside): src/Persistence.EfCore/Conversion/**, tests/Persistence.EfCore.Tests/Conversion/**
 Failing test first: TypedIdConverterTests.Round_trips_a_typed_id — fails because the converter does not exist
 Verify: dotnet test tests/Persistence.EfCore.Tests --filter-query "/*/*/TypedIdConverterTests/*" → passes; dotnet test YAF.slnx → no new failures
-Limits: 200 changed hand-written lines (hard 400); no new dependency; nothing outside Touches
+Limits: 200 changed hand-written lines (hard 400) by default, 400 (hard 1000) in this repository during the initial build, until 1.0.0; no new dependency; nothing outside Touches
 Stop and report instead of guessing when: <the stop conditions of the skill>
 Report: branch, commits, commands with exit codes and counts, diff size, deviations, what could not be run
 ```
