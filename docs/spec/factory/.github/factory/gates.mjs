@@ -12,7 +12,7 @@ import { findGuardChanges, dropMovedTests, guardVerdict } from './guards.mjs';
 import { classify, prKind, TIERS } from './classify.mjs';
 import { parseBody, ticketVerdict, planOnBase } from './ticket.mjs';
 import { parseDelta, planFlags, parseTickets, ticketProblems } from './plan.mjs';
-import { approvingHuman, humanApprovalVerdict } from './human-approval.mjs';
+import { approvingHuman, approvalTier, humanApprovalVerdict } from './human-approval.mjs';
 
 const args = process.argv.slice(2);
 const prDir = args[args.indexOf('--pr-dir') + 1] ?? 'pr';
@@ -135,8 +135,8 @@ if (kind === 'plan') {
 
 // human approval (specs are covered by CODEOWNERS; the check still demands a maintainer because kind spec is tier high)
 const reviews = api(`repos/${repo}/pulls/${number}/reviews?per_page=100`, { paginate: true });
-const approvalV = humanApprovalVerdict(kind === 'plan' ? 'low' : tier, approvingHuman(reviews, { author: pr.user.login, headSha: sha, isHuman }));
-setCheck(sha, 'factory/human-approval', approvalV.pass ? 'success' : 'failure', kind === 'plan' ? 'plan pull request: see factory/plan-gate' : approvalV.title);
+const approvalV = humanApprovalVerdict(approvalTier(kind, tier), approvingHuman(reviews, { author: pr.user.login, headSha: sha, isHuman }));
+setCheck(sha, 'factory/human-approval', approvalV.pass ? 'success' : 'failure', kind === 'plan' && tier !== 'high' ?'plan pull request: see factory/plan-gate' : approvalV.title);
 
 // the two agent reviews report elsewhere; report "not applicable" for the one that does not run on this kind
 if (kind === 'code') setCheck(sha, 'factory/doc-review', 'success', 'not a spec or plan pull request');
