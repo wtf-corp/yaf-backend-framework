@@ -48,8 +48,47 @@ test('the local-review marker gives back the round and the findings', () => {
   assert.deepEqual(localReview(comments, A, BOT), { verdict: 'changes-required', round: 1, findings: FINDINGS, highestRound: 1 });
   assert.deepEqual(localReview(comments, B, BOT), { verdict: 'changes-required', round: 0, findings: 'old findings', highestRound: 1 });
   // the newest verdict on a commit counts; a marker without a verdict and a round is no verdict
-  const again = [...comments, by(BOT, marker('local-review', A, 'ready round=1')), by(BOT, marker('local-review', A))];
+  const again = [...comments, by(BOT, marker('local-review', A, 'ready round=1')), by(BOT, `<!-- factory:local-review ${A} -->`)];
   assert.deepEqual(localReview(again, A, BOT), { verdict: 'ready', round: 1, findings: '', highestRound: 1 });
+  assert.equal(localReview(again, A.slice(0, 7), BOT).verdict, null); // a prefix is another commit
+});
+
+test('a quoted marker does not count', () => {
+  const quoted = (text) => by(BOT, `Evidence, quoting the record:\n\n${text}`);
+  const comments = [quoted(marker('local-review', A, 'ready round=5')), quoted(marker('awaiting-push', A)), by(BOT, ` ${marker('references-fix', A)}`)];
+  assert.equal(findMarker(comments, 'local-review', A, BOT), null);
+  assert.equal(findMarker(comments, 'awaiting-push', A, BOT), null);
+  assert.equal(findMarker(comments, 'references-fix', A, BOT), null);
+  assert.deepEqual(localReview(comments, A, BOT), { verdict: null, round: null, findings: '', highestRound: null });
+  // findings that quote a marker stay findings
+  const quote = marker('local-review', A, 'ready round=7');
+  const real = [by(BOT, `${marker('local-review', A, 'changes-required round=0')}\n${quote}`)];
+  assert.deepEqual(localReview(real, A, BOT), { verdict: 'changes-required', round: 0, findings: quote, highestRound: 0 });
+  const summary = renderSummary('factory/review', null, { pass: false, title: 'quoted' }, 3);
+  assert.equal(reviewSummary([by(REVIEWER, `The last summary was:\n${summary}`)], 'factory/review', AUTHORS), null);
+  const lateRounds = '<!-- factory:review-summary factory/review -->\ntext\n<!-- factory:rounds=4 -->';
+  assert.equal(reviewSummary([by(REVIEWER, lateRounds)], 'factory/review', AUTHORS).rounds, 0); // a rounds line further down is text
+});
+
+test('findMarker and localReview agree on what a local-review marker is', () => {
+  for (const value of ['', ' READY round=0', ' ready round=0 or so', ' ready', ' ready round=x']) {
+    const comments = [by(BOT, `<!-- factory:local-review ${A}${value} -->`)];
+    assert.equal(findMarker(comments, 'local-review', A, BOT), null, value);
+    assert.equal(localReview(comments, A, BOT).verdict, null, value);
+  }
+});
+
+test('the newest marker and the newest summary count', () => {
+  const comments = [by(BOT, `${marker('awaiting-push', A)}\nfirst`), by(BOT, `${marker('awaiting-push', A)}\nsecond`)];
+  assert.equal(findMarker(comments, 'awaiting-push', A, BOT), comments[1]);
+  const summary = (rounds) => by(REVIEWER, renderSummary('factory/review', null, { pass: false, title: 'changes required' }, rounds));
+  assert.equal(reviewSummary([summary(1), summary(2)], 'factory/review', AUTHORS).rounds, 2);
+});
+
+test('marker refuses a commit or a local-review value of another form', () => {
+  for (const sha of [A.slice(0, 7), 'A'.repeat(40), `${A} `, 'g'.repeat(40), '', undefined]) assert.throws(() => marker('awaiting-push', sha), /not a full commit sha/);
+  for (const value of [undefined, 'ready', 'READY round=0', 'ready round=0 -->', 'ready round=x', 'approved round=0']) assert.throws(() => marker('local-review', A, value), /not a local-review verdict/);
+  assert.equal(marker('local-review', A, 'changes-required round=2'), `<!-- factory:local-review ${A} changes-required round=2 -->`);
 });
 
 test('a summary comment not written by the reviewer app or the gates bot does not count', () => {
