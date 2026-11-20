@@ -225,7 +225,8 @@ function refusedGit(args) {
   if (rest.some((arg) => arg === '--all' || arg === '--branches')) return 'a push of every branch';
   // The first argument that is no option is the remote; a refspec is [+]<source>[:<destination>].
   const refs = rest.filter((arg) => !arg.startsWith('-')).slice(1).map((refspec) => refspec.slice(refspec.lastIndexOf(':') + 1));
-  if (rest.some((arg) => arg === '--tags' || arg === '--follow-tags') || refs.some((ref) => /^(refs\/)?tags\//.test(ref))) return 'a push of tags';
+  // "tag <name>" among the refspecs stands for refs/tags/<name>:refs/tags/<name>.
+  if (rest.some((arg) => arg === '--tags' || arg === '--follow-tags') || refs.some((ref) => ref === 'tag' || /^(refs\/)?tags\//.test(ref))) return 'a push of tags';
   // git completes a destination with refs/ and with refs/heads/: "heads/main" is main too.
   const destinations = refs.map((ref) => ref.replace(/^(refs\/)?(heads\/)?/, ''));
   const branch = destinations.find((destination) => ['main', 'next', 'stable'].includes(destination));

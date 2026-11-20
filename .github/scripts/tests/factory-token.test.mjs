@@ -532,6 +532,8 @@ test('a push of tags is refused', () => {
   refused('git', 'push', 'origin', 'refs/tags/v1.0.0');
   refused('git', 'push', 'origin', 'HEAD:refs/tags/v1.0.0');
   refused('git', 'push', 'origin', 'tags/v1.0.0');
+  refused('git', 'push', 'origin', 'tag', 'v1.0.0');
+  refused('git', '-C', '.', 'push', 'origin', 'ci/40-x', 'tag', 'v1.0.0');
 });
 
 test('a merge or an approval through GraphQL and a human-only label on create are refused', () => {
