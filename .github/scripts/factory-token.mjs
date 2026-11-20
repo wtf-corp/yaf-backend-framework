@@ -123,6 +123,17 @@ export function childEnv(env, { token, repo, app }) {
   };
 }
 
+/**
+ * The inverse of childEnv: a copy of `env` without the token (GH_TOKEN, GITHUB_TOKEN) and without the git
+ * configuration given in the environment (GIT_CONFIG_COUNT, GIT_CONFIG_KEY_n, GIT_CONFIG_VALUE_n), for a child
+ * that must not hold the app's credential. The commit identity stays: it is no credential.
+ */
+export function withoutToken(env) {
+  // Any case, as in refuseGitConfig below.
+  const added = /^(GH_TOKEN|GITHUB_TOKEN|GIT_CONFIG_COUNT|GIT_CONFIG_(KEY|VALUE)_\d+)$/i;
+  return Object.fromEntries(Object.entries(env).filter(([key]) => !added.test(key)));
+}
+
 /** Throws when `env` already holds GIT_CONFIG_COUNT, which childEnv would otherwise overwrite. */
 function refuseGitConfig(env) {
   // Any case: Windows reads variable names without regard to case, and a copy of process.env keeps the case given.

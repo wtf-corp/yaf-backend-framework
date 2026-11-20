@@ -23,6 +23,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { withoutToken } from './factory-token.mjs';
 
 const args = process.argv.slice(2);
 const prNumber = Number(args.find((a) => /^\d+$/.test(a)));
@@ -112,7 +113,7 @@ try {
     '--output-format', 'json',
     '--setting-sources', 'project',
     '--strict-mcp-config',
-  ], { cwd: baseDir, allowFail: true, input: '' });
+  ], { cwd: baseDir, allowFail: true, input: '', env: withoutToken(process.env) });
 
   let verdict = null;
   try {
