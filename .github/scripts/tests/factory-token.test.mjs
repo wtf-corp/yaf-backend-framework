@@ -6,7 +6,9 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { APPS, buildJwt, childEnv, keyFileProblem, loadKey, mintToken, repoFromRemote } from '../factory-token.mjs';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { APPS, buildJwt, childEnv, gitRefusal, keyFileProblem, loadKey, mintToken, parseArgs, repoFromRemote, runCommand } from '../factory-token.mjs';
 
 const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
 const pem = privateKey.export({ type: 'pkcs8', format: 'pem' });
@@ -266,4 +268,117 @@ test('repoFromRemote refuses a URL that is no GitHub repository and does not ech
   for (const url of [withCredentials, ...others]) {
     assert.throws(() => repoFromRemote(url), (e) => /GitHub/.test(e.message) && !everythingIn(e).includes(FAKE_TOKEN));
   }
+});
+
+const SCRIPT = fileURLToPath(new URL('../factory-token.mjs', import.meta.url));
+const USAGE = /Usage:\s+node \.github\/scripts\/factory-token\.mjs --app factory\|reviewer/;
+/** The environment of the tests without a key variable: a run that went past the arguments would fail on the key, with exit code 1. */
+const noKeyEnv = Object.fromEntries(Object.entries(process.env).filter(([name]) => !/^YAF_|^GIT_CONFIG_/i.test(name)));
+const runScript = (args, options = {}) => spawnSync(process.execPath, [SCRIPT, ...args], { env: noKeyEnv, encoding: 'utf8', ...options });
+
+test('the command line exits 2 with the usage text when no command is given', () => {
+  const result = runScript(['--app', 'factory', '--repo', REPO]);
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /No command given/);
+  assert.match(result.stderr, USAGE);
+  assert.equal(result.stdout, '');
+});
+
+test('the command line exits 2 with the usage text for an unknown app', () => {
+  const result = runScript(['--app', 'other', '--repo', REPO, '--', process.execPath, '-e', 'process.exit(0)']);
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /--app must be one of: factory, reviewer/);
+  assert.match(result.stderr, USAGE);
+});
+
+test('parseArgs reads each flag and takes everything after "--" as the command', () => {
+  assert.deepEqual(parseArgs(['--app', 'factory', '--', 'gh', 'pr', 'list', '--app', 'x', '--print', '--']),
+    { app: 'factory', keyFile: undefined, keyCmd: undefined, repo: undefined, print: false, command: ['gh', 'pr', 'list', '--app', 'x', '--print', '--'] });
+  assert.deepEqual(parseArgs(['--repo', REPO, '--key-file', '/some/key.pem', '--app', 'reviewer', '--', 'git', 'push']),
+    { app: 'reviewer', keyFile: '/some/key.pem', keyCmd: undefined, repo: REPO, print: false, command: ['git', 'push'] });
+  assert.deepEqual(parseArgs(['--app', 'factory', '--key-cmd', 'print-the-key --now', '--print']),
+    { app: 'factory', keyFile: undefined, keyCmd: 'print-the-key --now', repo: undefined, print: true, command: [] });
+});
+
+test('parseArgs refuses an unknown flag, an unknown app, a missing command and --print with a command', () => {
+  const cases = [
+    [['--app', 'factory', '--verbose', '--', 'gh'], /Unknown argument "--verbose"/],
+    [['--app', 'factory', 'gh', 'pr', 'list'], /Unknown argument "gh"/],
+    [['--app', 'other', '--', 'gh'], /--app must be one of: factory, reviewer/],
+    [['--app', 'toString', '--', 'gh'], /--app must be one of/],
+    [['--', 'gh'], /--app must be one of/],
+    [['--app', 'factory'], /No command given/],
+    [['--app', 'factory', '--'], /No command given/],
+    [['--app', 'factory', '--print', '--', 'gh'], /--print runs no command/],
+    [['--app', 'factory', '--key-file', 'a', '--key-cmd', 'b', '--', 'gh'], /--key-file and --key-cmd/],
+    [['--app', 'factory', '--repo', 'no-slash', '--', 'gh'], /--repo must be <owner>\/<name>/],
+    [['--app', 'factory', '--repo', 'a/b/../c', '--', 'gh'], /--repo must be/],
+    [['--app', 'factory', '--key-file'], /--key-file needs a value/],
+    [['--app', 'factory', '--repo', '--', 'gh'], /--repo needs a value/],
+  ];
+  for (const [argv, expected] of cases) assert.throws(() => parseArgs(argv), expected, argv.join(' '));
+});
+
+test('a git command is refused when origin is not HTTPS', () => {
+  for (const url of ['git@github.com:some-owner/some-repo.git', 'ssh://git@github.com/some-owner/some-repo.git']) {
+    for (const command of ['git', 'git.exe', '/usr/bin/git', 'C:\\Program Files\\Git\\cmd\\GIT.EXE']) {
+      const refusal = gitRefusal(command, url);
+      assert.match(refusal, /not HTTPS/, `${command} ${url}`);
+      assert.match(refusal, /serves HTTPS only/);
+      assert.ok(refusal.includes('git remote set-url origin https://github.com/some-owner/some-repo.git'));
+    }
+    for (const command of ['gh', 'node', process.execPath, 'git-lfs']) assert.equal(gitRefusal(command, url), null, command);
+  }
+  for (const command of ['git', 'gh', 'node']) {
+    assert.equal(gitRefusal(command, 'https://github.com/some-owner/some-repo.git'), null);
+    assert.equal(gitRefusal(command, 'https://github.com/some-owner/some-repo.git\n'), null);
+  }
+  for (const url of ['', `http://someone:${FAKE_TOKEN}@example.com/some-repo.git`]) {
+    const refusal = gitRefusal('git', url);
+    assert.ok(refusal.includes('git remote set-url origin https://github.com/<owner>/<name>.git'));
+    assert.ok(!refusal.includes(FAKE_TOKEN), 'the URL is not echoed');
+  }
+});
+
+test('the command line refuses a git command over an SSH origin before it reads a key', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'factory-token-test-'));
+  try {
+    const git = (...args) => assert.equal(spawnSync('git', args, { cwd: dir, env: noKeyEnv }).status, 0, `git ${args[0]}`);
+    git('init', '--quiet');
+    git('remote', 'add', 'origin', 'git@github.com:some-owner/some-repo.git');
+    const result = runScript(['--app', 'factory', '--', 'git', 'status'], { cwd: dir });
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /git remote set-url origin https:\/\/github\.com\/some-owner\/some-repo\.git/);
+    assert.doesNotMatch(result.stderr, /YAF_FACTORY_KEY_FILE/);
+    assert.equal(result.stdout, '');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("runCommand returns the child's exit code", async () => {
+  const messages = [];
+  const warn = (line) => messages.push(line);
+  assert.equal(await runCommand(process.execPath, ['-e', 'process.exit(3)'], process.env, warn), 3);
+  assert.equal(await runCommand(process.execPath, ['-e', 'process.exit(0)'], process.env, warn), 0);
+  assert.deepEqual(messages, []);
+});
+
+test('runCommand hands the child the environment it was given, and its arguments without a shell', async () => {
+  const env = { ...process.env, GH_TOKEN: FAKE_TOKEN };
+  const check = `process.exit(process.env.GH_TOKEN === '${FAKE_TOKEN}' ? 0 : 4)`;
+  assert.equal(await runCommand(process.execPath, ['-e', check], env, neverWarn), 0);
+  assert.equal(await runCommand(process.execPath, ['-e', check], { ...env, GH_TOKEN: 'another' }, neverWarn), 4);
+  const unparsed = 'a b && exit 9 ; $HOME %PATH% "q"';
+  assert.equal(await runCommand(process.execPath, ['-e', 'process.exit(process.argv[1] === process.env.EXPECTED ? 0 : 5)', unparsed], { ...env, EXPECTED: unparsed }, neverWarn), 0);
+});
+
+test('runCommand returns 1 with a message for a command that does not exist', async () => {
+  const messages = [];
+  const code = await runCommand('no-such-command-factory-token-test', ['--flag'], { ...process.env, GH_TOKEN: FAKE_TOKEN }, (line) => messages.push(line));
+  assert.equal(code, 1);
+  assert.equal(messages.length, 1);
+  assert.match(messages[0], /Could not start "no-such-command-factory-token-test"/);
+  assert.match(messages[0], /\.cmd or \.bat file must be wrapped in its interpreter/);
+  assert.ok(!messages[0].includes(FAKE_TOKEN));
 });

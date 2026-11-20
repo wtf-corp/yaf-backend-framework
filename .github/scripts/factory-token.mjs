@@ -1,9 +1,10 @@
 // Token helper for running the factory locally (plan specs/0002-local-factory-operation, T2 to T5).
-// Node 22+, no dependencies. This part builds the JWT of a GitHub App and mints an installation token
-// scoped to one repository. The key and the JWT exist only in memory; no message holds them or a token.
+// Node 22+, no dependencies. It builds the JWT of a GitHub App, mints an installation token scoped to one
+// repository and runs one command with it, as the app. The key and the JWT exist only in memory; no message
+// holds them or a token, and the token is written only under --print.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
-import { execSync } from 'node:child_process';
+import { execFileSync, execSync, spawn } from 'node:child_process';
 
 const API = 'https://api.github.com';
 
@@ -122,3 +123,122 @@ export function childEnv(env, { token, repo, app }) {
     GIT_COMMITTER_EMAIL: email,
   };
 }
+
+const USAGE = `Usage:
+  node .github/scripts/factory-token.mjs --app factory|reviewer [--key-file <path> | --key-cmd "<command>"] [--repo <owner>/<name>] -- <command> [args…]
+  node .github/scripts/factory-token.mjs --app factory|reviewer [--key-file <path> | --key-cmd "<command>"] [--repo <owner>/<name>] --print
+
+Runs the command as the app: with a token for this one repository, for gh and for git over HTTPS, and with
+the app's bot account as author of a commit. --print writes the token instead; for your own terminal only.`;
+
+/**
+ * The options of a command line: { app, keyFile, keyCmd, repo, print, command }, where `command` is everything
+ * after "--". Throws an error that says what is wrong with the arguments; the entry point adds the usage text.
+ */
+export function parseArgs(argv) {
+  const options = { app: undefined, keyFile: undefined, keyCmd: undefined, repo: undefined, print: false, command: [] };
+  const values = { '--app': 'app', '--key-file': 'keyFile', '--key-cmd': 'keyCmd', '--repo': 'repo' };
+  for (let i = 0; i < argv.length; i++) {
+    const flag = argv[i];
+    if (flag === '--') {
+      options.command = argv.slice(i + 1);
+      break;
+    }
+    if (flag === '--print') options.print = true;
+    else if (Object.hasOwn(values, flag)) {
+      if (i + 1 >= argv.length || argv[i + 1] === '--') throw new Error(`${flag} needs a value.`);
+      options[values[flag]] = argv[++i];
+    } else throw new Error(`Unknown argument "${flag}": a command comes after "--".`);
+  }
+  if (!Object.hasOwn(APPS, options.app ?? '')) throw new Error(`--app must be one of: ${Object.keys(APPS).join(', ')}.`);
+  if (options.keyFile && options.keyCmd) throw new Error('--key-file and --key-cmd exclude each other: give one.');
+  if (options.repo !== undefined && !/^[\w.-]+\/[\w.-]+$/.test(options.repo)) throw new Error('--repo must be <owner>/<name>.');
+  if (options.print && options.command.length > 0) throw new Error('--print runs no command: give one or the other.');
+  if (!options.print && options.command.length === 0) throw new Error('No command given: put it after "--", or give --print.');
+  return options;
+}
+
+/**
+ * Why `command` must not run with the app's token when the URL of origin is `originUrl`, or null.
+ * Only git is refused, and only when origin is not HTTPS. The message does not echo the URL.
+ */
+export function gitRefusal(command, originUrl) {
+  const program = command.split(/[\\/]/).pop().toLowerCase().replace(/\.exe$/, '');
+  if (program !== 'git' || /^https:\/\//i.test(originUrl.trim())) return null;
+  let repo = '<owner>/<name>';
+  try {
+    repo = repoFromRemote(originUrl);
+  } catch {
+    // Not a GitHub URL, or no origin at all: the message keeps the placeholder.
+  }
+  return 'Refused: the URL of origin is not HTTPS. The credential helper this script sets serves HTTPS only, so over SSH '
+    + 'git would authenticate with your own key and act as you, not as the app. '
+    + `Run: git remote set-url origin https://github.com/${repo}.git`;
+}
+
+/**
+ * Starts `command` with `args` in `env`, without a shell and with the standard streams inherited. Resolves to
+ * its exit code, or to 1 when it ended by a signal or could not start; `warn` then gets one line saying which.
+ */
+export function runCommand(command, args, env, warn = console.error) {
+  return new Promise((resolve) => {
+    const notStarted = (error) => {
+      warn(`Could not start "${command}" (${error?.code ?? 'unknown error'}). The command runs without a shell: `
+        + 'it must be a program on the PATH, and a .cmd or .bat file must be wrapped in its interpreter (cmd /c <file> …).');
+      resolve(1);
+    };
+    try {
+      const child = spawn(command, args, { env, stdio: 'inherit', shell: false });
+      child.on('error', notStarted);
+      child.on('exit', (code, signal) => {
+        if (code === null) warn(`"${command}" ended by signal ${signal}.`);
+        resolve(code ?? 1);
+      });
+    } catch (error) {
+      notStarted(error);
+    }
+  });
+}
+
+/** The URL of origin, or "" when there is none. */
+function readOriginUrl() {
+  try {
+    return execFileSync('git', ['remote', 'get-url', 'origin'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+  } catch {
+    return '';
+  }
+}
+
+/** The command line: the exit code of a run with the arguments `argv` in the environment `env`. */
+async function main(argv, env) {
+  let options;
+  try {
+    options = parseArgs(argv);
+  } catch (error) {
+    console.error(`${error.message}\n\n${USAGE}`);
+    return 2;
+  }
+  try {
+    const { app, keyFile, keyCmd, print, command: [command, ...args] } = options;
+    const origin = readOriginUrl();
+    const refusal = print ? null : gitRefusal(command, origin);
+    if (refusal) {
+      console.error(refusal);
+      return 2;
+    }
+    const repo = options.repo ?? repoFromRemote(origin);
+    const pem = loadKey({ app, keyFile, keyCmd, env, platform: process.platform });
+    const { token, expiresAt } = await mintToken({ fetch, appId: APPS[app].appId, pem, repo });
+    if (print) {
+      console.log(`${token}\n${expiresAt}`);
+      return 0;
+    }
+    return await runCommand(command, args, childEnv(env, { token, repo, app }));
+  } catch (error) {
+    // The messages thrown in this file hold no key, JWT or token; a stack is not printed.
+    console.error(error.message);
+    return 1;
+  }
+}
+
+if (process.argv[1]?.endsWith('factory-token.mjs')) process.exit(await main(process.argv.slice(2), process.env));
