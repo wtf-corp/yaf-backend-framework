@@ -101,8 +101,7 @@ export function repoFromRemote(url) {
  * process only, and the app's bot account as author and committer of a commit. Everything else passes through.
  */
 export function childEnv(env, { token, repo, app }) {
-  // Any case: Windows reads variable names without regard to case, and a copy of process.env keeps the case given.
-  if (Object.keys(env).some((key) => key.toUpperCase() === 'GIT_CONFIG_COUNT')) throw new Error('GIT_CONFIG_COUNT is already set: unset it, the helper does not overwrite git configuration given in the environment.');
+  refuseGitConfig(env);
   const { slug, botId } = APPS[app];
   const name = `${slug}[bot]`;
   const email = `${botId}+${name}@users.noreply.github.com`;
@@ -123,6 +122,15 @@ export function childEnv(env, { token, repo, app }) {
     GIT_COMMITTER_EMAIL: email,
   };
 }
+
+/** Throws when `env` already holds GIT_CONFIG_COUNT, which childEnv would otherwise overwrite. */
+function refuseGitConfig(env) {
+  // Any case: Windows reads variable names without regard to case, and a copy of process.env keeps the case given.
+  if (Object.keys(env).some((key) => key.toUpperCase() === 'GIT_CONFIG_COUNT')) throw new Error('GIT_CONFIG_COUNT is already set: unset it, the helper does not overwrite git configuration given in the environment.');
+}
+
+/** "owner/name" with no segment that is "." or "..": such a segment would change the path of an API call. */
+const REPO_NAME = /^(?!\.{1,2}\/)[\w.-]+\/(?!\.{1,2}$)[\w.-]+$/;
 
 const USAGE = `Usage:
   node .github/scripts/factory-token.mjs --app factory|reviewer [--key-file <path> | --key-cmd "<command>"] [--repo <owner>/<name>] -- <command> [args…]
@@ -152,7 +160,7 @@ export function parseArgs(argv) {
   }
   if (!Object.hasOwn(APPS, options.app ?? '')) throw new Error(`--app must be one of: ${Object.keys(APPS).join(', ')}.`);
   if (options.keyFile && options.keyCmd) throw new Error('--key-file and --key-cmd exclude each other: give one.');
-  if (options.repo !== undefined && !/^[\w.-]+\/[\w.-]+$/.test(options.repo)) throw new Error('--repo must be <owner>/<name>.');
+  if (options.repo !== undefined && !REPO_NAME.test(options.repo)) throw new Error('--repo must be <owner>/<name>.');
   if (options.print && options.command.length > 0) throw new Error('--print runs no command: give one or the other.');
   if (!options.print && options.command.length === 0) throw new Error('No command given: put it after "--", or give --print.');
   return options;
@@ -163,7 +171,8 @@ export function parseArgs(argv) {
  * Only git is refused, and only when origin is not HTTPS. The message does not echo the URL.
  */
 export function gitRefusal(command, originUrl) {
-  const program = command.split(/[\\/]/).pop().toLowerCase().replace(/\.exe$/, '');
+  // Windows drops trailing dots and spaces from a file name: "git." and "git.exe." start git too.
+  const program = command.split(/[\\/]/).pop().toLowerCase().replace(/[. ]+$/, '').replace(/\.exe$/, '').replace(/[. ]+$/, '');
   if (program !== 'git' || /^https:\/\//i.test(originUrl.trim())) return null;
   let repo = '<owner>/<name>';
   try {
@@ -227,6 +236,8 @@ async function main(argv, env) {
       return 2;
     }
     const repo = options.repo ?? repoFromRemote(origin);
+    if (!REPO_NAME.test(repo)) throw new Error('The repository is not <owner>/<name>: give --repo <owner>/<name>.');
+    if (!print) refuseGitConfig(env);
     const pem = loadKey({ app, keyFile, keyCmd, env, platform: process.platform });
     const { token, expiresAt } = await mintToken({ fetch, appId: APPS[app].appId, pem, repo });
     if (print) {

@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { APPS, buildJwt, childEnv, gitRefusal, keyFileProblem, loadKey, mintToken, parseArgs, repoFromRemote, runCommand } from '../factory-token.mjs';
 
 const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
@@ -313,6 +313,10 @@ test('parseArgs refuses an unknown flag, an unknown app, a missing command and -
     [['--app', 'factory', '--key-file', 'a', '--key-cmd', 'b', '--', 'gh'], /--key-file and --key-cmd/],
     [['--app', 'factory', '--repo', 'no-slash', '--', 'gh'], /--repo must be <owner>\/<name>/],
     [['--app', 'factory', '--repo', 'a/b/../c', '--', 'gh'], /--repo must be/],
+    [['--app', 'factory', '--repo', '../x', '--', 'gh'], /--repo must be/],
+    [['--app', 'factory', '--repo', 'x/..', '--', 'gh'], /--repo must be/],
+    [['--app', 'factory', '--repo', './x', '--', 'gh'], /--repo must be/],
+    [['--app', 'factory', '--repo', 'x/.', '--', 'gh'], /--repo must be/],
     [['--app', 'factory', '--key-file'], /--key-file needs a value/],
     [['--app', 'factory', '--repo', '--', 'gh'], /--repo needs a value/],
   ];
@@ -321,7 +325,7 @@ test('parseArgs refuses an unknown flag, an unknown app, a missing command and -
 
 test('a git command is refused when origin is not HTTPS', () => {
   for (const url of ['git@github.com:some-owner/some-repo.git', 'ssh://git@github.com/some-owner/some-repo.git']) {
-    for (const command of ['git', 'git.exe', '/usr/bin/git', 'C:\\Program Files\\Git\\cmd\\GIT.EXE']) {
+    for (const command of ['git', 'git.exe', '/usr/bin/git', 'C:\\Program Files\\Git\\cmd\\GIT.EXE', 'git.', 'git.exe.', 'git.EXE ']) {
       const refusal = gitRefusal(command, url);
       assert.match(refusal, /not HTTPS/, `${command} ${url}`);
       assert.match(refusal, /serves HTTPS only/);
@@ -354,6 +358,69 @@ test('the command line refuses a git command over an SSH origin before it reads 
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
+});
+
+/** Runs `use` with a temporary directory holding the generated key, readable by its owner only, then deletes it. */
+function withKeyDir(use) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'factory-token-test-'));
+  try {
+    const keyFile = path.join(dir, 'app.pem');
+    fs.writeFileSync(keyFile, pem, { mode: 0o600 });
+    return use(dir, keyFile);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+/** A module for --import that replaces fetch: no network, the installation and then the fake token. */
+const FETCH_STUB = `let calls = 0;
+globalThis.fetch = async () => {
+  const body = calls++ === 0 ? { id: 4242 } : { token: '${FAKE_TOKEN}', expires_at: '2027-01-15T09:00:00Z' };
+  return { ok: true, status: 200, json: async () => body };
+};
+`;
+
+test('the command line with --print writes the token and its expiry, and nothing else', () => {
+  withKeyDir((dir, keyFile) => {
+    const stub = path.join(dir, 'fetch-stub.mjs');
+    fs.writeFileSync(stub, FETCH_STUB);
+    const result = spawnSync(process.execPath, ['--import', pathToFileURL(stub).href, SCRIPT, '--app', 'factory', '--key-file', keyFile, '--repo', REPO, '--print'],
+      { env: noKeyEnv, encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stdout, `${FAKE_TOKEN}\n2027-01-15T09:00:00Z\n`);
+    assert.ok(!result.stderr.includes(FAKE_TOKEN));
+    assert.ok(!result.stderr.includes('PRIVATE KEY'));
+  });
+});
+
+test('the command line refuses an origin whose owner and name are dots before it reads a key', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'factory-token-test-'));
+  try {
+    const git = (...args) => assert.equal(spawnSync('git', args, { cwd: dir, env: noKeyEnv }).status, 0, `git ${args[0]}`);
+    git('init', '--quiet');
+    git('remote', 'add', 'origin', 'https://github.com/../..');
+    const result = runScript(['--app', 'factory', '--', process.execPath, '-e', 'process.exit(0)'], { cwd: dir });
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /The repository is not <owner>\/<name>/);
+    assert.doesNotMatch(result.stderr, /YAF_FACTORY_KEY_FILE/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('the command line refuses an existing GIT_CONFIG_COUNT before it reads a key', () => {
+  const result = runScript(['--app', 'factory', '--repo', REPO, '--', process.execPath, '-e', 'process.exit(0)'], { env: { ...noKeyEnv, GIT_CONFIG_COUNT: '1' } });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /GIT_CONFIG_COUNT is already set/);
+  assert.doesNotMatch(result.stderr, /YAF_FACTORY_KEY_FILE/);
+});
+
+test('runCommand returns 1 for a child that ended by a signal', async () => {
+  const messages = [];
+  const code = await runCommand(process.execPath, ['-e', "process.kill(process.pid, 'SIGKILL')"], process.env, (line) => messages.push(line));
+  assert.equal(code, 1);
+  // Windows has no signals: the child ends with exit code 1 and nothing is said.
+  if (process.platform !== 'win32') assert.match(messages[0], /ended by signal SIGKILL/);
 });
 
 test("runCommand returns the child's exit code", async () => {
