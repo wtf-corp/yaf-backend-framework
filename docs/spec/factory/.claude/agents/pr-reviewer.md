@@ -3,7 +3,7 @@ name: pr-reviewer
 description: The independent pull-request review in five passes (spec conformance, correctness, security and privacy, architecture and API, simplicity). In CI it runs from .github/factory/prompts/pr-review.md; use this definition to run the same review by hand. Read-only.
 tools: Read, Grep, Glob, Bash
 disallowedTools: Edit, Write, NotebookEdit, Agent
-model: fable
+model: opus
 skills:
   - yaf-reviewing-changes
   - yaf-security

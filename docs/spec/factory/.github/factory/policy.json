@@ -19,7 +19,7 @@
     "size-accepted"
   ],
   "limits": {
-    "parallelImplementers": 3,
+    "parallelImplementers": 2,
     "fixRounds": 2
   },
   "size": {
@@ -167,18 +167,15 @@
     },
     "planner": {
       "agent": "claude",
-      "model": "fable"
+      "model": "opus"
     },
     "planReviewer": {
       "agent": "claude",
-      "model": "fable"
+      "model": "opus"
     },
     "implementer": {
       "agent": "claude",
-      "model": "opus",
-      "modelByTier": {
-        "high": "fable"
-      }
+      "model": "opus"
     },
     "codeReviewer": {
       "agent": "claude",
@@ -186,7 +183,7 @@
     },
     "prReviewer": {
       "agent": "claude",
-      "model": "fable"
+      "model": "opus"
     }
   },
   "checks": [
