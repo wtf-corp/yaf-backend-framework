@@ -225,6 +225,7 @@ test('childEnv refuses an existing GIT_CONFIG_COUNT', () => {
     assert.throws(() => asApp({ GIT_CONFIG_COUNT: count, GIT_CONFIG_KEY_0: 'user.name' }),
       (e) => /GIT_CONFIG_COUNT/.test(e.message) && !everythingIn(e).includes(FAKE_TOKEN));
   }
+  assert.throws(() => asApp({ git_config_count: '1' }), /GIT_CONFIG_COUNT/, 'a plain copy of a Windows environment keeps the case given');
 });
 
 test('childEnv leaves other variables alone', () => {
@@ -260,7 +261,8 @@ test('repoFromRemote reads owner/name from an HTTPS or SSH GitHub URL, with or w
 
 test('repoFromRemote refuses a URL that is no GitHub repository and does not echo it', () => {
   const withCredentials = `https://someone:${FAKE_TOKEN}@github.com/some-owner/some-repo.git`;
-  const others = ['https://example.com/some-owner/some-repo.git', 'https://github.com/some-owner', 'https://github.com/a/b/c', ''];
+  const others = ['https://example.com/some-owner/some-repo.git', 'https://github.com/some-owner', 'https://github.com/a/b/c', '',
+    'https://github.com/o/r?x=1', 'https://github.com/o/r#frag', 'git@github.com/o/r', 'ssh://git@github.com:o/r'];
   for (const url of [withCredentials, ...others]) {
     assert.throws(() => repoFromRemote(url), (e) => /GitHub/.test(e.message) && !everythingIn(e).includes(FAKE_TOKEN));
   }

@@ -89,7 +89,7 @@ export async function mintToken({ fetch, appId, pem, repo, now = Math.floor(Date
 
 /** "owner/name" from the URL of a GitHub remote, HTTPS or SSH, with or without ".git". The error does not echo the URL. */
 export function repoFromRemote(url) {
-  const match = /^(?:https:\/\/github\.com\/|(?:ssh:\/\/)?git@github\.com[:/])([^/\s]+\/[^/\s]+?)(?:\.git)?$/.exec(url.trim());
+  const match = /^(?:https:\/\/github\.com\/|ssh:\/\/git@github\.com\/|git@github\.com:)([\w.-]+\/[\w.-]+?)(?:\.git)?$/.exec(url.trim());
   if (!match) throw new Error('The remote URL is not that of a GitHub repository: give --repo <owner>/<name>.');
   return match[1];
 }
@@ -100,7 +100,8 @@ export function repoFromRemote(url) {
  * process only, and the app's bot account as author and committer of a commit. Everything else passes through.
  */
 export function childEnv(env, { token, repo, app }) {
-  if (env.GIT_CONFIG_COUNT !== undefined) throw new Error('GIT_CONFIG_COUNT is already set: unset it, the helper does not overwrite git configuration given in the environment.');
+  // Any case: Windows reads variable names without regard to case, and a copy of process.env keeps the case given.
+  if (Object.keys(env).some((key) => key.toUpperCase() === 'GIT_CONFIG_COUNT')) throw new Error('GIT_CONFIG_COUNT is already set: unset it, the helper does not overwrite git configuration given in the environment.');
   const { slug, botId } = APPS[app];
   const name = `${slug}[bot]`;
   const email = `${botId}+${name}@users.noreply.github.com`;
