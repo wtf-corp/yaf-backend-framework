@@ -77,6 +77,7 @@ const cleanup = () => {
   rmSync(work, { recursive: true, force: true });
 };
 
+let cancelRunning = null; // set while a check run in progress is on the head commit and no verdict is posted
 try {
   run('git', ['fetch', '--quiet', 'origin', base, `refs/pull/${prNumber}/head`]);
   run('git', ['worktree', 'add', '--quiet', '--detach', baseDir, base]);
@@ -100,6 +101,20 @@ try {
   const prompt = `${readFileSync(path.join(baseDir, KIT, 'prompts', review.prompt), 'utf8')}\n`
     + `Pull request: #${prNumber} in ${repo}.${kind === 'code' ? '' : ` Kind: ${kind}.`} Base commit: ${base}. Head commit: ${head}.`;
   const schema = readFileSync(path.join(baseDir, KIT, review.schema), 'utf8').replaceAll('\n', '');
+
+  // The running review is reported as a check run in progress, so that a second one is not started meanwhile.
+  // It is advisory: a failed post is a warning. An exception before the verdict cancels it (below); if this script
+  // dies, it stays in progress and counts as owed again after 30 minutes (inflight.mjs).
+  // Skipped while the base branch's kit does not have the function yet.
+  const kit = await import(new URL(`file:///${path.join(baseDir, KIT, 'lib.mjs').replaceAll('\\', '/')}`));
+  if (!dryRun && kit.inProgressCheck) {
+    try {
+      const { id } = kit.api(`repos/${repo}/check-runs`, { method: 'POST', body: kit.inProgressCheck(review.check, head, 'the review is running') });
+      cancelRunning = () => kit.api(`repos/${repo}/check-runs/${id}`, { method: 'PATCH', body: { status: 'completed', conclusion: 'cancelled' } });
+    } catch (e) {
+      console.error(`warning: the check in progress was not posted: ${String(e.message).split('\n')[0]}`);
+    }
+  }
 
   console.error(`#${prNumber}: kind ${kind}, ${review.check} by ${model}, base ${base.slice(0, 7)}, head ${head.slice(0, 7)}`);
   // Fresh headless session in the base checkout. Only the checkout's project settings and no MCP servers are
@@ -129,12 +144,16 @@ try {
   } else {
     // The base branch's poster: the same check names, rounds counting and needs-human escalation as in CI.
     run('node', [`${KIT}/post-review.mjs`, '--check', review.check], { cwd: baseDir, env: { ...env, REVIEW_OUTPUT: JSON.stringify(verdict) }, stdio: ['ignore', 'inherit', 'inherit'] });
+    cancelRunning = null;
     const otherTitle = review.otherTitle ?? `${kind} pull request: reviewed by factory/doc-review`;
-    const { setCheck } = await import(new URL(`file:///${path.join(baseDir, KIT, 'lib.mjs').replaceAll('\\', '/')}`));
     process.env.GITHUB_REPOSITORY = repo;
-    setCheck(head, review.other, 'success', otherTitle);
+    kit.setCheck(head, review.other, 'success', otherTitle);
   }
   process.exitCode = verdict ? 0 : 1;
+} catch (e) {
+  // No verdict was posted: cancelled is neither passed nor a failed review, so the review is owed again at once.
+  try { cancelRunning?.(); } catch { /* best effort: a run left in progress is owed again after 30 minutes */ }
+  throw e;
 } finally {
   cleanup();
 }
