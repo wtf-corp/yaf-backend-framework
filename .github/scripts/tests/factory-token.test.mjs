@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { APPS, buildJwt, keyFileProblem, loadKey, mintToken } from '../factory-token.mjs';
+import { APPS, buildJwt, childEnv, keyFileProblem, loadKey, mintToken, repoFromRemote } from '../factory-token.mjs';
 
 const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
 const pem = privateKey.export({ type: 'pkcs8', format: 'pem' });
@@ -26,10 +26,10 @@ function fakeFetch(responses) {
   return { fetch, calls };
 }
 
-test('APPS names the app id and the key variable of both apps', () => {
+test('APPS names the app id, the key variable, the slug and the bot id of both apps', () => {
   assert.deepEqual(APPS, {
-    factory: { appId: 5834995, keyVar: 'YAF_FACTORY_KEY_FILE' },
-    reviewer: { appId: 5837737, keyVar: 'YAF_REVIEWER_KEY_FILE' },
+    factory: { appId: 5834995, keyVar: 'YAF_FACTORY_KEY_FILE', slug: 'yaf-factory', botId: 358792446 },
+    reviewer: { appId: 5837737, keyVar: 'YAF_REVIEWER_KEY_FILE', slug: 'yaf-reviewer', botId: 358867400 },
   });
 });
 
@@ -189,4 +189,79 @@ test('loadKey reports a failed --key-cmd without its output', () => {
   const run = () => { throw Object.assign(new Error(`Command failed: ${output}`), { status: 3, stdout: output }); };
   assert.throws(() => loadKey({ app: 'factory', keyCmd: 'print-the-key', env: {}, platform: 'linux', run, warn: neverWarn }),
     (e) => /--key-cmd/.test(e.message) && !everythingIn(e).includes(output));
+});
+
+const REPO = 'some-owner/some-repo';
+const asApp = (env, app = 'factory') => childEnv(env, { token: FAKE_TOKEN, repo: REPO, app });
+
+test('childEnv makes the app the author of a commit', () => {
+  for (const app of Object.keys(APPS)) {
+    const { slug, botId } = APPS[app];
+    const env = asApp({ GIT_AUTHOR_NAME: 'A Person', GIT_COMMITTER_EMAIL: 'a-person' }, app);
+    const address = `${botId}+${slug}[bot]@users.noreply.github.com`;
+    assert.equal(env.GIT_AUTHOR_NAME, `${slug}[bot]`);
+    assert.equal(env.GIT_COMMITTER_NAME, `${slug}[bot]`);
+    assert.equal(env.GIT_AUTHOR_EMAIL, address);
+    assert.equal(env.GIT_COMMITTER_EMAIL, address);
+  }
+});
+
+test("childEnv overrides git's credential helper for the command only", () => {
+  const given = { PATH: '/usr/bin', GH_TOKEN: 'a-persons-token' };
+  const env = asApp(given);
+  assert.equal(env.GH_TOKEN, FAKE_TOKEN);
+  assert.equal(env.GITHUB_TOKEN, FAKE_TOKEN);
+  assert.equal(env.GIT_TERMINAL_PROMPT, '0');
+  assert.equal(env.GIT_CONFIG_COUNT, '2');
+  assert.equal(env.GIT_CONFIG_KEY_0, 'credential.helper');
+  assert.equal(env.GIT_CONFIG_VALUE_0, '');
+  assert.equal(env.GIT_CONFIG_KEY_1, 'credential.helper');
+  assert.equal(env.GIT_CONFIG_VALUE_1, '!f() { echo username=x-access-token; echo "password=$GH_TOKEN"; }; f');
+  assert.deepEqual(given, { PATH: '/usr/bin', GH_TOKEN: 'a-persons-token' }, 'the given environment is not changed');
+});
+
+test('childEnv refuses an existing GIT_CONFIG_COUNT', () => {
+  for (const count of ['1', '0', '']) {
+    assert.throws(() => asApp({ GIT_CONFIG_COUNT: count, GIT_CONFIG_KEY_0: 'user.name' }),
+      (e) => /GIT_CONFIG_COUNT/.test(e.message) && !everythingIn(e).includes(FAKE_TOKEN));
+  }
+});
+
+test('childEnv leaves other variables alone', () => {
+  const given = { PATH: '/usr/bin', HOME: '/home/someone', FACTORY_PROJECT_OWNER: 'some-owner', FACTORY_PROJECT_NUMBER: '7' };
+  const env = asApp(given);
+  for (const [name, value] of Object.entries(given)) assert.equal(env[name], value);
+  assert.deepEqual(Object.keys(env).filter((name) => !(name in given)).sort(), [
+    'GH_TOKEN', 'GITHUB_REPOSITORY', 'GITHUB_TOKEN',
+    'GIT_AUTHOR_EMAIL', 'GIT_AUTHOR_NAME', 'GIT_COMMITTER_EMAIL', 'GIT_COMMITTER_NAME',
+    'GIT_CONFIG_COUNT', 'GIT_CONFIG_KEY_0', 'GIT_CONFIG_KEY_1', 'GIT_CONFIG_VALUE_0', 'GIT_CONFIG_VALUE_1',
+    'GIT_TERMINAL_PROMPT',
+  ].sort());
+});
+
+test('childEnv sets GITHUB_REPOSITORY only when it is not set', () => {
+  assert.equal(asApp({}).GITHUB_REPOSITORY, REPO);
+  assert.equal(asApp({ GITHUB_REPOSITORY: 'other-owner/other-repo' }).GITHUB_REPOSITORY, 'other-owner/other-repo');
+});
+
+test('repoFromRemote reads owner/name from an HTTPS or SSH GitHub URL, with or without .git', () => {
+  for (const url of [
+    'https://github.com/some-owner/some-repo.git',
+    'https://github.com/some-owner/some-repo',
+    'git@github.com:some-owner/some-repo.git',
+    'git@github.com:some-owner/some-repo',
+    'ssh://git@github.com/some-owner/some-repo.git',
+    'https://github.com/some-owner/some-repo.git\n',
+  ]) {
+    assert.equal(repoFromRemote(url), REPO, url);
+  }
+  assert.equal(repoFromRemote('https://github.com/some-owner/some.repo.git'), 'some-owner/some.repo');
+});
+
+test('repoFromRemote refuses a URL that is no GitHub repository and does not echo it', () => {
+  const withCredentials = `https://someone:${FAKE_TOKEN}@github.com/some-owner/some-repo.git`;
+  const others = ['https://example.com/some-owner/some-repo.git', 'https://github.com/some-owner', 'https://github.com/a/b/c', ''];
+  for (const url of [withCredentials, ...others]) {
+    assert.throws(() => repoFromRemote(url), (e) => /GitHub/.test(e.message) && !everythingIn(e).includes(FAKE_TOKEN));
+  }
 });
