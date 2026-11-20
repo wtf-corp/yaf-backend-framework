@@ -21,6 +21,15 @@ export function approvingHuman(reviews, { author, headSha, isHuman }) {
   return null;
 }
 
+/**
+ * The tier the approval check judges by. A plan in tier low or medium is decided by
+ * factory/plan-gate; a plan in tier high needs the approval like any other tier-high pull request.
+ */
+export function approvalTier(kind, tier) {
+  if (kind === 'plan') return tier === 'high' ? 'high' : 'low';
+  return tier;
+}
+
 export function humanApprovalVerdict(tier, approver) {
   if (tier !== 'high') return { pass: true, title: `tier ${tier}: no human approval required` };
   return approver
