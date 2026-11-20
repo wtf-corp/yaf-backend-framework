@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadPolicy } from '../lib.mjs';
-import { nextAction } from '../inflight.mjs';
+import { nextAction, parseWorktrees, worktreeState } from '../inflight.mjs';
 
 const policy = loadPolicy();
 const now = new Date('2026-11-20T12:00:00Z');
@@ -161,4 +161,107 @@ test('the rows apply in the table\'s order', () => {
   const high = { labels: ['factory', 'tier:high'], rounds: 1 };
   assert.equal(act({ 'factory/review': failed(), 'factory/human-approval': failed() }, high).action, 'fix'); // row 7 before row 8
   assert.equal(act({ 'factory/review': null }, high).action, 'review'); // row 6 before row 8
+});
+
+test('green is not claimed while a gate or a job has not reported', () => {
+  for (const name of ['factory/size', 'factory/guards', 'references', 'factory-self-test', 'factory/test-evidence']) {
+    for (const check of [null, running(1)]) {
+      assert.deepEqual([act({ [name]: check }).action, act({ [name]: check }).reason], ['wait', `not reported yet: ${name}`]);
+    }
+  }
+});
+
+const HEAD = 'a'.repeat(40);
+const PORCELAIN = `worktree C:/dev/yaf
+HEAD ${'b'.repeat(40)}
+branch refs/heads/main
+
+worktree C:/dev/yaf/.claude/worktrees/agent-a1
+HEAD ${HEAD}
+branch refs/heads/ci/38-worktree-state
+locked claude agent agent-a1 (pid 6872)
+
+worktree C:/dev/yaf/.claude/worktrees/agent-a2
+HEAD ${'c'.repeat(40)}
+detached
+locked
+
+worktree C:/dev/yaf/.claude/worktrees/agent-a3
+HEAD ${'d'.repeat(40)}
+branch refs/heads/worktree-agent-a3
+`;
+
+test('parseWorktrees reads path, branch, head and lock', () => {
+  const expected = [
+    { path: 'C:/dev/yaf', branch: 'main', head: 'b'.repeat(40), locked: false },
+    { path: 'C:/dev/yaf/.claude/worktrees/agent-a1', branch: 'ci/38-worktree-state', head: HEAD, locked: true },
+    { path: 'C:/dev/yaf/.claude/worktrees/agent-a2', branch: null, head: 'c'.repeat(40), locked: true },
+    { path: 'C:/dev/yaf/.claude/worktrees/agent-a3', branch: 'worktree-agent-a3', head: 'd'.repeat(40), locked: false },
+  ];
+  assert.deepEqual(parseWorktrees(PORCELAIN), expected);
+  assert.deepEqual(parseWorktrees(PORCELAIN.replaceAll('\n', '\r\n')), expected);
+  assert.deepEqual(parseWorktrees(''), []);
+});
+
+const verdict = (v, round, findings = '') => ({ verdict: v, round, findings, highestRound: round });
+const NO_REVIEW = { verdict: null, round: null, findings: '', highestRound: null };
+const OPEN = { labels: ['factory'], merged: false, open: true };
+/** A ticket's worktree that is reviewed `ready`, pushed and has an open pull request; `extra` overrides an input. */
+const state = (extra = {}) => worktreeState({ worktree: { head: HEAD, locked: false }, ticketLabels: ['factory'], pr: OPEN,
+  review: verdict('ready', 0), awaitingPush: null, originHead: HEAD, ...extra }, policy);
+
+test('a ticket or pull request with needs-human is a human\'s', () => {
+  const rest = { worktree: { head: HEAD, locked: true }, review: verdict('changes-required', 1) };
+  assert.equal(state({ ticketLabels: ['factory', 'needs-human'], ...rest }).state, 'human');
+  assert.equal(state({ pr: { ...OPEN, labels: ['needs-human'] }, ...rest }).state, 'human');
+  assert.equal(state({ pr: { labels: ['needs-human'], merged: true, open: false } }).state, 'human');
+});
+
+test('a locked worktree is being worked in', () => {
+  const locked = { head: HEAD, locked: true };
+  assert.equal(state({ worktree: locked, pr: { ...OPEN, merged: true, open: false } }).state, 'working');
+  assert.equal(state({ worktree: locked, review: NO_REVIEW, pr: null, originHead: null }).state, 'working');
+});
+
+test('the worktree of a merged pull request is removed', () => {
+  assert.equal(state({ pr: { labels: [], merged: true, open: false }, review: NO_REVIEW, originHead: null }).state, 'remove');
+});
+
+test('a head without a local-review marker is owed the local review', () => {
+  assert.deepEqual(state({ review: NO_REVIEW, pr: null, originHead: null }), { state: 'local-review', round: null, findings: null, exhausted: false, notified: false });
+  assert.equal(state({ review: { ...NO_REVIEW, highestRound: 1 } }).state, 'local-review'); // a verdict on another commit only
+});
+
+test('a changes-required verdict is a local fix with the marker\'s round and findings', () => {
+  const s = state({ review: verdict('changes-required', 1, 'Major: the cap fails open'), pr: null, originHead: null });
+  assert.deepEqual(s, { state: 'local-fix', round: 1, findings: 'Major: the cap fails open', exhausted: false, notified: false });
+  assert.equal(state({ review: verdict('changes-required', 1) }).state, 'local-fix'); // pushed or not
+});
+
+test('the local loop ends at the limit', () => {
+  assert.equal(policy.limits.fixRounds, 2);
+  const at = (round) => state({ review: verdict('changes-required', round) });
+  assert.deepEqual([at(0).state, at(0).round, at(0).exhausted], ['local-fix', 0, false]); // the first review
+  assert.equal(at(1).exhausted, false);
+  assert.deepEqual([at(2).state, at(2).round, at(2).exhausted], ['local-fix', 2, true]);
+  assert.equal(at(3).exhausted, true);
+  assert.equal(state({ review: verdict('ready', 2) }).exhausted, false);
+});
+
+test('push-owed is notified only with the marker for that head', () => {
+  const unpushed = { pr: null, originHead: null };
+  assert.deepEqual(state(unpushed), { state: 'push-owed', round: null, findings: null, exhausted: false, notified: false });
+  assert.equal(state({ ...unpushed, awaitingPush: { user: { login: 'yaf-factory[bot]' }, body: `<!-- factory:awaiting-push ${HEAD} -->` } }).notified, true);
+  const behind = state({ originHead: 'e'.repeat(40) }); // origin holds an older commit of the branch
+  assert.deepEqual([behind.state, behind.notified], ['push-owed', false]);
+});
+
+test('a pushed head without an open pull request is owed one', () => {
+  assert.equal(state({ pr: null }).state, 'open-pr');
+  assert.equal(state({ pr: { labels: [], merged: false, open: false } }).state, 'open-pr'); // closed without a merge
+  assert.equal(state({ pr: null, awaitingPush: { body: 'stale' } }).notified, false); // notified belongs to push-owed
+});
+
+test('a pushed head with an open pull request is in flight', () => {
+  assert.deepEqual(state(), { state: 'in-flight', round: null, findings: null, exhausted: false, notified: false });
 });
