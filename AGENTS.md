@@ -103,6 +103,40 @@ node .github/scripts/factory-token.mjs --app reviewer -- git ls-remote origin HE
 node .github/scripts/factory-token.mjs --app factory -- git var GIT_AUTHOR_IDENT    # yaf-factory[bot] and its noreply address
 ```
 
+### Unattended runs
+
+The factory can run with nobody at the keyboard. The command is `.claude/commands/factory-run.md`. The kit README, "Running the orchestrator", says what one tick does. The plan is [plan 0003](specs/0003-unattended-orchestration/plan.md).
+
+**Start.** Open a Claude Code session at the repository root, in the default permission mode, with the setup above done and the folder trusted. Type `/loop /factory-run`. It may run in an Orca terminal; Orca is not needed for it.
+
+**What runs without a prompt.** The command pre-approves the orchestrator's own commands for the turn it starts, and only for that turn: reading the pause, the in-flight list, setting a status, opening a pull request, comments, the labels `needs-human` and `blocked`, the local review as the reviewer app, and removing worktrees and their branches. When a writer's report or a finished command wakes the session between ticks, it starts a tick first. A prompt outside a tick is the safe failure. The allow list and the helper's refusals stop accidents; they are no boundary ("What the setup does not give").
+
+**What waits for the owner.**
+
+- Approving tier-high pull requests, flagged plans and specs, when GitHub asks for the review. **An approval merges.** To hold a pull request, do not approve it, or add `needs-human`. The workflow takes automatic merge off a tier-high pull request that is not approved, also one armed by hand.
+- Pushing the branch of a ticket that changes `.github/workflows/`, from the worktree the notification names, and again after each fix round. The app has no Workflows permission, and no agent pushes with a person's login. **Read the diff of `.github/workflows/` first.** Once pushed, the pull request runs its own version of a workflow, with the permissions that version declares, before any review, and its check runs count as GitHub Actions'.
+
+  ```bash
+  git -C <worktree> diff origin/main -- .github/workflows   # read it
+  git -C <worktree> push -u origin <branch>
+  ```
+
+- A ticket or pull request labelled `needs-human`. A plan or spec pull request whose review asks for changes is not fixed by the run either: it tells the owner, and the fix is made in an attended session.
+
+**How the owner is told.** A review request. For a pull request on a code-owned path GitHub asks the code owners as soon as it opens, before the model review. For the others the factory asks once the model review has passed. Approving early is safe: `factory/review` is required, so the approval only arms automatic merge, and the merge waits for the review of that commit. The session also sends a desktop notification when only the owner's decisions and pushes remain. That is enough for now; a push to the phone needs Remote Control.
+
+**Stop.** Press `Esc` while the loop waits. Or set the repository variable `FACTORY_PAUSED` to `true`: pickup and arming stop, and the run ends at its next tick. Disarming an unapproved tier-high pull request goes on while paused.
+
+**Limits.**
+
+- The machine stays awake and the session open. A self-paced loop is not restored by `--resume` and ends after seven days: start it again. Nothing is lost; the state is on GitHub and in git.
+- Each review and each writer is a model session on the local login. Watch the subscription's usage. How many implementers run at once, how many reviews a ticket gets and when a fix round starts are in "Token economy".
+- Tier-high work waits for the owner whatever the loop does.
+- Nothing is stacked: a ticket that depends on an open one waits for its merge.
+- The run does not update a branch that is behind `main`: the strict policy is off until M0 has a build.
+
+**Optional.** Set `permissions.denyInsteadOfPrompting` in your own user settings. A call that would prompt is then denied, and the run goes on.
+
 ## Model reviews run locally (temporary)
 
 Until the `factory-review` environment has a working API account, the two model reviews do not run in CI. `.github/workflows/factory-pr-review.yml` and `factory-doc-review.yml` are switched off by repository variable `FACTORY_REVIEW_IN_CI`. This overrides what the bundle (ADR-0027, ADR-0029, the kit README, `yaf-orchestrating-work`) says about the CI reviewer, and only that. The review itself, its prompt, schema, model, read-only tools, checks and fix rounds are unchanged.
@@ -112,7 +146,7 @@ Until the `factory-review` environment has a working API account, the two model 
 - **Which identity.** Only the reviewer app: the main ruleset accepts these two checks from it alone. The factory app cannot write checks, and that stays so: the identity that opens pull requests must not be able to pass its own review. Never post them with a personal token.
 - **What it costs in trust.** In CI the reviewer ran on a clean runner from the base branch. Locally it runs on the maintainer's machine: its reads are limited to the temporary checkout by permission rules. Author and reviewer are kept apart by a rule of procedure: the implementer never runs the review. It never runs the helper with `--app reviewer` and never runs `local-review.mjs`. The owner accepted on 2026-11-19 that the separation rests on that rule alone until the reviews move back to CI ([plan 0002](specs/0002-local-factory-operation/plan.md#decision-log)). Treat it as a stopgap.
 
-This should move back to CI: fix the account, set `FACTORY_REVIEW_IN_CI=true`, point the two checks in the ruleset back at GitHub Actions (`integration_id` 15368), delete `local-review.mjs`, the `reviewer` entry of `APPS` in `factory-token.mjs` (the entry, not the helper) and this section.
+This should move back to CI: fix the account, set `FACTORY_REVIEW_IN_CI=true`, point the two checks in the ruleset back at GitHub Actions (`integration_id` 15368), remove `bots.reviewer` from `docs/spec/factory/.github/factory/policy.json` (while it is set, `inflight.mjs` reads the two review checks only from the reviewer app), delete `local-review.mjs`, the `reviewer` entry of `APPS` in `factory-token.mjs` (the entry, not the helper) and this section.
 
 ## Token economy
 
