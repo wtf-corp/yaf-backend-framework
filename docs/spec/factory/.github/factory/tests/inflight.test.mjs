@@ -8,7 +8,7 @@ const now = new Date('2026-11-20T12:00:00Z');
 const minutesAgo = (n) => new Date(now.getTime() - n * 60_000).toISOString();
 const GREEN = ['factory/tier', 'factory/ticket', 'factory/size', 'factory/delta', 'factory/guards', 'factory/plan-gate', 'factory/human-approval',
   'factory/review', 'factory/doc-review', 'references', 'factory-self-test', 'factory/test-evidence'];
-const failed = (title = '') => ({ status: 'completed', conclusion: 'failure', title });
+const failed = (title = '', conclusion = 'failure') => ({ status: 'completed', conclusion, title });
 const running = (minutes) => ({ status: 'in_progress', conclusion: null, startedAt: minutesAgo(minutes) });
 
 /** A green, undrafted code pull request; `checks` overrides a check run by name, and null removes it. */
@@ -105,4 +105,47 @@ test('a flagged plan gate is the owner\'s', () => {
 
 test('a green pull request waits for GitHub to merge', () => {
   assert.deepEqual(act(), { action: 'wait', reason: 'the checks are green: GitHub merges', round: null, cause: null });
+});
+
+test('a references fix in the making is waited for', () => {
+  for (const worktree of [{ locked: true, ahead: false }, { locked: false, ahead: true }]) {
+    assert.equal(act({ references: failed() }, { referencesFixTried: true, worktree }).action, 'wait');
+    assert.equal(act({ references: failed() }, { worktree }).action, 'wait');
+    assert.equal(act({ 'factory-self-test': failed() }, { worktree }).action, 'gate-failed');
+  }
+  assert.equal(act({ references: failed() }, { referencesFixTried: true, worktree: { locked: false, ahead: false } }).action, 'gate-failed');
+});
+
+test('used-up fix rounds are the owner\'s', () => {
+  const review = { 'factory/review': failed() };
+  assert.equal(policy.limits.fixRounds, 2);
+  assert.deepEqual([act(review, { rounds: 2 }).action, act(review, { rounds: 2 }).round], ['fix', 2]);
+  assert.deepEqual([act(review, { rounds: 3 }).action, act(review, { rounds: 3 }).reason], ['human', 'fix rounds used up']);
+  assert.equal(act(review, { rounds: 3, worktree: { locked: false, ahead: true } }).action, 'human');
+});
+
+test('a review that ended without a verdict is owed, not a fix', () => {
+  for (const conclusion of ['cancelled', 'timed_out', 'action_required']) {
+    const a = act({ 'factory/review': failed('', conclusion) }, { rounds: 1 });
+    assert.equal(a.action, 'review');
+    assert.match(a.reason, new RegExp(conclusion));
+  }
+  assert.notEqual(act({ 'factory/review': { status: 'in_progress', conclusion: null } }).reason, act({ 'factory/review': running(31) }).reason);
+});
+
+test('a cancelled or timed-out gate or job is failed, not passed', () => {
+  for (const conclusion of ['cancelled', 'timed_out']) {
+    assert.equal(act({ 'factory/guards': failed('', conclusion) }).action, 'gate-failed');
+    assert.equal(act({ 'factory-self-test': failed('', conclusion) }).action, 'gate-failed');
+    assert.equal(act({ 'factory/human-approval': failed('', conclusion) }).action, 'human');
+  }
+  assert.equal(act({ 'factory/test-evidence': failed('', 'skipped') }).action, 'wait');
+});
+
+test('the rows apply in the table\'s order', () => {
+  assert.equal(act({ 'factory/tier': null }, { draft: true }).action, 'none'); // row 2 before row 3
+  assert.equal(act({ 'factory/size': failed(), 'factory/review': running(2) }).action, 'gate-failed'); // row 4b before row 5
+  const high = { labels: ['factory', 'tier:high'], rounds: 1 };
+  assert.equal(act({ 'factory/review': failed(), 'factory/human-approval': failed() }, high).action, 'fix'); // row 7 before row 8
+  assert.equal(act({ 'factory/review': null }, high).action, 'review'); // row 6 before row 8
 });
