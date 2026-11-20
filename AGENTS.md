@@ -80,20 +80,21 @@ icacls $dir /inheritance:r /grant:r "$($env:USERNAME):(OI)(CI)F"
 [Environment]::SetEnvironmentVariable('YAF_REVIEWER_KEY_FILE', "$dir\yaf-reviewer.<date>.private-key.pem", 'User')
 ```
 
-Confirm with `icacls <dir>` that only the entries you expect are left. The command adds none for SYSTEM or Administrators: add `/grant:r "SYSTEM:(OI)(CI)F"` and the same for `Administrators` if you want them. On Windows a user-level variable reaches only processes started afterwards: restart the terminal and Claude Code.
+Confirm with `icacls <dir>` that only the entries you expect are left. The command adds none for SYSTEM or Administrators: add `/grant:r "*S-1-5-18:(OI)(CI)F"` (SYSTEM) and `/grant:r "*S-1-5-32-544:(OI)(CI)F"` (Administrators) if you want them; the SIDs work in every display language. On Windows a user-level variable reaches only processes started afterwards: restart the terminal and Claude Code.
 
 **Project variables.** Set `FACTORY_PROJECT_OWNER` and `FACTORY_PROJECT_NUMBER` as user-level environment variables too, with the values of the repository variables of the same names. `status.mjs` needs them, and the app's token cannot read them.
 
 **What the setup does not give.**
 
 - Any process running as the user, agents included, can read the key files. The two deny rules in `.claude/settings.json` (reading the key folder, running the helper with `--print`) stop accidents, not a determined agent. A key that may have been read is deleted on the app's settings page and replaced. Keys as files depart from the default of `18` §4 (`docs/spec/spec/18-build-plan.md`) by the owner's decision (plan 0002, decision log).
-- The helper's check of `git` commands looks only at whether `origin` of its working directory is HTTPS. It does not cover:
+- The helper's check of `git` commands looks only at the first word of the wrapped command and at whether `origin` of its working directory is HTTPS. It does not cover:
+  - a `git` started by another program the helper runs: `gh`, or a `node` script such as `local-review.mjs` with its own `git fetch`;
   - an HTTPS `origin` on a host other than github.com; the credential helper it sets answers any host (#58);
   - `git -C <dir>`, `--git-dir` or `GIT_DIR` pointing at another repository (the orchestrator's `git -C <worktree>` stays within this repository, whose worktrees share its remotes);
   - a push to a remote other than `origin`;
   - `git -c` overrides.
 
-**One-time check, by the owner in their own terminal** (no agent runs it):
+**Check when setting up a machine,** by its user in their own terminal (no agent runs it):
 
 ```bash
 node .github/scripts/factory-token.mjs --app factory -- gh api repos/<owner>/<name> --jq .full_name   # prints the repository
