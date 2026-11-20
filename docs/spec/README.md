@@ -84,7 +84,7 @@ The rules of the process are tool-neutral and live in the ADRs, `AGENTS.md` and 
 | Own implementations | Result type, dispatcher, validation rule builder, approval-test helper are YAF's own; cron expressions are parsed by Cronos; other third-party engines are optional adapters |
 | Versioning | Conventional Commits and semantic-release as the last job of the build pipeline (GitHub Actions), NuGet trusted publishing, attestations. Prereleases only until 1.0.0; afterwards breaking changes are batched on `next` |
 | Process for the initial build | This specification is the approved spec; each milestone needs a plan only. Approval is a human's review on GitHub, not a line in a file |
-| How the work is done | A software factory (ADR-0029): separate agents write and review specs, plans and code; a plan becomes GitHub issues, each worked in its own worktree and small pull request (200 lines soft, 400 hard); authoring is local, gating runs in GitHub Actions |
+| How the work is done | A software factory (ADR-0029): separate agents write and review specs, plans and code; a plan becomes GitHub issues, each worked in its own worktree and small pull request (200 lines soft, 400 hard by default; this repository uses 400 and 1000 during the initial build, until `1.0.0`); authoring is local, gating runs in GitHub Actions |
 | Who merges | Risk tiers computed by script from one policy file: low and medium merge automatically on green checks and the reviewing agent's check, high (security, privacy, guard files, breaking changes, new dependencies, undeclared API or schema change) waits for a human maintainer. An agent never approves |
 
 ## Caveats for the implementer

@@ -90,7 +90,7 @@ test('plan flags: public API, high tickets, deviations', () => {
 test('ticket list problems a script can decide', () => {
   const tickets = parseTickets(plan);
   assert.deepEqual(ticketProblems(tickets, policy), []);
-  const bad = parseTickets(plan.replace('| T1 | medium', '| T1 | medium').replace('| — | src/Core/Ids/** | medium | 120', '| T2 | src/Core/Ids/** | medium | 320'));
+  const bad = parseTickets(plan.replace('| T1 | medium', '| T1 | medium').replace('| — | src/Core/Ids/** | medium | 120', `| T2 | src/Core/Ids/** | medium | ${policy.size.soft + 1}`));
   const problems = ticketProblems(bad, policy);
   assert.ok(problems.some((p) => p.includes('comes later')));
   assert.ok(problems.some((p) => p.includes('soft limit')));

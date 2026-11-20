@@ -22,8 +22,8 @@
     "fixRounds": 2
   },
   "size": {
-    "soft": 200,
-    "hard": 400,
+    "soft": 400,
+    "hard": 1000,
     "exclude": [
       "**/*.g.cs",
       "**/*.Designer.cs",

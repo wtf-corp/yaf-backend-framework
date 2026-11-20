@@ -93,7 +93,7 @@ New dependency: no / yes — agreed with the human owner on yyyy-MM-dd.
 ## Tickets
 
 <!--
-One row per ticket; one ticket = one concern = one pull request, within the soft size limit (200 changed hand-written lines by default).
+One row per ticket; one ticket = one concern = one pull request, within the soft size limit (200 changed hand-written lines by default; this repository uses 400 during the initial build, until `1.0.0`).
 After this plan merges, factory-tickets.yml creates one issue per row. Do not create issues by hand.
 Key:        T1, T2 … stable; never renumber after the plan is merged.
 Requires:   requirement ids, or sections of specs/0000-framework (05 §4; 05 §11 item 3).
