@@ -180,9 +180,13 @@ export function parseArgs(argv) {
 /** The program a command names: no folder, lower case, no ".exe". Windows drops trailing dots and spaces from a file name: "git." and "git.exe." start git too. */
 const programName = (command) => command.split(/[\\/]/).pop().toLowerCase().replace(/[. ]+$/, '').replace(/\.exe$/, '').replace(/[. ]+$/, '');
 
-const HUMAN_LABEL = /guard-change|major-release|size-accepted/;
+/** GitHub compares label names without regard to case. */
+const HUMAN_LABEL = /guard-change|major-release|size-accepted/i;
 /** What a `gh api` argument must not name; `labels` counts only together with a human's label. */
 const HUMAN_API = /pulls\/[^/]+\/(reviews|merge)|merge-queue|rulesets|branches\/.+\/protection|environments/i;
+/** GraphQL mutations that merge or arm a merge; a review mutation counts only together with APPROVE. A query read from a file (-F query=@file) is not looked into. */
+const HUMAN_MUTATION = /mergePullRequest|enablePullRequestAutoMerge/;
+const REVIEW_MUTATION = /(add|submit)PullRequestReview/;
 /** Options of git that stand before the subcommand and take their value as the next argument. */
 const GIT_VALUE_OPTIONS = ['-C', '-c', '--git-dir', '--work-tree', '--namespace', '--config-env'];
 
@@ -195,10 +199,17 @@ function refusedGh(args) {
   if (['release', 'label', 'secret'].includes(group)) return `gh ${group}`;
   if (['pr merge', 'repo edit', 'variable set', 'variable delete', 'workflow disable'].includes(two)) return `gh ${two}`;
   if (two === 'pr review' && args.some((arg) => arg.startsWith('--approve') || /^-a/.test(arg))) return 'an approving review (gh pr review --approve)';
-  const label = args.map((arg) => HUMAN_LABEL.exec(arg)?.[0]).find(Boolean);
+  const labelIn = (list) => list.map((arg) => HUMAN_LABEL.exec(arg)?.[0]).find(Boolean);
+  const label = labelIn(args);
   if (label && ['pr edit', 'issue edit'].includes(two)) return `the label ${label} (gh ${two})`;
-  if (group === 'api' && label && args.some((arg) => /labels/i.test(arg))) return `the label ${label} (gh api)`;
-  const named = group === 'api' && args.map((arg) => HUMAN_API.exec(arg)?.[0]).find(Boolean);
+  // On create only the labels count: a title or a body may name one.
+  const created = ['pr create', 'issue create'].includes(two) && labelIn(args.filter((arg, i) => /^(--label|-l)/.test(arg) || ['--label', '-l'].includes(args[i - 1])));
+  if (created) return `the label ${created} (gh ${two})`;
+  if (group !== 'api') return null;
+  if (label && args.some((arg) => /labels/i.test(arg))) return `the label ${label} (gh api)`;
+  const has = (pattern) => args.some((arg) => pattern.test(arg));
+  if (has(REVIEW_MUTATION) && has(/APPROVE/)) return 'an approving review (gh api graphql)';
+  const named = args.map((arg) => (HUMAN_API.exec(arg) ?? HUMAN_MUTATION.exec(arg))?.[0]).find(Boolean);
   return named ? `gh api on ${named}` : null;
 }
 
@@ -209,9 +220,14 @@ function refusedGit(args) {
   const [subcommand, ...rest] = args.slice(i);
   if (subcommand === 'tag') return 'git tag';
   if (subcommand !== 'push') return null;
-  if (rest.some((arg) => arg.startsWith('--force') || /^-[a-zA-Z]*f/.test(arg) || arg.startsWith('+'))) return 'a forced push';
+  if (rest.some((arg) => arg.startsWith('--force') || arg === '--mirror' || /^-[a-zA-Z]*f/.test(arg) || arg.startsWith('+'))) return 'a forced push';
+  // Every local branch goes with these, a local main, next or stable among them.
+  if (rest.some((arg) => arg === '--all' || arg === '--branches')) return 'a push of every branch';
   // The first argument that is no option is the remote; a refspec is [+]<source>[:<destination>].
-  const destinations = rest.filter((arg) => !arg.startsWith('-')).slice(1).map((refspec) => refspec.slice(refspec.lastIndexOf(':') + 1).replace(/^refs\/heads\//, ''));
+  const refs = rest.filter((arg) => !arg.startsWith('-')).slice(1).map((refspec) => refspec.slice(refspec.lastIndexOf(':') + 1));
+  if (rest.some((arg) => arg === '--tags' || arg === '--follow-tags') || refs.some((ref) => /^(refs\/)?tags\//.test(ref))) return 'a push of tags';
+  // git completes a destination with refs/ and with refs/heads/: "heads/main" is main too.
+  const destinations = refs.map((ref) => ref.replace(/^(refs\/)?(heads\/)?/, ''));
   const branch = destinations.find((destination) => ['main', 'next', 'stable'].includes(destination));
   return branch ? `a push to ${branch}` : null;
 }

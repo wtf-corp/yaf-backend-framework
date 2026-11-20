@@ -504,6 +504,7 @@ test('a push to a protected branch is refused, with git -C too', () => {
     refused('git', 'push', 'origin', branch);
     refused('git', 'push', 'origin', `HEAD:${branch}`);
     refused('git', 'push', '-u', 'origin', `ci/40-x:refs/heads/${branch}`);
+    refused('git', 'push', 'origin', `HEAD:heads/${branch}`);
     refused('git', '-C', '.', 'push', 'origin', branch);
     refused('git', '-c', 'push.default=current', '-C', '../tree', 'push', 'origin', `HEAD:${branch}`);
   }
@@ -520,6 +521,34 @@ test('a forced push is refused', () => {
   refused('git', 'push', 'origin', 'ci/40-x', '-uf');
   refused('git', 'push', 'origin', '+ci/40-x');
   refused('git', '-C', '.', 'push', 'origin', '-f', 'ci/40-x');
+  refused('git', 'push', '--mirror', 'origin');
+  refused('git', 'push', '--all', 'origin');
+  refused('git', 'push', 'origin', '--branches');
+});
+
+test('a push of tags is refused', () => {
+  refused('git', 'push', '--tags', 'origin');
+  refused('git', 'push', '--follow-tags', 'origin', 'ci/40-x');
+  refused('git', 'push', 'origin', 'refs/tags/v1.0.0');
+  refused('git', 'push', 'origin', 'HEAD:refs/tags/v1.0.0');
+  refused('git', 'push', 'origin', 'tags/v1.0.0');
+});
+
+test('a merge or an approval through GraphQL and a human-only label on create are refused', () => {
+  refused('gh', 'api', 'graphql', '-f', 'query=mutation { mergePullRequest(input: {pullRequestId: "x"}) { clientMutationId } }');
+  refused('gh', 'api', 'graphql', '-f', 'query=mutation { enablePullRequestAutoMerge(input: {pullRequestId: "x"}) { clientMutationId } }');
+  refused('gh', 'api', 'graphql', '-f', 'query=mutation { addPullRequestReview(input: {pullRequestId: "x", event: APPROVE}) { clientMutationId } }');
+  refused('gh', 'api', 'graphql', '-f', 'query=mutation($e: PullRequestReviewEvent!) { submitPullRequestReview(input: {event: $e}) { clientMutationId } }', '-f', 'e=APPROVE');
+  passes('gh', 'api', 'graphql', '-f', 'query=mutation { addPullRequestReview(input: {pullRequestId: "x", event: COMMENT}) { clientMutationId } }');
+  passes('gh', 'api', 'graphql', '-f', 'query={ repository(owner: "o", name: "n") { pullRequest(number: 5) { mergeable } } }');
+  for (const label of ['guard-change', 'major-release', 'size-accepted', 'Size-Accepted']) {
+    refused('gh', 'pr', 'create', '--title', 'ci: x', '--label', label);
+    refused('gh', 'pr', 'create', '--title', 'ci: x', `--label=factory,${label}`);
+    refused('gh', 'issue', 'create', '--title', 'x', '-l', label);
+    refused('gh', 'pr', 'edit', '5', '--add-label', label.toUpperCase());
+  }
+  passes('gh', 'pr', 'create', '--title', 'ci: x', '--body', 'guard-change is asked of a maintainer', '--label', 'factory');
+  passes('gh', 'issue', 'create', '--title', 'size-accepted was refused', '-l', 'needs-human');
 });
 
 test('tags, releases, the human-only labels and repository settings are refused', () => {
