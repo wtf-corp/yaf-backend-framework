@@ -210,9 +210,9 @@ export function runCommand(command, args, env, warn = console.error) {
 }
 
 /** The URL of origin, or "" when there is none. */
-function readOriginUrl() {
+function readOriginUrl(...flags) {
   try {
-    return execFileSync('git', ['remote', 'get-url', 'origin'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    return execFileSync('git', ['remote', 'get-url', ...flags, 'origin'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
   } catch {
     return '';
   }
@@ -230,9 +230,12 @@ async function main(argv, env) {
   try {
     const { app, keyFile, keyCmd, print, command: [command, ...args] } = options;
     const origin = readOriginUrl();
-    const refusal = print ? null : gitRefusal(command, origin);
+    // A push goes to the push URLs, which remote.origin.pushurl and url.<base>.pushInsteadOf can make differ from the fetch URL.
+    const pushRefusal = () => readOriginUrl('--push', '--all').split('\n').map((url) => gitRefusal(command, url)).find(Boolean);
+    const refusal = print ? null : gitRefusal(command, origin) ?? pushRefusal();
     if (refusal) {
       console.error(refusal);
+      if (/^https:\/\//i.test(origin)) console.error('It is a push URL of origin that is not HTTPS: see remote.origin.pushurl and url.<base>.pushInsteadOf in the git configuration.');
       return 2;
     }
     const repo = options.repo ?? repoFromRemote(origin);

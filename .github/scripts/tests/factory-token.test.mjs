@@ -408,6 +408,42 @@ test('the command line refuses an origin whose owner and name are dots before it
   }
 });
 
+test('the command line refuses a git command when only the push URL of origin is SSH', () => {
+  const https = 'https://github.com/some-owner/some-repo.git';
+  const ssh = 'git@github.com:some-owner/some-repo.git';
+  // Repository-local configuration only: a separate push URL, and a rewrite of the URL for pushes.
+  for (const setting of [['remote.origin.pushurl', ssh], ['url.git@github.com:.pushInsteadOf', 'https://github.com/']]) {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'factory-token-test-'));
+    try {
+      const git = (...args) => assert.equal(spawnSync('git', args, { cwd: dir, env: noKeyEnv }).status, 0, `git ${args[0]}`);
+      git('init', '--quiet');
+      git('remote', 'add', 'origin', https);
+      git('config', '--local', ...setting);
+      const result = runScript(['--app', 'factory', '--', 'git', 'push'], { cwd: dir });
+      assert.equal(result.status, 2, setting[0]);
+      assert.match(result.stderr, /not HTTPS/);
+      assert.match(result.stderr, /push URL/);
+      assert.doesNotMatch(result.stderr, /YAF_FACTORY_KEY_FILE/);
+      assert.equal(result.stdout, '');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  }
+});
+
+test('the command line runs the command as the app and exits with its code', () => {
+  withKeyDir((dir, keyFile) => {
+    const stub = path.join(dir, 'fetch-stub.mjs');
+    fs.writeFileSync(stub, FETCH_STUB);
+    const check = `process.exit(process.env.GH_TOKEN === '${FAKE_TOKEN}' && process.env.GIT_AUTHOR_NAME === 'yaf-reviewer[bot]' ? 7 : 0)`;
+    const result = spawnSync(process.execPath, ['--import', pathToFileURL(stub).href, SCRIPT, '--app', 'reviewer', '--key-file', keyFile, '--repo', REPO, '--', process.execPath, '-e', check],
+      { env: noKeyEnv, encoding: 'utf8' });
+    assert.equal(result.status, 7, result.stderr);
+    assert.ok(!result.stdout.includes(FAKE_TOKEN));
+    assert.ok(!result.stderr.includes(FAKE_TOKEN));
+  });
+});
+
 test('the command line refuses an existing GIT_CONFIG_COUNT before it reads a key', () => {
   const result = runScript(['--app', 'factory', '--repo', REPO, '--', process.execPath, '-e', 'process.exit(0)'], { env: { ...noKeyEnv, GIT_CONFIG_COUNT: '1' } });
   assert.equal(result.status, 1);
