@@ -1,3 +1,12 @@
 # Local Claude Code state: personal settings and the worktrees of implementer agents (isolation: worktree)
 .claude/settings.local.json
 .claude/worktrees/
+
+# Build output and test results
+bin/
+obj/
+artifacts/
+TestResults/
+
+# Approval output that was not accepted (tests/AGENTS.md rule 9)
+*.received.*

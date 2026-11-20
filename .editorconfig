@@ -1,0 +1,9 @@
+root = true
+
+# Suppression list (specs/0000-framework/01-repository-and-packages.md §4). Each entry says why.
+# Adding or widening one is a guard change.
+
+[tests/**.cs]
+# CA1707: test names follow Method_Scenario_Expected (tests/AGENTS.md rule 2), which needs underscores.
+# Only for tests; src keeps the rule. Owner's decision Q8 (a), specs/0005-repository-skeleton/plan.md.
+dotnet_diagnostic.CA1707.severity = none

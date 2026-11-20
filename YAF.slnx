@@ -1,0 +1,5 @@
+<Solution>
+  <Folder Name="/tests/">
+    <Project Path="tests/Skeleton.Tests/Skeleton.Tests.csproj" />
+  </Folder>
+</Solution>
