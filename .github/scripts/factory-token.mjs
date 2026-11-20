@@ -28,6 +28,7 @@ const runShell = (command) => execSync(command, { encoding: 'utf8', stdio: ['ign
  * `run` and `warn` are the shell runner and the warning sink, replaced in tests.
  */
 export function loadKey({ app, keyFile, keyCmd, env, platform, run = runShell, warn = console.error }) {
+  if (!Object.hasOwn(APPS, app)) throw new Error(`Unknown app "${app}": the apps are ${Object.keys(APPS).join(' and ')}.`);
   if (keyFile && keyCmd) throw new Error('--key-file and --key-cmd exclude each other: give one.');
   let pem;
   if (keyCmd) {
@@ -41,7 +42,7 @@ export function loadKey({ app, keyFile, keyCmd, env, platform, run = runShell, w
     const file = keyFile || env[keyVar];
     if (!file) throw new Error(`No key for app "${app}": set ${keyVar} to the path of its private key file, or give --key-file or --key-cmd.`);
     const problem = keyFileProblem(fs.statSync(file).mode, platform);
-    if (problem) throw new Error(`The key file ${file} ${problem}. Run: chmod 600 ${file}`);
+    if (problem) throw new Error(`The key file ${file} ${problem}. Run: chmod 600 "${file}"`);
     if (platform === 'win32') warn(`Warning: the permissions of ${file} were not checked; Windows file modes say nothing about who can read it.`);
     pem = fs.readFileSync(file, 'utf8');
   }

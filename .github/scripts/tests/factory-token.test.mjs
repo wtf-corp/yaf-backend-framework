@@ -142,6 +142,20 @@ test('loadKey takes the output of --key-cmd before the variable', () => {
   assert.deepEqual(commands, ['print-the-key']);
 });
 
+test('loadKey runs --key-cmd through the shell and takes its output', () => {
+  withFile(pem, (file) => {
+    const keyCmd = `"${process.execPath}" -e "process.stdout.write(require('fs').readFileSync(process.argv[1], 'utf8'))" "${file}"`;
+    assert.equal(loadKey({ app: 'factory', keyCmd, env: {}, platform: process.platform, warn: neverWarn }), pem);
+  });
+});
+
+test('loadKey refuses an app it does not know, naming the apps', () => {
+  for (const app of ['other', 'toString', undefined]) {
+    assert.throws(() => loadKey({ app, keyCmd: 'print-the-key', env: {}, platform: 'linux', run: neverRun, warn: neverWarn }),
+      /Unknown app .* factory and reviewer/);
+  }
+});
+
 test('loadKey refuses --key-file together with --key-cmd', () => {
   const both = { app: 'factory', keyFile: '/no/such/file', keyCmd: 'print-the-key', env: {}, platform: 'linux' };
   assert.throws(() => loadKey({ ...both, run: neverRun, warn: neverWarn }), /--key-file and --key-cmd/);
@@ -156,7 +170,7 @@ test('loadKey with no source fails naming the variable', () => {
 test('loadKey refuses a key file readable by group or others and names the fix', () => {
   withFile(pem, (file) => {
     assert.throws(() => loadKey({ app: 'factory', keyFile: file, env: {}, platform: 'linux', run: neverRun, warn: neverWarn }),
-      (e) => e.message.includes(`chmod 600 ${file}`) && !everythingIn(e).includes('PRIVATE KEY'));
+      (e) => e.message.includes(`chmod 600 "${file}"`) &&!everythingIn(e).includes('PRIVATE KEY'));
   });
 });
 
