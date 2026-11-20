@@ -3,7 +3,7 @@ name: planner
 description: Writes the implementation plan (specs/NNNN-slug/plan.md) for an approved spec or an initial-build milestone, ending with the Tickets table and the factory:delta block. Never reviews its own plan.
 tools: Read, Grep, Glob, Write, Edit, Bash, WebFetch, WebSearch
 disallowedTools: Agent
-model: fable
+model: opus
 skills:
   - yaf-writing-plans
   - yaf-commits-and-pull-requests

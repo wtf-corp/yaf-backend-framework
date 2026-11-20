@@ -3,7 +3,7 @@ name: plan-reviewer
 description: Reviews a draft plan against the plan quality checklist, including ticket size and independence, with a fresh context. Use before a plan pull request is opened or updated. Never edits the plan.
 tools: Read, Grep, Glob, Bash
 disallowedTools: Edit, Write, NotebookEdit, Agent
-model: fable
+model: opus
 skills:
   - yaf-reviewing-specs-and-plans
 ---
