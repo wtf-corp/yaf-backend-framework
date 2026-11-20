@@ -176,7 +176,9 @@ In a Claude Code session at the repository root, authenticated as the app, with 
 Follow the yaf-orchestrating-work skill. Work the Ready tickets of epic #<n>. Stop at the end of the milestone or at the first needs-human.
 ```
 
-The skill is the instruction; in short the session reads the Project, checks `FACTORY_PAUSED`, picks tickets, and for each one: `node .github/factory/status.mjs set <issue> "In progress"` → spawn `implementer` → re-run verification → spawn `code-reviewer` → open the pull request → `status.mjs set <issue> "In review"`. It reports at the end what merged, what waits for you and why.
+That prompt is for a run you attend. An unattended run (`/loop /factory-run`) waits instead: at a `needs-human` or when only your decisions remain it tells you, picks up nothing and keeps checking until you have acted.
+
+The skill is the instruction; in short the session reads the Project, checks `FACTORY_PAUSED`, picks tickets, and for each one: `node .github/factory/status.mjs set <issue> "In progress"` → spawn `implementer`, whose tooling gives it a worktree in which it creates the branch → re-run verification in that worktree → spawn `code-reviewer` → record the verdict on the ticket → open the pull request → `status.mjs set <issue> "In review"`. It reports at the end what merged, what waits for you and why.
 
 `status.mjs` needs `GH_TOKEN` (the app's), `GITHUB_REPOSITORY`, `FACTORY_PROJECT_OWNER` and `FACTORY_PROJECT_NUMBER` in the environment.
 
