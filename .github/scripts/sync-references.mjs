@@ -12,7 +12,7 @@
 //   .claude/skills/<name>/SKILL.md  front matter of docs/spec/agents/skills/<name>/SKILL.md + a pointer to it
 //   .agents/skills/<name>/SKILL.md  the same, for tools that read the tool-neutral location
 //   verbatim copies, only where the format has no include and the tool reads one fixed path:
-//     .claude/settings.json, .github/pull_request_template.md, .github/ISSUE_TEMPLATE/{ticket,epic}.yml
+//     .claude/settings.json, .claude/commands/factory-run.md, .github/pull_request_template.md, .github/ISSUE_TEMPLATE/{ticket,epic}.yml
 //
 // Everything else (the gate scripts, the policy, prompts, schemas) is used in place by the workflows.
 // Node 22+, no dependencies.
@@ -26,6 +26,7 @@ const GENERATOR = '.github/scripts/sync-references.mjs';
 
 const VERBATIM = {
   '.claude/settings.json': `${KIT}/.claude/settings.json`,
+  '.claude/commands/factory-run.md': `${KIT}/.claude/commands/factory-run.md`,
   '.github/pull_request_template.md': `${KIT}/.github/pull_request_template.md`,
   '.github/ISSUE_TEMPLATE/ticket.yml': `${KIT}/.github/ISSUE_TEMPLATE/ticket.yml`,
   '.github/ISSUE_TEMPLATE/epic.yml': `${KIT}/.github/ISSUE_TEMPLATE/epic.yml`,
