@@ -5,6 +5,7 @@ tools: Read, Grep, Glob, Write, Edit, Bash
 disallowedTools: Agent
 model: fable
 isolation: worktree
+permissionMode: acceptEdits
 skills:
   - yaf-implementing-tickets
   - yaf-commits-and-pull-requests
