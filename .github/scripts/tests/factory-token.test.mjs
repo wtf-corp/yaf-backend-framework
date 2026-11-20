@@ -3,7 +3,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
-import { APPS, buildJwt, mintToken } from '../factory-token.mjs';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { APPS, buildJwt, keyFileProblem, loadKey, mintToken } from '../factory-token.mjs';
 
 const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
 const pem = privateKey.export({ type: 'pkcs8', format: 'pem' });
@@ -82,4 +85,94 @@ test("a failed call's error holds no key, JWT or token", async () => {
       assert.ok(!everything.includes(secret), 'the error must not hold a secret');
     }
   }
+});
+
+/** Runs `use` with a temporary file holding `content`, then deletes it. */
+function withFile(content, use) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'factory-token-test-'));
+  const file = path.join(dir, 'app.pem');
+  try {
+    fs.writeFileSync(file, content);
+    fs.chmodSync(file, 0o644);
+    return use(file);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+/** A second key, so that a test can tell which source was read. */
+const otherPem = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey.export({ type: 'pkcs8', format: 'pem' });
+const neverRun = () => assert.fail('no command may run');
+const neverWarn = () => assert.fail('no warning expected');
+const everythingIn = (error) => `${error.stack}\n${JSON.stringify(error, Object.getOwnPropertyNames(error))}`;
+
+test('keyFileProblem refuses a key file readable by group or others', () => {
+  for (const platform of ['linux', 'darwin']) {
+    assert.match(keyFileProblem(0o100644, platform), /group or others/);
+    assert.match(keyFileProblem(0o100640, platform), /group or others/);
+    assert.equal(keyFileProblem(0o100600, platform), null);
+  }
+  assert.equal(keyFileProblem(0o100666, 'win32'), null);
+});
+
+test("loadKey reads the file named by the app's variable and warns on Windows", () => {
+  withFile(pem, (file) => {
+    const warnings = [];
+    const warn = (line) => warnings.push(line);
+    const key = loadKey({ app: 'reviewer', env: { YAF_REVIEWER_KEY_FILE: file }, platform: 'win32', run: neverRun, warn });
+    assert.equal(key, pem);
+    assert.equal(warnings.length, 1);
+    assert.match(warnings[0], /permissions .* not checked/);
+    assert.ok(!warnings[0].includes('\n'), 'one line, and so no key');
+  });
+});
+
+test("loadKey takes --key-file before the app's variable", () => {
+  withFile(pem, (file) => withFile(otherPem, (other) => {
+    const env = { YAF_FACTORY_KEY_FILE: other };
+    assert.equal(loadKey({ app: 'factory', keyFile: file, env, platform: 'win32', run: neverRun, warn: () => {} }), pem);
+  }));
+});
+
+test('loadKey takes the output of --key-cmd before the variable', () => {
+  const commands = [];
+  const run = (command) => { commands.push(command); return pem; };
+  const env = { YAF_FACTORY_KEY_FILE: '/no/such/file' };
+  assert.equal(loadKey({ app: 'factory', keyCmd: 'print-the-key', env, platform: 'linux', run, warn: neverWarn }), pem);
+  assert.deepEqual(commands, ['print-the-key']);
+});
+
+test('loadKey refuses --key-file together with --key-cmd', () => {
+  const both = { app: 'factory', keyFile: '/no/such/file', keyCmd: 'print-the-key', env: {}, platform: 'linux' };
+  assert.throws(() => loadKey({ ...both, run: neverRun, warn: neverWarn }), /--key-file and --key-cmd/);
+});
+
+test('loadKey with no source fails naming the variable', () => {
+  const rest = { platform: 'linux', run: neverRun, warn: neverWarn };
+  assert.throws(() => loadKey({ app: 'factory', env: {}, ...rest }), /YAF_FACTORY_KEY_FILE/);
+  assert.throws(() => loadKey({ app: 'reviewer', env: { YAF_FACTORY_KEY_FILE: '/no/such/file' }, ...rest }), /YAF_REVIEWER_KEY_FILE/);
+});
+
+test('loadKey refuses a key file readable by group or others and names the fix', () => {
+  withFile(pem, (file) => {
+    assert.throws(() => loadKey({ app: 'factory', keyFile: file, env: {}, platform: 'linux', run: neverRun, warn: neverWarn }),
+      (e) => e.message.includes(`chmod 600 ${file}`) && !everythingIn(e).includes('PRIVATE KEY'));
+  });
+});
+
+test('loadKey refuses content that is no PEM private key and does not echo it', () => {
+  const content = 'not-a-key-and-not-to-be-shown';
+  const publicPem = publicKey.export({ type: 'spki', format: 'pem' });
+  const fromCommand = (output) => () => loadKey({ app: 'factory', keyCmd: 'print-the-key', env: {}, platform: 'linux', run: () => output, warn: neverWarn });
+  const fromFile = () => withFile(content, (file) => loadKey({ app: 'factory', keyFile: file, env: {}, platform: 'win32', run: neverRun, warn: () => {} }));
+  for (const attempt of [fromCommand(content), fromCommand(publicPem), fromFile]) {
+    assert.throws(attempt, (e) => /PEM private key/.test(e.message) && !everythingIn(e).includes(content) && !everythingIn(e).includes('PUBLIC KEY'));
+  }
+});
+
+test('loadKey reports a failed --key-cmd without its output', () => {
+  const output = 'partial-output-not-to-be-shown';
+  const run = () => { throw Object.assign(new Error(`Command failed: ${output}`), { status: 3, stdout: output }); };
+  assert.throws(() => loadKey({ app: 'factory', keyCmd: 'print-the-key', env: {}, platform: 'linux', run, warn: neverWarn }),
+    (e) => /--key-cmd/.test(e.message) && !everythingIn(e).includes(output));
 });
