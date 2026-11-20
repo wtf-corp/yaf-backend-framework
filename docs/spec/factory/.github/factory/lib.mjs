@@ -64,6 +64,15 @@ export function setCheck(sha, name, conclusion, title, summary = '') {
   console.log(`${conclusion === 'success' ? 'PASS' : conclusion === 'failure' ? 'FAIL' : 'NOTE'} ${name}: ${title}`);
 }
 
+/**
+ * The body of a check run that is in progress: what a running review reports on the head commit before its
+ * verdict. It has no conclusion; the completed run reported afterwards is newer, and the newest of a name counts.
+ * now: a Date or milliseconds.
+ */
+export function inProgressCheck(name, sha, title, now) {
+  return { name, head_sha: sha, status: 'in_progress', started_at: new Date(now).toISOString(), output: { title, summary: title } };
+}
+
 export function writeSummary(markdown) {
   if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, markdown + '\n');
 }

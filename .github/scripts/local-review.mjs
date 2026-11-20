@@ -101,6 +101,14 @@ try {
     + `Pull request: #${prNumber} in ${repo}.${kind === 'code' ? '' : ` Kind: ${kind}.`} Base commit: ${base}. Head commit: ${head}.`;
   const schema = readFileSync(path.join(baseDir, KIT, review.schema), 'utf8').replaceAll('\n', '');
 
+  // The running review is reported as a check run in progress, so that a second one is not started meanwhile.
+  // If this script dies, the check stays in progress and counts as owed again after 30 minutes (inflight.mjs).
+  // Skipped while the base branch's kit does not have the function yet.
+  const kit = await import(new URL(`file:///${path.join(baseDir, KIT, 'lib.mjs').replaceAll('\\', '/')}`));
+  if (!dryRun && kit.inProgressCheck) {
+    kit.api(`repos/${repo}/check-runs`, { method: 'POST', body: kit.inProgressCheck(review.check, head, 'the review is running', Date.now()) });
+  }
+
   console.error(`#${prNumber}: kind ${kind}, ${review.check} by ${model}, base ${base.slice(0, 7)}, head ${head.slice(0, 7)}`);
   // Fresh headless session in the base checkout. Only the checkout's project settings and no MCP servers are
   // loaded, so the maintainer's personal settings, hooks and connectors do not reach the reviewer.
@@ -130,9 +138,8 @@ try {
     // The base branch's poster: the same check names, rounds counting and needs-human escalation as in CI.
     run('node', [`${KIT}/post-review.mjs`, '--check', review.check], { cwd: baseDir, env: { ...env, REVIEW_OUTPUT: JSON.stringify(verdict) }, stdio: ['ignore', 'inherit', 'inherit'] });
     const otherTitle = review.otherTitle ?? `${kind} pull request: reviewed by factory/doc-review`;
-    const { setCheck } = await import(new URL(`file:///${path.join(baseDir, KIT, 'lib.mjs').replaceAll('\\', '/')}`));
     process.env.GITHUB_REPOSITORY = repo;
-    setCheck(head, review.other, 'success', otherTitle);
+    kit.setCheck(head, review.other, 'success', otherTitle);
   }
   process.exitCode = verdict ? 0 : 1;
 } finally {
