@@ -177,14 +177,81 @@ export function parseArgs(argv) {
   return options;
 }
 
+/** The program a command names: no folder, lower case, no ".exe". Windows drops trailing dots and spaces from a file name: "git." and "git.exe." start git too. */
+const programName = (command) => command.split(/[\\/]/).pop().toLowerCase().replace(/[. ]+$/, '').replace(/\.exe$/, '').replace(/[. ]+$/, '');
+
+/** GitHub compares label names without regard to case. */
+const HUMAN_LABEL = /guard-change|major-release|size-accepted/i;
+/** What a `gh api` argument must not name; `labels` counts only together with a human's label. */
+const HUMAN_API = /pulls\/[^/]+\/(reviews|merge)|merge-queue|rulesets|branches\/.+\/protection|environments/i;
+/** GraphQL mutations that merge or arm a merge; a review mutation counts only together with APPROVE. A query read from a file (-F query=@file) is not looked into. */
+const HUMAN_MUTATION = /mergePullRequest|enablePullRequestAutoMerge/;
+const REVIEW_MUTATION = /(add|submit)PullRequestReview/;
+/** Options of git that stand before the subcommand and take their value as the next argument. */
+const GIT_VALUE_OPTIONS = ['-C', '-c', '--git-dir', '--work-tree', '--namespace', '--config-env'];
+
+/** What of `gh <args>` is reserved for a human, or null. */
+function refusedGh(args) {
+  // The subcommand words: flags are skipped, and so is the value of -R/--repo, which may stand between them.
+  const words = args.filter((arg, i) => !arg.startsWith('-') && !['-R', '--repo'].includes(args[i - 1]));
+  const [group, verb] = words;
+  const two = `${group} ${verb}`;
+  if (['release', 'label', 'secret'].includes(group)) return `gh ${group}`;
+  if (['pr merge', 'repo edit', 'variable set', 'variable delete', 'workflow disable'].includes(two)) return `gh ${two}`;
+  if (two === 'pr review' && args.some((arg) => arg.startsWith('--approve') || /^-a/.test(arg))) return 'an approving review (gh pr review --approve)';
+  const labelIn = (list) => list.map((arg) => HUMAN_LABEL.exec(arg)?.[0]).find(Boolean);
+  const label = labelIn(args);
+  if (label && ['pr edit', 'issue edit'].includes(two)) return `the label ${label} (gh ${two})`;
+  // On create only the labels count: a title or a body may name one.
+  const created = ['pr create', 'issue create'].includes(two) && labelIn(args.filter((arg, i) => /^(--label|-l)/.test(arg) || ['--label', '-l'].includes(args[i - 1])));
+  if (created) return `the label ${created} (gh ${two})`;
+  if (group !== 'api') return null;
+  if (label && args.some((arg) => /labels/i.test(arg))) return `the label ${label} (gh api)`;
+  const has = (pattern) => args.some((arg) => pattern.test(arg));
+  if (has(REVIEW_MUTATION) && has(/APPROVE/)) return 'an approving review (gh api graphql)';
+  const named = args.map((arg) => (HUMAN_API.exec(arg) ?? HUMAN_MUTATION.exec(arg))?.[0]).find(Boolean);
+  return named ? `gh api on ${named}` : null;
+}
+
+/** What of `git <args>` is reserved for a human, or null. */
+function refusedGit(args) {
+  let i = 0;
+  while (i < args.length && args[i].startsWith('-')) i += GIT_VALUE_OPTIONS.includes(args[i]) ? 2 : 1;
+  const [subcommand, ...rest] = args.slice(i);
+  if (subcommand === 'tag') return 'git tag';
+  if (subcommand !== 'push') return null;
+  if (rest.some((arg) => arg.startsWith('--force') || arg === '--mirror' || /^-[a-zA-Z]*f/.test(arg) || arg.startsWith('+'))) return 'a forced push';
+  // Every local branch goes with these, a local main, next or stable among them.
+  if (rest.some((arg) => arg === '--all' || arg === '--branches')) return 'a push of every branch';
+  // The first argument that is no option is the remote; a refspec is [+]<source>[:<destination>].
+  const refs = rest.filter((arg) => !arg.startsWith('-')).slice(1).map((refspec) => refspec.slice(refspec.lastIndexOf(':') + 1));
+  // "tag <name>" among the refspecs stands for refs/tags/<name>:refs/tags/<name>.
+  if (rest.some((arg) => arg === '--tags' || arg === '--follow-tags') || refs.some((ref) => ref === 'tag' || /^(refs\/)?tags\//.test(ref))) return 'a push of tags';
+  // git completes a destination with refs/ and with refs/heads/: "heads/main" is main too.
+  const destinations = refs.map((ref) => ref.replace(/^(refs\/)?(heads\/)?/, ''));
+  const branch = destinations.find((destination) => ['main', 'next', 'stable'].includes(destination));
+  return branch ? `a push to ${branch}` : null;
+}
+
+/**
+ * Why `command` with `args` must not run as an app, or null: merging, approving, the labels, tags, releases,
+ * repository settings and pushes that AGENTS.md (hard rule 8) reserves for a human maintainer, as the deny rules
+ * of .claude/settings.json name them. Those rules match command text and miss a command wrapped in this helper.
+ * It stops the accident and is no boundary: what a shell or a script given as the command does is not looked into.
+ */
+export function refusedCommand(command, args) {
+  const program = programName(command);
+  const what = program === 'gh' ? refusedGh(args) : program === 'git' ? refusedGit(args) : null;
+  return what && `Refused: ${what} is reserved for a human maintainer (AGENTS.md, hard rule 8). `
+    + 'This check stops the accident; it is not a boundary: the permissions of the app and the ruleset are.';
+}
+
 /**
  * Why `command` must not run with the app's token when the URL of origin is `originUrl`, or null.
  * Only git is refused, and only when origin is not HTTPS. The message does not echo the URL.
  */
 export function gitRefusal(command, originUrl) {
-  // Windows drops trailing dots and spaces from a file name: "git." and "git.exe." start git too.
-  const program = command.split(/[\\/]/).pop().toLowerCase().replace(/[. ]+$/, '').replace(/\.exe$/, '').replace(/[. ]+$/, '');
-  if (program !== 'git' || /^https:\/\//i.test(originUrl.trim())) return null;
+  if (programName(command) !== 'git' || /^https:\/\//i.test(originUrl.trim())) return null;
   let repo = '<owner>/<name>';
   try {
     repo = repoFromRemote(originUrl);
@@ -240,6 +307,11 @@ async function main(argv, env) {
   }
   try {
     const { app, keyFile, keyCmd, print, command: [command, ...args] } = options;
+    const reserved = print ? null : refusedCommand(command, args);
+    if (reserved) {
+      console.error(reserved);
+      return 2;
+    }
     const origin = readOriginUrl();
     // A push goes to the push URLs, which remote.origin.pushurl and url.<base>.pushInsteadOf can make differ from the fetch URL.
     const pushRefusal = () => readOriginUrl('--push', '--all').split('\n').map((url) => gitRefusal(command, url)).find(Boolean);

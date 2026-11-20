@@ -8,7 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { APPS, buildJwt, childEnv, gitRefusal, keyFileProblem, loadKey, mintToken, parseArgs, repoFromRemote, runCommand, withoutToken } from '../factory-token.mjs';
+import { APPS, buildJwt, childEnv, gitRefusal, keyFileProblem, loadKey, mintToken, parseArgs, refusedCommand, repoFromRemote, runCommand, withoutToken } from '../factory-token.mjs';
 
 const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
 const pem = privateKey.export({ type: 'pkcs8', format: 'pem' });
@@ -474,6 +474,142 @@ test('the command line refuses an existing GIT_CONFIG_COUNT before it reads a ke
   assert.equal(result.status, 1);
   assert.match(result.stderr, /GIT_CONFIG_COUNT is already set/);
   assert.doesNotMatch(result.stderr, /YAF_FACTORY_KEY_FILE/);
+});
+
+const REFUSED = /^Refused: .* reserved for a human maintainer/;
+const refused = (command, ...args) => assert.match(refusedCommand(command, args) ?? '', REFUSED, `${command} ${args.join(' ')}`);
+const passes = (command, ...args) => assert.equal(refusedCommand(command, args), null, `${command} ${args.join(' ')}`);
+
+test('refusedCommand refuses gh pr merge', () => {
+  refused('gh', 'pr', 'merge', '5');
+  refused('gh', 'pr', 'merge', '5', '--auto', '--squash');
+  refused('gh', 'pr', '-R', 'owner/name', 'merge', '5');
+  // The program is named as Windows accepts it, as in gitRefusal.
+  for (const program of ['gh.exe', 'GH', 'gh.', 'gh.exe. ', 'C:\\Program Files\\GitHub CLI\\gh.exe', '/usr/bin/gh']) refused(program, 'pr', 'merge', '5');
+  assert.match(refusedCommand('gh', ['pr', 'merge', '5']), /gh pr merge/);
+  assert.match(refusedCommand('gh', ['pr', 'merge', '5']), /not a boundary/);
+});
+
+test('an approving review is refused', () => {
+  refused('gh', 'pr', 'review', '5', '--approve');
+  refused('gh', 'pr', 'review', '--approve', '5', '--body', 'fine');
+  refused('gh', 'pr', 'review', '5', '-a');
+  refused('gh', 'pr', 'review', '5', '-ab', 'fine');
+  passes('gh', 'pr', 'review', '5', '--comment', '--body', 'a note');
+  passes('gh', 'pr', 'review', '5', '--request-changes', '-b', 'approve it later');
+});
+
+test('a push to a protected branch is refused, with git -C too', () => {
+  for (const branch of ['main', 'next', 'stable']) {
+    refused('git', 'push', 'origin', branch);
+    refused('git', 'push', 'origin', `HEAD:${branch}`);
+    refused('git', 'push', '-u', 'origin', `ci/40-x:refs/heads/${branch}`);
+    refused('git', 'push', 'origin', `HEAD:heads/${branch}`);
+    refused('git', '-C', '.', 'push', 'origin', branch);
+    refused('git', '-c', 'push.default=current', '-C', '../tree', 'push', 'origin', `HEAD:${branch}`);
+  }
+  refused('git', 'push', 'origin', 'ci/40-x', 'main');
+  refused('git', 'push', 'origin', ':main');
+  refused('git', 'push', '--delete', 'origin', 'stable');
+  refused('GIT.EXE', '--git-dir', '.git', 'push', 'origin', 'main');
+});
+
+test('a forced push is refused', () => {
+  refused('git', 'push', '--force', 'origin', 'ci/40-x');
+  refused('git', 'push', '--force-with-lease=ci/40-x', 'origin', 'ci/40-x');
+  refused('git', 'push', '-f', 'origin', 'ci/40-x');
+  refused('git', 'push', 'origin', 'ci/40-x', '-uf');
+  refused('git', 'push', 'origin', '+ci/40-x');
+  refused('git', '-C', '.', 'push', 'origin', '-f', 'ci/40-x');
+  refused('git', 'push', '--mirror', 'origin');
+  refused('git', 'push', '--all', 'origin');
+  refused('git', 'push', 'origin', '--branches');
+});
+
+test('a push of tags is refused', () => {
+  refused('git', 'push', '--tags', 'origin');
+  refused('git', 'push', '--follow-tags', 'origin', 'ci/40-x');
+  refused('git', 'push', 'origin', 'refs/tags/v1.0.0');
+  refused('git', 'push', 'origin', 'HEAD:refs/tags/v1.0.0');
+  refused('git', 'push', 'origin', 'tags/v1.0.0');
+  refused('git', 'push', 'origin', 'tag', 'v1.0.0');
+  refused('git', '-C', '.', 'push', 'origin', 'ci/40-x', 'tag', 'v1.0.0');
+});
+
+test('a merge or an approval through GraphQL and a human-only label on create are refused', () => {
+  refused('gh', 'api', 'graphql', '-f', 'query=mutation { mergePullRequest(input: {pullRequestId: "x"}) { clientMutationId } }');
+  refused('gh', 'api', 'graphql', '-f', 'query=mutation { enablePullRequestAutoMerge(input: {pullRequestId: "x"}) { clientMutationId } }');
+  refused('gh', 'api', 'graphql', '-f', 'query=mutation { addPullRequestReview(input: {pullRequestId: "x", event: APPROVE}) { clientMutationId } }');
+  refused('gh', 'api', 'graphql', '-f', 'query=mutation($e: PullRequestReviewEvent!) { submitPullRequestReview(input: {event: $e}) { clientMutationId } }', '-f', 'e=APPROVE');
+  passes('gh', 'api', 'graphql', '-f', 'query=mutation { addPullRequestReview(input: {pullRequestId: "x", event: COMMENT}) { clientMutationId } }');
+  passes('gh', 'api', 'graphql', '-f', 'query={ repository(owner: "o", name: "n") { pullRequest(number: 5) { mergeable } } }');
+  for (const label of ['guard-change', 'major-release', 'size-accepted', 'Size-Accepted']) {
+    refused('gh', 'pr', 'create', '--title', 'ci: x', '--label', label);
+    refused('gh', 'pr', 'create', '--title', 'ci: x', `--label=factory,${label}`);
+    refused('gh', 'issue', 'create', '--title', 'x', '-l', label);
+    refused('gh', 'pr', 'edit', '5', '--add-label', label.toUpperCase());
+  }
+  passes('gh', 'pr', 'create', '--title', 'ci: x', '--body', 'guard-change is asked of a maintainer', '--label', 'factory');
+  passes('gh', 'issue', 'create', '--title', 'size-accepted was refused', '-l', 'needs-human');
+});
+
+test('tags, releases, the human-only labels and repository settings are refused', () => {
+  refused('git', 'tag', 'v1.0.0');
+  refused('git', '-C', '.', 'tag', '-d', 'v1.0.0');
+  refused('gh', 'release', 'create', 'v1.0.0');
+  refused('gh', 'label', 'create', 'x');
+  refused('gh', 'repo', 'edit', '--enable-auto-merge');
+  refused('gh', 'secret', 'list');
+  refused('gh', 'variable', 'set', 'FACTORY_PAUSED', '--body', 'false');
+  refused('gh', 'variable', 'delete', 'FACTORY_PAUSED');
+  refused('gh', 'workflow', 'disable', 'factory-gates.yml');
+  for (const label of ['guard-change', 'major-release', 'size-accepted']) {
+    refused('gh', 'pr', 'edit', '5', '--add-label', label);
+    refused('gh', 'pr', 'edit', '5', `--add-label=blocked,${label}`);
+    refused('gh', 'issue', 'edit', '5', '--remove-label', label);
+    refused('gh', 'api', 'repos/o/n/issues/5/labels', '-f', `labels[]=${label}`);
+    refused('gh', 'api', '-X', 'DELETE', `repos/o/n/issues/5/labels/${label}`);
+  }
+  refused('gh', 'api', '-X', 'POST', 'repos/o/n/pulls/5/reviews', '-f', 'event=APPROVE');
+  refused('gh', 'api', '-X', 'PUT', 'repos/o/n/pulls/5/merge');
+  refused('gh', 'api', 'repos/o/n/merge-queue');
+  refused('gh', 'api', 'repos/o/n/rulesets');
+  refused('gh', 'api', '-X', 'DELETE', 'repos/o/n/branches/main/protection');
+  refused('gh', 'api', 'repos/o/n/environments/factory-review');
+});
+
+test('reading and a push of a ticket branch pass', () => {
+  passes('gh', 'pr', 'view', '5', '--json', 'state');
+  passes('gh', 'pr', 'create', '--title', 'ci: merge the lists', '--body', 'Closes #40', '--base', 'main');
+  passes('gh', 'pr', 'edit', '5', '--add-label', 'needs-human');
+  passes('gh', 'issue', 'edit', '40', '--add-label', 'blocked');
+  passes('gh', 'issue', 'comment', '40', '--body', 'size-accepted is a label for a human');
+  passes('gh', 'variable', 'list');
+  passes('gh', 'workflow', 'view', 'factory-gates.yml');
+  passes('gh', 'repo', 'view');
+  passes('gh', 'api', 'repos/o/n/pulls/5');
+  passes('gh', 'api', 'repos/o/n/pulls/5/comments');
+  passes('gh', 'api', 'repos/o/n/issues/5/labels', '-f', 'labels[]=blocked');
+  passes('git', 'push', '-u', 'origin', 'ci/40-refused-commands');
+  passes('git', '-C', '../tree', 'push', '-u', 'origin', 'ci/40-refused-commands');
+  passes('git', 'push', 'origin', 'HEAD:fix/41-main');
+  passes('git', 'push', 'origin', 'main:ci/40-from-main');
+  passes('git', 'fetch', 'origin', 'main');
+  passes('git', 'log', '--oneline', 'origin/main');
+  passes('git', 'commit', '-m', 'ci: tag and push -f');
+  passes('node', '.github/scripts/local-review.mjs', '5');
+  passes(process.execPath, '-e', 'process.exit(0)');
+});
+
+test('the command line exits 2 on a refused command', () => {
+  // No key is configured: a run that went on to mint would fail on the key, with exit code 1.
+  for (const command of [['gh', 'pr', 'merge', '5'], ['git', '-C', '.', 'push', 'origin', 'main']]) {
+    const result = runScript(['--app', 'factory', '--repo', REPO, '--', ...command]);
+    assert.equal(result.status, 2, command.join(' '));
+    assert.match(result.stderr, REFUSED);
+    assert.doesNotMatch(result.stderr, /YAF_FACTORY_KEY_FILE/);
+    assert.equal(result.stdout, '');
+  }
 });
 
 test('runCommand returns 1 for a child that ended by a signal', async () => {
