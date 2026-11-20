@@ -1,0 +1,64 @@
+// Banned APIs for src/ and the templates: specs/0000-framework/01-repository-and-packages.md §4 (here docs/spec/spec/).
+// A method entry needs its full parameter list, so every overload is listed (specs/0005-repository-skeleton/research.md §3).
+// Doc IDs verified against the .NET 11.0.0 reference pack, Microsoft.Extensions.Logging.Abstractions 11.0.0,
+// Microsoft.EntityFrameworkCore 11.0.0 and Microsoft.EntityFrameworkCore.InMemory 11.0.0.
+// Random for security purposes (CA5394) and ECB set through CipherMode.ECB (CA5358) are caught by the SDK analyzers.
+
+P:System.DateTime.Now;Use TimeProvider.
+P:System.DateTime.UtcNow;Use TimeProvider.
+P:System.DateTimeOffset.Now;Use TimeProvider.
+P:System.DateTimeOffset.UtcNow;Use TimeProvider.
+M:System.Guid.NewGuid;Use Guid.CreateVersion7() or a typed id's New().
+T:System.Console;Library code does not use the console; log through [LoggerMessage] methods.
+M:System.Environment.GetEnvironmentVariable(System.String);Read configuration through options (AddYafOptions<T>), outside composition roots.
+M:System.Environment.GetEnvironmentVariable(System.String,System.EnvironmentVariableTarget);Read configuration through options (AddYafOptions<T>), outside composition roots.
+
+T:System.Security.Cryptography.MD5;Use SHA256 or SHA512 (HMACSHA256 for a keyed hash).
+T:System.Security.Cryptography.SHA1;Use SHA256 or SHA512 (HMACSHA256 for a keyed hash).
+T:System.Security.Cryptography.DES;Use IFieldProtector, or AesGcm.
+T:System.Security.Cryptography.TripleDES;Use IFieldProtector, or AesGcm.
+T:System.Security.Cryptography.RC2;Use IFieldProtector, or AesGcm.
+M:System.Security.Cryptography.SymmetricAlgorithm.EncryptEcb(System.Byte[],System.Security.Cryptography.PaddingMode);ECB is insecure; use IFieldProtector, or AesGcm.
+M:System.Security.Cryptography.SymmetricAlgorithm.EncryptEcb(System.ReadOnlySpan{System.Byte},System.Security.Cryptography.PaddingMode);ECB is insecure; use IFieldProtector, or AesGcm.
+M:System.Security.Cryptography.SymmetricAlgorithm.EncryptEcb(System.ReadOnlySpan{System.Byte},System.Span{System.Byte},System.Security.Cryptography.PaddingMode);ECB is insecure; use IFieldProtector, or AesGcm.
+M:System.Security.Cryptography.SymmetricAlgorithm.TryEncryptEcb(System.ReadOnlySpan{System.Byte},System.Span{System.Byte},System.Security.Cryptography.PaddingMode,System.Int32@);ECB is insecure; use IFieldProtector, or AesGcm.
+M:System.Security.Cryptography.SymmetricAlgorithm.DecryptEcb(System.Byte[],System.Security.Cryptography.PaddingMode);ECB is insecure; use IFieldProtector, or AesGcm.
+M:System.Security.Cryptography.SymmetricAlgorithm.DecryptEcb(System.ReadOnlySpan{System.Byte},System.Security.Cryptography.PaddingMode);ECB is insecure; use IFieldProtector, or AesGcm.
+M:System.Security.Cryptography.SymmetricAlgorithm.DecryptEcb(System.ReadOnlySpan{System.Byte},System.Span{System.Byte},System.Security.Cryptography.PaddingMode);ECB is insecure; use IFieldProtector, or AesGcm.
+M:System.Security.Cryptography.SymmetricAlgorithm.TryDecryptEcb(System.ReadOnlySpan{System.Byte},System.Span{System.Byte},System.Security.Cryptography.PaddingMode,System.Int32@);ECB is insecure; use IFieldProtector, or AesGcm.
+
+M:Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.IgnoreQueryFilters``1(System.Linq.IQueryable{``0});Use the audited waiver; only YAF.Persistence.EfCore may ignore query filters.
+M:Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.IgnoreQueryFilters``1(System.Linq.IQueryable{``0},System.Collections.Generic.IReadOnlyCollection{System.String});Use the audited waiver; only YAF.Persistence.EfCore may ignore query filters.
+M:Microsoft.EntityFrameworkCore.InMemoryDbContextOptionsExtensions.UseInMemoryDatabase(Microsoft.EntityFrameworkCore.DbContextOptionsBuilder,System.String,System.Action{Microsoft.EntityFrameworkCore.Infrastructure.InMemoryDbContextOptionsBuilder});Tests run on PostgreSQL; use the YAF.Testing.Integration fixtures.
+M:Microsoft.EntityFrameworkCore.InMemoryDbContextOptionsExtensions.UseInMemoryDatabase(Microsoft.EntityFrameworkCore.DbContextOptionsBuilder,System.String,Microsoft.EntityFrameworkCore.Storage.InMemoryDatabaseRoot,System.Action{Microsoft.EntityFrameworkCore.Infrastructure.InMemoryDbContextOptionsBuilder});Tests run on PostgreSQL; use the YAF.Testing.Integration fixtures.
+M:Microsoft.EntityFrameworkCore.InMemoryDbContextOptionsExtensions.UseInMemoryDatabase``1(Microsoft.EntityFrameworkCore.DbContextOptionsBuilder{``0},System.String,System.Action{Microsoft.EntityFrameworkCore.Infrastructure.InMemoryDbContextOptionsBuilder});Tests run on PostgreSQL; use the YAF.Testing.Integration fixtures.
+M:Microsoft.EntityFrameworkCore.InMemoryDbContextOptionsExtensions.UseInMemoryDatabase``1(Microsoft.EntityFrameworkCore.DbContextOptionsBuilder{``0},System.String,Microsoft.EntityFrameworkCore.Storage.InMemoryDatabaseRoot,System.Action{Microsoft.EntityFrameworkCore.Infrastructure.InMemoryDbContextOptionsBuilder});Tests run on PostgreSQL; use the YAF.Testing.Integration fixtures.
+
+M:Microsoft.Extensions.Logging.LoggerExtensions.Log(Microsoft.Extensions.Logging.ILogger,Microsoft.Extensions.Logging.LogLevel,System.String,System.Object[]);Use a [LoggerMessage] partial method.
+M:Microsoft.Extensions.Logging.LoggerExtensions.Log(Microsoft.Extensions.Logging.ILogger,Microsoft.Extensions.Logging.LogLevel,Microsoft.Extensions.Logging.EventId,System.String,System.Object[]);Use a [LoggerMessage] partial method.
+M:Microsoft.Extensions.Logging.LoggerExtensions.Log(Microsoft.Extensions.Logging.ILogger,Microsoft.Extensions.Logging.LogLevel,System.Exception,System.String,System.Object[]);Use a [LoggerMessage] partial method.
+M:Microsoft.Extensions.Logging.LoggerExtensions.Log(Microsoft.Extensions.Logging.ILogger,Microsoft.Extensions.Logging.LogLevel,Microsoft.Extensions.Logging.EventId,System.Exception,System.String,System.Object[]);Use a [LoggerMessage] partial method.
+M:Microsoft.Extensions.Logging.LoggerExtensions.LogTrace(Microsoft.Extensions.Logging.ILogger,System.String,System.Object[]);Use a [LoggerMessage] partial method.
+M:Microsoft.Extensions.Logging.LoggerExtensions.LogTrace(Microsoft.Extensions.Logging.ILogger,Microsoft.Extensions.Logging.EventId,System.String,System.Object[]);Use a [LoggerMessage] partial method.
+M:Microsoft.Extensions.Logging.LoggerExtensions.LogTrace(Microsoft.Extensions.Logging.ILogger,System.Exception,System.String,System.Object[]);Use a [LoggerMessage] partial method.
+M:Microsoft.Extensions.Logging.LoggerExtensions.LogTrace(Microsoft.Extensions.Logging.ILogger,Microsoft.Extensions.Logging.EventId,System.Exception,System.String,System.Object[]);Use a [LoggerMessage] partial method.
+M:Microsoft.Extensions.Logging.LoggerExtensions.LogDebug(Microsoft.Extensions.Logging.ILogger,System.String,System.Object[]);Use a [LoggerMessage] partial method.
+M:Microsoft.Extensions.Logging.LoggerExtensions.LogDebug(Microsoft.Extensions.Logging.ILogger,Microsoft.Extensions.Logging.EventId,System.String,System.Object[]);Use a [LoggerMessage] partial method.
+M:Microsoft.Extensions.Logging.LoggerExtensions.LogDebug(Microsoft.Extensions.Logging.ILogger,System.Exception,System.String,System.Object[]);Use a [LoggerMessage] partial method.
+M:Microsoft.Extensions.Logging.LoggerExtensions.LogDebug(Microsoft.Extensions.Logging.ILogger,Microsoft.Extensions.Logging.EventId,System.Exception,System.String,System.Object[]);Use a [LoggerMessage] partial method.
+M:Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(Microsoft.Extensions.Logging.ILogger,System.String,System.Object[]);Use a [LoggerMessage] partial method.
+M:Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(Microsoft.Extensions.Logging.ILogger,Microsoft.Extensions.Logging.EventId,System.String,System.Object[]);Use a [LoggerMessage] partial method.
+M:Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(Microsoft.Extensions.Logging.ILogger,System.Exception,System.String,System.Object[]);Use a [LoggerMessage] partial method.
+M:Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(Microsoft.Extensions.Logging.ILogger,Microsoft.Extensions.Logging.EventId,System.Exception,System.String,System.Object[]);Use a [LoggerMessage] partial method.
+M:Microsoft.Extensions.Logging.LoggerExtensions.LogWarning(Microsoft.Extensions.Logging.ILogger,System.String,System.Object[]);Use a [LoggerMessage] partial method.
+M:Microsoft.Extensions.Logging.LoggerExtensions.LogWarning(Microsoft.Extensions.Logging.ILogger,Microsoft.Extensions.Logging.EventId,System.String,System.Object[]);Use a [LoggerMessage] partial method.
+M:Microsoft.Extensions.Logging.LoggerExtensions.LogWarning(Microsoft.Extensions.Logging.ILogger,System.Exception,System.String,System.Object[]);Use a [LoggerMessage] partial method.
+M:Microsoft.Extensions.Logging.LoggerExtensions.LogWarning(Microsoft.Extensions.Logging.ILogger,Microsoft.Extensions.Logging.EventId,System.Exception,System.String,System.Object[]);Use a [LoggerMessage] partial method.
+M:Microsoft.Extensions.Logging.LoggerExtensions.LogError(Microsoft.Extensions.Logging.ILogger,System.String,System.Object[]);Use a [LoggerMessage] partial method.
+M:Microsoft.Extensions.Logging.LoggerExtensions.LogError(Microsoft.Extensions.Logging.ILogger,Microsoft.Extensions.Logging.EventId,System.String,System.Object[]);Use a [LoggerMessage] partial method.
+M:Microsoft.Extensions.Logging.LoggerExtensions.LogError(Microsoft.Extensions.Logging.ILogger,System.Exception,System.String,System.Object[]);Use a [LoggerMessage] partial method.
+M:Microsoft.Extensions.Logging.LoggerExtensions.LogError(Microsoft.Extensions.Logging.ILogger,Microsoft.Extensions.Logging.EventId,System.Exception,System.String,System.Object[]);Use a [LoggerMessage] partial method.
+M:Microsoft.Extensions.Logging.LoggerExtensions.LogCritical(Microsoft.Extensions.Logging.ILogger,System.String,System.Object[]);Use a [LoggerMessage] partial method.
+M:Microsoft.Extensions.Logging.LoggerExtensions.LogCritical(Microsoft.Extensions.Logging.ILogger,Microsoft.Extensions.Logging.EventId,System.String,System.Object[]);Use a [LoggerMessage] partial method.
+M:Microsoft.Extensions.Logging.LoggerExtensions.LogCritical(Microsoft.Extensions.Logging.ILogger,System.Exception,System.String,System.Object[]);Use a [LoggerMessage] partial method.
+M:Microsoft.Extensions.Logging.LoggerExtensions.LogCritical(Microsoft.Extensions.Logging.ILogger,Microsoft.Extensions.Logging.EventId,System.Exception,System.String,System.Object[]);Use a [LoggerMessage] partial method.
