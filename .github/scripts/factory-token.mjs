@@ -7,10 +7,13 @@ import { execSync } from 'node:child_process';
 
 const API = 'https://api.github.com';
 
-/** The two apps of the factory. App IDs and variable names are identifiers, not secrets. */
+/**
+ * The two apps of the factory. `botId` is the user id of the account `<slug>[bot]`, which is not the App ID.
+ * App IDs, variable names, slugs and bot ids are identifiers, not secrets.
+ */
 export const APPS = {
-  factory: { appId: 5834995, keyVar: 'YAF_FACTORY_KEY_FILE' },
-  reviewer: { appId: 5837737, keyVar: 'YAF_REVIEWER_KEY_FILE' },
+  factory: { appId: 5834995, keyVar: 'YAF_FACTORY_KEY_FILE', slug: 'yaf-factory', botId: 358792446 },
+  reviewer: { appId: 5837737, keyVar: 'YAF_REVIEWER_KEY_FILE', slug: 'yaf-reviewer', botId: 358867400 },
 };
 
 /** Why a key file with this `mode` must not be used, or null. Windows modes say nothing about the ACL. */
@@ -82,4 +85,40 @@ export async function mintToken({ fetch, appId, pem, repo, now = Math.floor(Date
     repositories: [repo.split('/')[1]],
   });
   return { token: granted.token, expiresAt: granted.expires_at };
+}
+
+/** "owner/name" from the URL of a GitHub remote, HTTPS or SSH, with or without ".git". The error does not echo the URL. */
+export function repoFromRemote(url) {
+  const match = /^(?:https:\/\/github\.com\/|ssh:\/\/git@github\.com\/|git@github\.com:)([\w.-]+\/[\w.-]+?)(?:\.git)?$/.exec(url.trim());
+  if (!match) throw new Error('The remote URL is not that of a GitHub repository: give --repo <owner>/<name>.');
+  return match[1];
+}
+
+/**
+ * The environment of a command that runs as `app` (a name in APPS) with `token` on `repo`: a copy of `env`
+ * with the token for gh, a credential helper for git over HTTPS that replaces the configured ones for that
+ * process only, and the app's bot account as author and committer of a commit. Everything else passes through.
+ */
+export function childEnv(env, { token, repo, app }) {
+  // Any case: Windows reads variable names without regard to case, and a copy of process.env keeps the case given.
+  if (Object.keys(env).some((key) => key.toUpperCase() === 'GIT_CONFIG_COUNT')) throw new Error('GIT_CONFIG_COUNT is already set: unset it, the helper does not overwrite git configuration given in the environment.');
+  const { slug, botId } = APPS[app];
+  const name = `${slug}[bot]`;
+  const email = `${botId}+${name}@users.noreply.github.com`;
+  return {
+    ...env,
+    GH_TOKEN: token,
+    GITHUB_TOKEN: token,
+    GITHUB_REPOSITORY: env.GITHUB_REPOSITORY || repo,
+    GIT_TERMINAL_PROMPT: '0',
+    GIT_CONFIG_COUNT: '2',
+    GIT_CONFIG_KEY_0: 'credential.helper',
+    GIT_CONFIG_VALUE_0: '',
+    GIT_CONFIG_KEY_1: 'credential.helper',
+    GIT_CONFIG_VALUE_1: '!f() { echo username=x-access-token; echo "password=$GH_TOKEN"; }; f',
+    GIT_AUTHOR_NAME: name,
+    GIT_AUTHOR_EMAIL: email,
+    GIT_COMMITTER_NAME: name,
+    GIT_COMMITTER_EMAIL: email,
+  };
 }
