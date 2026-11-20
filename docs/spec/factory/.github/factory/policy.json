@@ -10,7 +10,8 @@
   },
   "bots": {
     "factory": "yaf-factory[bot]",
-    "gates": "github-actions[bot]"
+    "gates": "github-actions[bot]",
+    "reviewer": "yaf-reviewer[bot]"
   },
   "humanOnlyLabels": [
     "guard-change",

@@ -34,7 +34,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["factory", "gates"],
-      "properties": { "factory": { "type": "string" }, "gates": { "type": "string" } }
+      "properties": { "factory": { "type": "string" }, "gates": { "type": "string" }, "reviewer": { "type": "string", "description": "The app that posts the model reviews when they do not run in CI. Optional: without it the gates bot writes the review's summary." } }
     },
     "humanOnlyLabels": { "$ref": "#/$defs/globs" },
     "limits": {

@@ -1,6 +1,12 @@
 // What is in flight: the next action for an open factory pull request (specs/0003-unattended-orchestration, U4),
-// and what a ticket's worktree needs (U5b).
-// Pure: everything it decides from is handed in, and so is the time.
+// and what a ticket's worktree needs (U5b); as a command, the list of both for the orchestrator's tick (U5c):
+//   node .github/factory/inflight.mjs   → JSON { pullRequests, worktrees }; it reads only (GITHUB_REPOSITORY, gh, git)
+// The functions are pure: everything they decide from is handed in, and so is the time.
+import { loadPolicy, run, repoSlug, makeHumanCheck } from './lib.mjs';
+import { prKind } from './classify.mjs';
+import { approvingHuman } from './human-approval.mjs';
+import { parseBody } from './ticket.mjs';
+import { findMarker, localReview, reviewSummary } from './markers.mjs';
 
 const REVIEWS = ['factory/review', 'factory/doc-review'];
 const GATES = ['factory/tier', 'factory/ticket', 'factory/size', 'factory/delta', 'factory/guards'];
@@ -106,4 +112,120 @@ export function worktreeState(w, policy) {
   if (verdict !== 'ready') return result('local-review');
   if (w.originHead !== w.worktree.head) return result('push-owed', { notified: Boolean(w.awaitingPush) });
   return result(w.pr?.open ? 'in-flight' : 'open-pr');
+}
+
+const TICKET_BRANCH = /^[a-z]+\/(\d+)-/; // <type>/<issue>-<slug>
+const labelNames = (labels) => (labels ?? []).map((l) => (typeof l === 'string' ? l : l.name));
+/** The one issue the pull request's description closes, or null. */
+const closedIssue = (pr) => { const { closes } = parseBody(pr.body ?? ''); return closes.length === 1 ? closes[0] : null; };
+
+/** REST check runs of a commit → the newest per name, as nextAction reads them; the same start: the highest id. */
+function newestChecks(checkRuns) {
+  const newest = new Map();
+  const at = (c) => c.started_at ?? '';
+  for (const c of checkRuns) {
+    const old = newest.get(c.name);
+    if (!old || at(c) > at(old) || (at(c) === at(old) && c.id > old.id)) newest.set(c.name, c);
+  }
+  return [...newest.values()].map((c) => ({ name: c.name, status: c.status, conclusion: c.conclusion, title: c.output?.title ?? '', startedAt: c.started_at }));
+}
+
+/**
+ * One open pull request's row, from what was fetched (U5c). As the REST API gives them: pr, files (the changed
+ * paths), reviews, checkRuns (of the head commit), comments (the pull request's) and ticketComments (those of the
+ * issue it closes). worktree: the one that holds the branch ({ locked, ahead }), or null. isHuman: (user) => boolean.
+ * → { number, branch, issue (the closed one, or null), kind, action, reason, round, cause (as nextAction gives them),
+ *     fixRounds, findings (for a fix after a failed review: the review's summary comment, verbatim) }
+ * The summary counts from the reviewer app or the gates bot only, a references-fix marker from the factory bot only;
+ * a references fix handed out for any commit of the ticket is the one try.
+ */
+export function pullRequestRow({ pr, files, reviews, checkRuns, comments, ticketComments, worktree, isHuman }, policy, now) {
+  const kind = prKind(files, policy);
+  const authors = [policy.bots.reviewer, policy.bots.gates].filter(Boolean);
+  const summary = reviewSummary(comments, kind === 'code' ? 'factory/review' : 'factory/doc-review', authors);
+  const next = nextAction({
+    labels: labelNames(pr.labels),
+    draft: pr.draft,
+    kind,
+    approved: Boolean(approvingHuman(reviews, { author: pr.user.login, headSha: pr.head.sha, isHuman })),
+    checks: newestChecks(checkRuns),
+    rounds: summary?.rounds,
+    referencesFixTried: ticketComments.some((c) => c.user?.login === policy.bots.factory && c.body?.startsWith('<!-- factory:references-fix ')),
+    worktree,
+  }, policy, now);
+  return { number: pr.number, branch: pr.head.ref, issue: closedIssue(pr), kind, ...next, fixRounds: policy.limits.fixRounds,
+    findings: next.action === 'fix' && next.cause !== 'references' ? summary.body : null };
+}
+
+/**
+ * One ticket worktree's row. worktree: as parseWorktrees gives it, on a branch <type>/<issue>-<slug>. ticketLabels:
+ * the label names of that issue; ticketComments: its comments. pr: the branch's pull request as the REST API gives
+ * it, or null. originHead: the branch's commit on origin, or null. The markers are read for the worktree's head.
+ * → { path, branch, head, issue, pullRequest (its number, or null), …worktreeState }
+ */
+export function worktreeRow({ worktree, ticketLabels, ticketComments, pr, originHead }, policy) {
+  const state = worktreeState({
+    worktree,
+    ticketLabels,
+    pr: pr ? { labels: labelNames(pr.labels), merged: Boolean(pr.merged_at), open: pr.state === 'open' } : null,
+    review: localReview(ticketComments, worktree.head, policy.bots.factory),
+    awaitingPush: findMarker(ticketComments, 'awaiting-push', worktree.head, policy.bots.factory),
+    originHead,
+  }, policy);
+  return { path: worktree.path, branch: worktree.branch, head: worktree.head, issue: Number(worktree.branch.match(TICKET_BRANCH)[1]), pullRequest: pr?.number ?? null, ...state };
+}
+
+/**
+ * The command part: it reads only. gh, git: (...args) => stdout; git runs in the repository and throws on a
+ * non-zero exit. → { pullRequests: a row per open pull request labelled `factory` or opened by the factory bot,
+ * worktrees: a row per worktree on a ticket branch }
+ */
+export function inflight({ repo, policy, gh, git, isHuman, now }) {
+  const list = (endpoint) => JSON.parse(gh('api', endpoint, '--paginate', '--slurp')).flat();
+  const comments = (issue) => list(`repos/${repo}/issues/${issue}/comments?per_page=100`);
+  const worktrees = parseWorktrees(git('worktree', 'list', '--porcelain'));
+  const origin = new Map(git('ls-remote', '--heads', 'origin').split(/\r?\n/).filter(Boolean)
+    .map((line) => line.split('\t')).map(([sha, ref]) => [ref.replace(/^refs\/heads\//, ''), sha]));
+  // Ahead: another head that contains the pull request's. A pull request head this repository does not have is not contained.
+  const ahead = (head, prHead) => {
+    if (head === prHead) return false;
+    try { git('merge-base', '--is-ancestor', prHead, head); return true; } catch { return false; }
+  };
+
+  const pullRequests = list(`repos/${repo}/pulls?state=open&per_page=100`)
+    .filter((pr) => labelNames(pr.labels).includes('factory') || pr.user.login === policy.bots.factory)
+    .map((pr) => {
+      const issue = closedIssue(pr);
+      const held = worktrees.find((w) => w.branch === pr.head.ref);
+      return pullRequestRow({
+        pr,
+        files: list(`repos/${repo}/pulls/${pr.number}/files?per_page=100`).map((f) => f.filename),
+        reviews: list(`repos/${repo}/pulls/${pr.number}/reviews?per_page=100`),
+        checkRuns: list(`repos/${repo}/commits/${pr.head.sha}/check-runs?filter=all&per_page=100`).flatMap((page) => page.check_runs),
+        comments: comments(pr.number),
+        ticketComments: issue ? comments(issue) : [],
+        worktree: held ? { locked: held.locked, ahead: ahead(held.head, pr.head.sha) } : null,
+        isHuman,
+      }, policy, now);
+    });
+
+  const rows = worktrees.filter((w) => TICKET_BRANCH.test(w.branch ?? '')).map((worktree) => {
+    const issue = worktree.branch.match(TICKET_BRANCH)[1];
+    // The branch's pull requests, newest first: the open one, else the merged one, else the newest closed one.
+    const pulls = list(`repos/${repo}/pulls?state=all&head=${repo.split('/')[0]}:${worktree.branch}&per_page=100`);
+    return worktreeRow({
+      worktree,
+      ticketLabels: labelNames(JSON.parse(gh('api', `repos/${repo}/issues/${issue}`)).labels),
+      ticketComments: comments(issue),
+      pr: pulls.find((p) => p.state === 'open') ?? pulls.find((p) => p.merged_at) ?? pulls[0] ?? null,
+      originHead: origin.get(worktree.branch) ?? null,
+    }, policy);
+  });
+  return { pullRequests, worktrees: rows };
+}
+
+if (process.argv[1]?.endsWith('inflight.mjs')) {
+  const policy = loadPolicy();
+  const result = inflight({ repo: repoSlug(), policy, gh: (...args) => run('gh', args), git: (...args) => run('git', args), isHuman: makeHumanCheck(policy), now: Date.now() });
+  console.log(JSON.stringify(result, null, 2));
 }
