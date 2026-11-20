@@ -1,5 +1,56 @@
 root = true
 
+# Code style (specs/0000-framework/01-repository-and-packages.md §5). EnforceCodeStyleInBuild
+# (Directory.Build.props) makes these build errors. Each rule sets its IDE diagnostic too,
+# because the build reads only dotnet_diagnostic.<id>.severity.
+
+[*.cs]
+# File-scoped namespaces.
+csharp_style_namespace_declarations = file_scoped:error
+dotnet_diagnostic.IDE0161.severity = error
+
+# var wherever the language allows it.
+csharp_style_var_for_built_in_types = true:error
+csharp_style_var_when_type_is_apparent = true:error
+csharp_style_var_elsewhere = true:error
+dotnet_diagnostic.IDE0007.severity = error
+
+# Braces on every if, else, for, foreach, while, using, lock and fixed body.
+csharp_prefer_braces = true:error
+dotnet_diagnostic.IDE0011.severity = error
+
+# Usings: outside the namespace, System first. Unused usings: see [src/**.cs] below.
+csharp_using_directive_placement = outside_namespace:error
+dotnet_sort_system_directives_first = true
+dotnet_diagnostic.IDE0065.severity = error
+
+# Naming. The build reports IDE1006 at this severity.
+dotnet_diagnostic.IDE1006.severity = error
+
+# Private fields: _camelCase.
+dotnet_naming_rule.private_fields_underscore_camel_case.symbols = private_fields
+dotnet_naming_rule.private_fields_underscore_camel_case.style = underscore_camel_case
+dotnet_naming_rule.private_fields_underscore_camel_case.severity = error
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+dotnet_naming_style.underscore_camel_case.required_prefix = _
+dotnet_naming_style.underscore_camel_case.capitalization = camel_case
+
+# Async methods end in Async. The CancellationToken-last rule is CA1068, on through AnalysisMode All.
+dotnet_naming_rule.async_methods_end_in_async.symbols = async_methods
+dotnet_naming_rule.async_methods_end_in_async.style = async_suffix
+dotnet_naming_rule.async_methods_end_in_async.severity = error
+dotnet_naming_symbols.async_methods.applicable_kinds = method, local_function
+dotnet_naming_symbols.async_methods.applicable_accessibilities = *
+dotnet_naming_symbols.async_methods.required_modifiers = async
+dotnet_naming_style.async_suffix.required_suffix = Async
+dotnet_naming_style.async_suffix.capitalization = pascal_case
+
+[src/**.cs]
+# No unused usings. The build reports IDE0005 only with GenerateDocumentationFile, which
+# src/Directory.Build.props sets (01 §4); elsewhere the rule would fail every build instead.
+dotnet_diagnostic.IDE0005.severity = error
+
 # Suppression list (specs/0000-framework/01-repository-and-packages.md §4). Each entry says why.
 # Adding or widening one is a guard change.
 
