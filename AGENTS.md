@@ -114,6 +114,31 @@ Until the `factory-review` environment has a working API account, the two model 
 
 This should move back to CI: fix the account, set `FACTORY_REVIEW_IN_CI=true`, point the two checks in the ruleset back at GitHub Actions (`integration_id` 15368), delete `local-review.mjs`, the `reviewer` entry of `APPS` in `factory-token.mjs` (the entry, not the helper) and this section.
 
+## Token economy
+
+This overrides the bundle (ADR-0027 decision 4, ADR-0029, the kit README, `yaf-orchestrating-work`) on the points below, and only those. The plan is [plan 0004](specs/0004-token-economy/plan.md).
+
+**Why.** On 2026-11-19 two 5-hour usage limits were hit in one day while plans 0002 and 0003 ran. The causes: a Fable implementer on every tier-high ticket, Fable reviews, two reviews per ticket, fix rounds for Minor findings, three implementers at once and very long orchestrator contexts. The owner decided on 2026-11-20: "fable is strong, but burns the tokens way too quickly. so basically let's run the implementation on Opus, while design, research, architecture, etc may prompt for a stronger model if this seems sensible" ([plan 0004](specs/0004-token-economy/plan.md#decision-log), decision log).
+
+**Models.**
+
+- Every role runs on Opus (`policy.json` `roles`). `implementer-high` is not spawned.
+- Fable only for a spec writer, planner or ADR writer, for one task. The orchestrator, or the writer in its report before it starts the work, proposes it with a one-line reason. It is used only after the owner says yes in their own message. The pull request body then says "Model: Fable, agreed by the owner on <date>".
+- Never Fable for an implementer or a reviewer.
+- The policy has no field for this rule, which is why it is here.
+
+**One review per ticket.** While the reviews run locally, step 5.3 of `yaf-orchestrating-work` (the `code-reviewer`) is skipped. The local `factory/review` is the review. For a worktree in state `local-review` the orchestrator does steps 5.1 and 5.2 and writes the `factory:local-review` marker with their result. That marker then records those steps, not a code review. What it costs: no reviewer runs the tests with and without the change. The CI test jobs and the report-only `factory/test-evidence` are the executed evidence.
+
+**Fix rounds.** Only a `changes-required` verdict (a Blocker or Major finding, or a failed pass) starts a fix round. Minors and Nits go in one comment on the ticket. At the end of a batch the orchestrator opens one follow-up issue per plan that lists them, without the `factory` label, for the owner to triage. A reviewer the orchestrator briefs checks the ticket's scenarios and the diff, with no mutation or probe campaigns.
+
+**Lean orchestration.**
+
+- At most two implementers at once (`limits.parallelImplementers`).
+- Agent reports are at most 15 lines: branch, head commit, commands with exit codes and counts, size, deviations.
+- A fresh session, or `/compact`, after each batch of tickets. The Project, the tickets and their marker comments are the handover, nothing in the session.
+
+**When it ends.** When the reviews move back to CI, the owner decides whether the second review returns. Until then this section stands.
+
 ## Changing the bundle
 
 Everything under `docs/spec/` is the approved specification and the factory's guard files: tier high and code-owned. After changing a role definition, a skill, `.claude/settings.json` or a GitHub template in the bundle, run `node .github/scripts/sync-references.mjs` and commit the regenerated references. CI check `references` fails when they are out of step.
