@@ -13,6 +13,7 @@ factory/
 ├── README.md
 ├── .claude/
 │   ├── settings.json                 permission deny rules for local agents
+│   ├── commands/factory-run.md       one tick of an unattended run: /loop /factory-run
 │   └── agents/                       spec-writer, spec-reviewer, planner, plan-reviewer,
 │                                     implementer (worktree), code-reviewer, pr-reviewer
 └── .github/
@@ -177,6 +178,14 @@ Follow the yaf-orchestrating-work skill. Work the Ready tickets of epic #<n>. St
 ```
 
 That prompt is for a run you attend. An unattended run (`/loop /factory-run`) waits instead: at a `needs-human` or when only your decisions remain it tells you, picks up nothing and keeps checking until you have acted.
+
+For an unattended run, start the same session in the default permission mode and type:
+
+```
+/loop /factory-run
+```
+
+The command `.claude/commands/factory-run.md` runs one tick of the skill's loop and schedules the next with `ScheduleWakeup`: about every 5 minutes while reviews, writers or checks are running, every 60 minutes when only your decisions or pushes remain, after a desktop notification that lists them. Its `allowed-tools` pre-approve the orchestrator's own commands for the turn the command starts, and only then. It defers to the skill and to `AGENTS.md` for the steps, the limits and the models. Press `Esc` while the loop waits to end it.
 
 The skill is the instruction; in short the session reads the Project, checks `FACTORY_PAUSED`, picks tickets, and for each one: `node .github/factory/status.mjs set <issue> "In progress"` → spawn `implementer`, whose tooling gives it a worktree in which it creates the branch → re-run verification in that worktree → spawn `code-reviewer` → record the verdict on the ticket → open the pull request → `status.mjs set <issue> "In review"`. It reports at the end what merged, what waits for you and why.
 
