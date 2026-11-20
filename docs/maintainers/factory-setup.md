@@ -39,7 +39,7 @@ The kit README's "Install at M0" step 1 copies the kit to the repository root. T
 | `.claude/skills/<name>/SKILL.md`, `.agents/skills/<name>/SKILL.md` | The front matter of `docs/spec/agents/skills/<name>/SKILL.md` and a pointer to it |
 | `.claude/settings.json`, `.github/pull_request_template.md`, `.github/ISSUE_TEMPLATE/ticket.yml`, `.github/ISSUE_TEMPLATE/epic.yml` | Verbatim copies: these formats have no include and the tool reads one fixed path |
 
-Run `node .github/scripts/sync-references.mjs` after changing a role definition, a skill, the settings or a template, and commit the result. `--check` exits 1 on a missing, changed or extra file (here: `58 reference(s) to docs/spec/ are in step`); `--root <dir>` works on another checkout. The script owns `.claude/agents`, `.claude/skills` and `.agents/skills` entirely: a file there it did not generate is removed on write.
+Run `node .github/scripts/sync-references.mjs` after changing a role definition, a skill, the settings or a template, and commit the result. `--check` prints `58 reference(s) to docs/spec/ are in step` and exits 0 when all are in step, and exits 1 on a missing, changed or extra file; `--root <dir>` works on another checkout. The script owns `.claude/agents`, `.claude/skills` and `.agents/skills` entirely: a file there it did not generate is removed on write.
 
 CI job `references` in [`factory-gates.yml`](../../.github/workflows/factory-gates.yml) replaces the kit's `skills-mirror` job. It checks out the base commit at the root and the pull request head in `pr/`, and runs the base branch's script with `--check --root pr`; only while the base has no script (the installing pull request) does it use the head's copy. It holds no secret.
 
@@ -49,6 +49,8 @@ The workflows cannot be references: GitHub runs only real files in `.github/work
 2. A header line: `Installed from docs/spec/factory/.github/workflows/<file>: …`.
 3. Third-party actions pinned by commit SHA, with the version as a trailing comment. The workflow files are the record of the pins.
 4. In `factory-gates.yml`, job `test-evidence` does nothing until `global.json` exists (M0 adds the solution).
+
+Temporarily, the review jobs of `factory-pr-review.yml` and `factory-doc-review.yml` also run only when variable `FACTORY_REVIEW_IN_CI` is `true`: see "Model reviews run locally (temporary)" in [`AGENTS.md`](../../AGENTS.md).
 
 What the kit README's install steps become here:
 
@@ -71,7 +73,7 @@ The policy is used in place: [`docs/spec/factory/.github/factory/policy.json`](.
 | Key | Change |
 |---|---|
 | `humans` | `team` = `<team>`, `logins` = [`<maintainer-login>`] |
-| `bots.factory` | `<app-slug>[bot]`, the app's bot login exactly |
+| `bots.factory` | Must equal the app's bot login, `<app-slug>[bot]` (unchanged here: the kit's value already matched) |
 | `size.exclude` | + `.agents/skills/**` (generated stubs; the kit already excludes `.claude/skills/**`) |
 | `docPaths.spec` | + `docs/spec/spec/**`, `docs/spec/adr/**` |
 | `sensitivePaths` | + `docs/spec/**`, `docs/spec/factory/.github/**`, `docs/spec/factory/.claude/**` |
@@ -98,7 +100,7 @@ The first GitHub step is scripted. `setup-github.sh` uses the Projects API, so g
 [`setup-github.sh`](../spec/factory/.github/factory/setup-github.sh) needs `gh` and `jq` and is idempotent. It creates:
 
 - the 18 labels of [`labels.json`](../spec/factory/.github/factory/labels.json);
-- the Project "YAF factory" (here `<project-number>` 1), linked to the repository, with the Status options Backlog / Ready / In progress / In review / Done;
+- the Project "YAF factory", linked to the repository, with the Status options Backlog / Ready / In progress / In review / Done;
 - the repository variables `FACTORY_PROJECT_OWNER`, `FACTORY_PROJECT_NUMBER` and `FACTORY_PAUSED=false` (an existing `FACTORY_PAUSED` is kept).
 
 It does not configure the rulesets, the app, the environments and their secrets, or the team.
