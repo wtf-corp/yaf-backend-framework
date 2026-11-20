@@ -39,14 +39,22 @@ Root `Directory.Build.props` with the settings of `01` §4 (`net11.0`, `LangVers
 | `RS0016` symbol not in the declared public API | yes, as error. The analyzer picks up `PublicAPI.Shipped.txt` and `PublicAPI.Unshipped.txt` in the project folder by itself |
 | `RS0030` banned symbol (`DateTime.UtcNow`; `Environment.GetEnvironmentVariable(string)` in a second run) | yes, as error |
 
-With the public API declared and the docs written, an entry for a type the project does not reference (`M:Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.IgnoreQueryFilters``1(System.Linq.IQueryable{``0})`) and one written without a parameter list (`M:Microsoft.Extensions.Logging.LoggerExtensions.LogInformation`) caused no diagnostic. So entries for packages that come later can be in the list from M0 on. **Not checked:** whether an entry without a parameter list bans every overload once `Microsoft.Extensions.Logging.Abstractions` is referenced. T4 checks it with a probe that references the package. If it does not, T4 lists the overloads.
+With the public API declared and the docs written, an entry for a type the project does not reference (`M:Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.IgnoreQueryFilters``1(System.Linq.IQueryable{``0})`) and one written without a parameter list (`M:Microsoft.Extensions.Logging.LoggerExtensions.LogInformation`) caused no diagnostic. So entries for packages that come later can be in the list from M0 on.
 
-Some items of the list in `01` §4 cannot be written as a symbol. A symbol ban removes a member everywhere, so it cannot depend on how an argument was built or what it is for:
+**A method entry needs its full parameter list (executed, review round 1).** `M:System.Security.Cryptography.SymmetricAlgorithm.EncryptEcb`, written without parameters, did **not** flag a call to `aes.EncryptEcb(data, PaddingMode.PKCS7)`. The same entry with its parameters, `M:System.Security.Cryptography.SymmetricAlgorithm.EncryptEcb(System.Byte[],System.Security.Cryptography.PaddingMode)`, gave `RS0030` as an error. So an entry without a parameter list bans nothing. T4 therefore lists every overload: all `LoggerExtensions.Log*` overloads, and both `EncryptEcb` and `DecryptEcb` overloads.
 
-| Item | Enforced instead by | Checked |
+Some items of the list in `01` §4 cannot be written as a symbol. A symbol ban removes a member everywhere, so it cannot depend on how an argument was built or what it is for. Probe, executed on 2026-11-20 on SDK 11.0.100, whose `Microsoft.CodeAnalysis.NetAnalyzers.dll` reports product version `11.0.100-rtm.26529.118`. Root settings of §2 (`AnalysisMode` `All`, `TreatWarningsAsErrors`), and in the probe class:
+
+    public static int Roll() => new Random().Next();
+    … using var aes = Aes.Create(); aes.Key = key; aes.Mode = CipherMode.ECB; return aes.EncryptEcb(data, PaddingMode.PKCS7);
+
+| Item | Enforced instead by | Executed result |
 |---|---|---|
-| `Random` for security purposes | `CA5394` (insecure randomness), on under `AnalysisMode` `All` | Rule id from memory. T4 confirms it with the probe |
-| `Aes` in ECB mode | `CA5358` (unsafe cipher modes) | Same |
+| `Random` for security purposes | `CA5394` | `error CA5394: Random is an insecure random number generator. Use cryptographically secure random number …` |
+| `Aes` in ECB mode, set through `Mode` | `CA5358` | `error CA5358: Review the usage of cipher mode 'ECB' with cryptography experts. …` |
+| `Aes` in ECB through the one-shot `EncryptEcb`/`DecryptEcb` | **Not** `CA5358`: with the `Mode` line removed, only `CA5394` was left | Banned as symbols with their parameter lists (above), which gave `RS0030` |
+
+`CA5394` flags every `new Random()`, not only security uses. That is stricter than `01` §4 asks. A non-security use in `src` needs `Random.Shared` (to be checked when it first occurs) or a documented suppression, which is a guard change.
 | Raw SQL built by interpolation into `FromSqlRaw` / `ExecuteSqlRaw` | EF Core's own analyzer for interpolated raw SQL. It arrives with EF Core in M3 | **Not checked.** M3's plan verifies the rule id against the EF Core version it pins |
 | `IgnoreQueryFilters` **outside** `YAF.Persistence.EfCore` | The entry is in the list. M3 exempts its own package (a separate list, or no `AdditionalFiles` entry for that project) | For M3 |
 
