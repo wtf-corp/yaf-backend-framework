@@ -8,6 +8,9 @@
   <ItemGroup>
     <!-- Test runner (ADR-0018). Latest stable on nuget.org, checked 2026-11-20. -->
     <PackageVersion Include="xunit.v3" Version="4.0.3" />
+    <!-- Build-only analyzers for src/ (01 §4), private assets. Latest stable on nuget.org, checked 2026-11-20. -->
+    <PackageVersion Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="5.6.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="5.6.0" />
   </ItemGroup>
 
 </Project>
