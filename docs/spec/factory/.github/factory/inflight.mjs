@@ -54,6 +54,7 @@ export function nextAction(pr, policy, now) {
   const review = REVIEWS.find((name) => checks.get(name).conclusion === 'failure');
   if (review) {
     if (pr.kind !== 'code') return result('human', 'a plan or spec fix is attended');
+    if (!Number.isInteger(pr.rounds) || pr.rounds < 1) return result('human', 'no counted review summary');
     if (pr.rounds > policy.limits.fixRounds) return result('human', 'fix rounds used up');
     if (writing) return result('wait', `a fix ${writing}`);
     return result('fix', `${review} failed`, { round: pr.rounds, cause: review });
@@ -62,5 +63,6 @@ export function nextAction(pr, policy, now) {
   if (pr.labels.includes('tier:high') && !pr.approved) return result('human', 'tier high: waiting for a human maintainer\'s approval of the head commit');
   if (failed('factory/human-approval')) return result('human', 'factory/human-approval failed');
   if (flagged) return result('human', 'a flagged plan: waiting for a human maintainer\'s approval');
-  return result('wait', 'the checks are green: GitHub merges');
+  const pending = ['factory/human-approval', 'factory/plan-gate'].filter((name) => !completed(name));
+  return result('wait', pending.length ? `not reported yet: ${pending.join(', ')}` : 'the checks are green: GitHub merges');
 }

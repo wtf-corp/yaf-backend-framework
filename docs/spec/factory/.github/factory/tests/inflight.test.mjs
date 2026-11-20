@@ -124,6 +124,19 @@ test('used-up fix rounds are the owner\'s', () => {
   assert.equal(act(review, { rounds: 3, worktree: { locked: false, ahead: true } }).action, 'human');
 });
 
+test('a failed review with no counted summary is the owner\'s', () => {
+  for (const rounds of [undefined, null, NaN, 0, 1.5, '2']) {
+    const a = act({ 'factory/review': failed() }, { rounds });
+    assert.deepEqual([a.action, a.reason, a.round], ['human', 'no counted review summary', null]);
+  }
+  assert.equal(act({ 'factory/review': failed() }, { rounds: 1 }).action, 'fix');
+});
+
+test('a check that has not reported is not called green', () => {
+  assert.deepEqual([act({ 'factory/human-approval': null }).action, act({ 'factory/human-approval': null }).reason], ['wait', 'not reported yet: factory/human-approval']);
+  assert.equal(act({ 'factory/plan-gate': running(1) }).reason, 'not reported yet: factory/plan-gate');
+});
+
 test('a review that ended without a verdict is owed, not a fix', () => {
   for (const conclusion of ['cancelled', 'timed_out', 'action_required']) {
     const a = act({ 'factory/review': failed('', conclusion) }, { rounds: 1 });
