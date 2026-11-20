@@ -119,11 +119,17 @@ const labelNames = (labels) => (labels ?? []).map((l) => (typeof l === 'string' 
 /** The one issue the pull request's description closes, or null. */
 const closedIssue = (pr) => { const { closes } = parseBody(pr.body ?? ''); return closes.length === 1 ? closes[0] : null; };
 
-/** REST check runs of a commit → the newest per name, as nextAction reads them; the same start: the highest id. */
-function newestChecks(checkRuns) {
+/**
+ * REST check runs of a commit → the newest per name, as nextAction reads them; the same start: the highest id.
+ * A run counts only from the app the ruleset accepts it from: the two reviews from the reviewer app (the gates bot
+ * where the policy names none), everything else from the gates bot. Anybody else's run of that name is not read.
+ */
+function newestChecks(checkRuns, policy) {
   const newest = new Map();
   const at = (c) => c.started_at ?? '';
+  const slug = (name) => ((REVIEWS.includes(name) && policy.bots.reviewer) || policy.bots.gates).replace(/\[bot\]$/, '');
   for (const c of checkRuns) {
+    if (c.app?.slug !== slug(c.name)) continue;
     const old = newest.get(c.name);
     if (!old || at(c) > at(old) || (at(c) === at(old) && c.id > old.id)) newest.set(c.name, c);
   }
@@ -137,10 +143,14 @@ function newestChecks(checkRuns) {
  * → { number, branch, issue (the closed one, or null), kind, action, reason, round, cause (as nextAction gives them),
  *     fixRounds, findings (for a fix after a failed review: the review's summary comment, verbatim) }
  * The summary counts from the reviewer app or the gates bot only, a references-fix marker from the factory bot only;
- * a references fix handed out for any commit of the ticket is the one try.
+ * a references fix handed out for any commit of the ticket is the one try, and a pull request that closes no single
+ * issue has no ticket to mark the try on, so it gets none.
  */
 export function pullRequestRow({ pr, files, reviews, checkRuns, comments, ticketComments, worktree, isHuman }, policy, now) {
   const kind = prKind(files, policy);
+  const issue = closedIssue(pr);
+  // The marker's syntax is markers.mjs's: the first thing in its comment, `<!-- factory:references-fix <sha> -->`.
+  const fixTried = ticketComments.some((c) => c.user?.login === policy.bots.factory && c.body?.startsWith('<!-- factory:references-fix '));
   const authors = [policy.bots.reviewer, policy.bots.gates].filter(Boolean);
   const summary = reviewSummary(comments, kind === 'code' ? 'factory/review' : 'factory/doc-review', authors);
   const next = nextAction({
@@ -148,12 +158,12 @@ export function pullRequestRow({ pr, files, reviews, checkRuns, comments, ticket
     draft: pr.draft,
     kind,
     approved: Boolean(approvingHuman(reviews, { author: pr.user.login, headSha: pr.head.sha, isHuman })),
-    checks: newestChecks(checkRuns),
+    checks: newestChecks(checkRuns, policy),
     rounds: summary?.rounds,
-    referencesFixTried: ticketComments.some((c) => c.user?.login === policy.bots.factory && c.body?.startsWith('<!-- factory:references-fix ')),
+    referencesFixTried: issue === null || fixTried,
     worktree,
   }, policy, now);
-  return { number: pr.number, branch: pr.head.ref, issue: closedIssue(pr), kind, ...next, fixRounds: policy.limits.fixRounds,
+  return { number: pr.number, branch: pr.head.ref, issue, kind, ...next, fixRounds: policy.limits.fixRounds,
     findings: next.action === 'fix' && next.cause !== 'references' ? summary.body : null };
 }
 
@@ -179,6 +189,8 @@ export function worktreeRow({ worktree, ticketLabels, ticketComments, pr, origin
  * The command part: it reads only. gh, git: (...args) => stdout; git runs in the repository and throws on a
  * non-zero exit. → { pullRequests: a row per open pull request labelled `factory` or opened by the factory bot,
  * worktrees: a row per worktree on a ticket branch }
+ * A pull request or a worktree whose calls fail gets the row { number | path, branch, action | state: 'failed',
+ * reason } and does not stop the others. The three lists everything starts from may throw.
  */
 export function inflight({ repo, policy, gh, git, isHuman, now }) {
   const list = (endpoint) => JSON.parse(gh('api', endpoint, '--paginate', '--slurp')).flat();
@@ -191,10 +203,11 @@ export function inflight({ repo, policy, gh, git, isHuman, now }) {
     if (head === prHead) return false;
     try { git('merge-base', '--is-ancestor', prHead, head); return true; } catch { return false; }
   };
+  const attempt = (id, key, row) => { try { return row(); } catch (e) { return { ...id, [key]: 'failed', reason: e.message }; } };
 
   const pullRequests = list(`repos/${repo}/pulls?state=open&per_page=100`)
     .filter((pr) => labelNames(pr.labels).includes('factory') || pr.user.login === policy.bots.factory)
-    .map((pr) => {
+    .map((pr) => attempt({ number: pr.number, branch: pr.head.ref }, 'action', () => {
       const issue = closedIssue(pr);
       const held = worktrees.find((w) => w.branch === pr.head.ref);
       return pullRequestRow({
@@ -207,9 +220,9 @@ export function inflight({ repo, policy, gh, git, isHuman, now }) {
         worktree: held ? { locked: held.locked, ahead: ahead(held.head, pr.head.sha) } : null,
         isHuman,
       }, policy, now);
-    });
+    }));
 
-  const rows = worktrees.filter((w) => TICKET_BRANCH.test(w.branch ?? '')).map((worktree) => {
+  const rows = worktrees.filter((w) => TICKET_BRANCH.test(w.branch ?? '')).map((worktree) => attempt({ path: worktree.path, branch: worktree.branch }, 'state', () => {
     const issue = worktree.branch.match(TICKET_BRANCH)[1];
     // The branch's pull requests, newest first: the open one, else the merged one, else the newest closed one.
     const pulls = list(`repos/${repo}/pulls?state=all&head=${repo.split('/')[0]}:${worktree.branch}&per_page=100`);
@@ -220,7 +233,7 @@ export function inflight({ repo, policy, gh, git, isHuman, now }) {
       pr: pulls.find((p) => p.state === 'open') ?? pulls.find((p) => p.merged_at) ?? pulls[0] ?? null,
       originHead: origin.get(worktree.branch) ?? null,
     }, policy);
-  });
+  }));
   return { pullRequests, worktrees: rows };
 }
 

@@ -271,7 +271,9 @@ test('a pushed head with an open pull request is in flight', () => {
 
 const by = (login, body) => ({ user: { login }, body });
 const SUMMARY = '<!-- factory:review-summary factory/review -->\n<!-- factory:rounds=2 -->\n### Review\n**F1 · Major** — `inflight.mjs:3`\nthe cap fails open';
-const checkRun = (name, conclusion, startedAt, id, title = '') => ({ id, name, status: conclusion ? 'completed' : 'in_progress', conclusion, started_at: startedAt, output: { title } });
+/** A check run as the REST API gives it, from the app the ruleset accepts that name from unless `slug` says otherwise. */
+const checkRun = (name, conclusion, startedAt, id, title = '', slug = /review$/.test(name) ? 'yaf-reviewer' : 'github-actions') => (
+  { id, name, status: conclusion ? 'completed' : 'in_progress', conclusion, started_at: startedAt, output: { title }, app: { slug } });
 const RUNS = GREEN.map((name, i) => checkRun(name, 'success', minutesAgo(20), i + 1));
 const REVIEW_FAILED = [...RUNS, checkRun('factory/review', 'failure', minutesAgo(10), 100, 'changes required')];
 const PULL = { number: 61, state: 'open', draft: false, merged_at: null, body: 'Closes #39\nPlan: specs/0003-unattended-orchestration/plan.md#T8', user: { login: policy.bots.factory },
@@ -289,6 +291,11 @@ test('a pull request\'s row carries its action, round and findings', () => {
   assert.equal(rerun(15).action, 'fix'); // started before the failed one
   assert.equal(row({ checkRuns: [...RUNS.slice(0, 7), checkRun('factory/review', null, minutesAgo(31), 101), ...RUNS.slice(8)] }).action, 'review');
   assert.equal(row({ checkRuns: [...REVIEW_FAILED, checkRun('factory/review', 'success', minutesAgo(10), 99)] }).action, 'fix'); // the same start: the highest id
+  // a newer run of the name from another app is not read: a review from the reviewer app only, a gate from the gates bot only
+  assert.equal(row({ checkRuns: [...REVIEW_FAILED, checkRun('factory/review', 'success', minutesAgo(1), 102, '', 'github-actions')] }).action, 'fix');
+  assert.equal(row({ checkRuns: [...REVIEW_FAILED, checkRun('factory/size', 'failure', minutesAgo(1), 103, '', 'yaf-reviewer')] }).action, 'fix');
+  assert.equal(row({ checkRuns: [...RUNS.slice(0, 7), checkRun('factory/review', 'success', minutesAgo(1), 104, '', 'yaf-factory'), ...RUNS.slice(8)] }).action, 'review');
+  assert.equal(row({ checkRuns: RUNS.map((run) => ({ ...run, app: undefined })) }).reason, 'the gates have not reported');
   // the worktree that holds the branch, the kind and the closed issue
   assert.equal(row({ worktree: { locked: false, ahead: true } }).action, 'wait');
   const plan = row({ pr: { ...PULL, body: 'A plan.' }, files: ['specs/0004-x/plan.md'], checkRuns: RUNS });
@@ -308,8 +315,11 @@ test('a fix row holds the summary comment verbatim', () => {
   assert.deepEqual([forged.action, forged.reason, forged.findings], ['human', 'no counted review summary', null]);
   // a policy without a reviewer app: the gates bot's summary counts, and an author without a login is nobody's
   const ci = { ...policy, bots: { factory: policy.bots.factory, gates: policy.bots.gates } };
-  assert.equal(row({ comments: [by(policy.bots.gates, SUMMARY)] }, ci).action, 'fix');
-  assert.equal(row({ comments: [{ user: {}, body: SUMMARY }] }, ci).action, 'human');
+  const inCi = [...RUNS.filter((run) => !/review$/.test(run.name)), checkRun('factory/doc-review', 'neutral', minutesAgo(20), 98, '', 'github-actions'),
+    checkRun('factory/review', 'failure', minutesAgo(10), 100, '', 'github-actions')];
+  assert.equal(row({ comments: [by(policy.bots.gates, SUMMARY)], checkRuns: inCi }, ci).action, 'fix');
+  assert.equal(row({ comments: [by(policy.bots.gates, SUMMARY)] }, ci).action, 'review'); // there the reviewer app's runs are nobody's
+  assert.equal(row({ comments: [{ user: {}, body: SUMMARY }], checkRuns: inCi }, ci).action, 'human');
   // a plan's summary is the doc review's
   const doc = [...RUNS, checkRun('factory/doc-review', 'failure', minutesAgo(10), 100)];
   assert.equal(row({ files: ['specs/0004-x/plan.md'], checkRuns: doc }).reason, 'a plan or spec fix is attended');
@@ -319,6 +329,12 @@ test('a fix row holds the summary comment verbatim', () => {
   assert.deepEqual([tried([]).action, tried([]).cause, tried([]).findings], ['fix', 'references', null]);
   assert.equal(tried([by(policy.bots.factory, marker('references-fix', 'e'.repeat(40)))]).action, 'gate-failed');
   assert.equal(tried([by('somebody', marker('references-fix', HEAD))]).action, 'fix');
+  assert.equal(tried([by(policy.bots.factory, `Evidence:\n${marker('references-fix', HEAD)}`)]).action, 'fix'); // a quoted marker is text
+  // no single closed issue: no ticket to mark the try on, so no fix is handed out
+  for (const body of ['Trivial because: a typo', 'Closes #39\nCloses #40']) {
+    const loose = row({ pr: { ...PULL, body }, checkRuns: references });
+    assert.deepEqual([loose.issue, loose.action, loose.cause], [null, 'gate-failed', 'references']);
+  }
 });
 
 const WORKTREE = { path: 'C:/dev/yaf/.claude/worktrees/agent-a1', branch: 'ci/39-inflight-list', head: HEAD, locked: false };
@@ -356,36 +372,56 @@ test('the policy names the reviewer app', () => {
 test('the command lists the pull requests and the ticket worktrees, and writes nothing', () => {
   const repo = 'acme/yaf';
   const OLD = 'e'.repeat(40);
-  const porcelain = `worktree C:/dev/yaf\nHEAD ${'b'.repeat(40)}\nbranch refs/heads/main\n\nworktree ${WORKTREE.path}\nHEAD ${HEAD}\nbranch refs/heads/ci/39-inflight-list\n\n`
-    + `worktree C:/dev/yaf/.claude/worktrees/agent-a3\nHEAD ${'d'.repeat(40)}\nbranch refs/heads/worktree-agent-a3\n`;
-  const pulls = [{ ...PULL, head: { ref: PULL.head.ref, sha: OLD } }, { ...PULL, number: 62, labels: [], user: { login: 'somebody' }, head: { ref: 'fix/typo', sha: OLD } }];
+  const PUSHED = 'f'.repeat(40);
+  const at = (name, head, branch) => `worktree C:/dev/yaf/.claude/worktrees/${name}\nHEAD ${head}\nbranch refs/heads/${branch}\n\n`;
+  const porcelain = `worktree C:/dev/yaf\nHEAD ${'b'.repeat(40)}\nbranch refs/heads/main\n\n` + at('agent-a1', HEAD, 'ci/39-inflight-list') + at('agent-a3', 'd'.repeat(40), 'worktree-agent-a3')
+    + at('agent-a4', 'c'.repeat(40), 'ci/38-worktree-state') + at('agent-a5', PUSHED, 'fix/40-typo') + at('agent-a6', 'd'.repeat(40), 'ci/999-gone');
+  const open = [{ ...PULL, head: { ref: PULL.head.ref, sha: OLD } },
+    { ...PULL, number: 62, body: 'Closes #40', labels: [], user: { login: 'somebody' }, head: { ref: 'fix/40-typo', sha: PUSHED } }, // not the factory's
+    { ...PULL, number: 64, head: { ref: 'ci/50-broken', sha: OLD } }];
+  const closed = { ...PULL, number: 58, state: 'closed', head: { ref: 'ci/38-worktree-state', sha: OLD } };
   const answers = {
-    [`repos/${repo}/pulls?state=open&per_page=100`]: [pulls],
+    [`repos/${repo}/pulls?state=open&per_page=100`]: [open],
     [`repos/${repo}/pulls/61/files?per_page=100`]: [[{ filename: 'docs/spec/factory/.github/factory/inflight.mjs' }]],
     [`repos/${repo}/pulls/61/reviews?per_page=100`]: [[]],
     [`repos/${repo}/commits/${OLD}/check-runs?filter=all&per_page=100`]: [{ check_runs: REVIEW_FAILED }],
     [`repos/${repo}/issues/61/comments?per_page=100`]: [[by('yaf-reviewer[bot]', SUMMARY)]],
     [`repos/${repo}/issues/39/comments?per_page=100`]: [[READY]],
     [`repos/${repo}/issues/39`]: { number: 39, labels: [{ name: 'factory' }] },
-    [`repos/${repo}/pulls?state=all&head=acme:ci/39-inflight-list&per_page=100`]: [[pulls[0]]],
+    [`repos/${repo}/pulls?state=all&head=acme:ci/39-inflight-list&per_page=100`]: [[open[0]]],
+    [`repos/${repo}/issues/38/comments?per_page=100`]: [[]],
+    [`repos/${repo}/issues/38`]: { number: 38, labels: [] },
+    [`repos/${repo}/pulls?state=all&head=acme:ci/38-worktree-state&per_page=100`]: [[closed, { ...closed, number: 57, merged_at: '2026-11-20T07:31:37Z' }]],
+    [`repos/${repo}/issues/40/comments?per_page=100`]: [[by(policy.bots.factory, marker('local-review', PUSHED, 'ready round=0'))]],
+    [`repos/${repo}/issues/40`]: { number: 40, labels: [{ name: 'factory' }] },
+    [`repos/${repo}/pulls?state=all&head=acme:fix/40-typo&per_page=100`]: [[open[1]]],
+    [`repos/${repo}/pulls?state=all&head=acme:ci/999-gone&per_page=100`]: [[]],
   };
   const calls = [];
+  const missing = [];
   const gh = (...args) => {
     calls.push(['gh', ...args]);
-    assert.ok(args[1] in answers, `not expected: gh ${args.join(' ')}`);
-    return JSON.stringify(answers[args[1]]);
+    if (args[1] in answers) return JSON.stringify(answers[args[1]]);
+    missing.push(args[1]);
+    throw new Error('gh: Not Found (HTTP 404)');
   };
   const git = (...args) => {
     calls.push(['git', ...args]);
     if (args[0] === 'worktree') return porcelain;
-    if (args[0] === 'ls-remote') return `${OLD}\trefs/heads/ci/39-inflight-list\n${'b'.repeat(40)}\trefs/heads/main\n`;
+    if (args[0] === 'ls-remote') return `${OLD}\trefs/heads/ci/39-inflight-list\n${PUSHED}\trefs/heads/fix/40-typo\n${'b'.repeat(40)}\trefs/heads/main\n`;
     if (args.join(' ') === `merge-base --is-ancestor ${OLD} ${HEAD}`) return '';
     throw new Error(`not expected: git ${args.join(' ')}`);
   };
   const out = inflight({ repo, policy, gh, git, isHuman: () => false, now });
-  // the fix is committed in the worktree and not pushed: the pull request waits, the worktree owes the push
-  assert.deepEqual(out.pullRequests.map((p) => [p.number, p.issue, p.action, p.reason]), [[61, 39, 'wait', 'a fix is committed and not pushed']]);
-  assert.deepEqual(out.worktrees.map((w) => [w.branch, w.issue, w.pullRequest, w.state]), [['ci/39-inflight-list', 39, 61, 'push-owed']]);
+  // #61: the fix is committed in the worktree and not pushed, so the pull request waits and the worktree owes the push.
+  // A pull request or a worktree whose calls fail is a row of its own and stops nothing.
+  assert.deepEqual(out.pullRequests, [{ ...row({ pr: open[0], ticketComments: [READY], worktree: { locked: false, ahead: true } }), action: 'wait', reason: 'a fix is committed and not pushed' },
+    { number: 64, branch: 'ci/50-broken', action: 'failed', reason: 'gh: Not Found (HTTP 404)' }]);
+  assert.deepEqual(out.worktrees.slice(0, 3).map((w) => [w.branch, w.issue, w.pullRequest, w.state]),
+    [['ci/39-inflight-list', 39, 61, 'push-owed'], ['ci/38-worktree-state', 38, 57, 'remove'], ['fix/40-typo', 40, 62, 'in-flight']]);
+  assert.deepEqual(out.worktrees[3], { path: 'C:/dev/yaf/.claude/worktrees/agent-a6', branch: 'ci/999-gone', state: 'failed', reason: 'gh: Not Found (HTTP 404)' });
+  assert.equal(out.worktrees.length, 4);
+  assert.deepEqual(missing, [`repos/${repo}/pulls/64/files?per_page=100`, `repos/${repo}/issues/999`]); // nothing else was asked for and not answered
   for (const [tool, ...args] of calls) {
     if (tool === 'gh') assert.ok(args[0] === 'api' && !args.some((a) => ['--method', '-X', '--input', '-f', '-F'].includes(a)), `a write: gh ${args.join(' ')}`);
     else assert.ok(['worktree list --porcelain', 'ls-remote --heads origin'].includes(args.join(' ')) || args[0] === 'merge-base', `not a read: git ${args.join(' ')}`);
