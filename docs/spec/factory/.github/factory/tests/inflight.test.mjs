@@ -1,0 +1,108 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { loadPolicy } from '../lib.mjs';
+import { nextAction } from '../inflight.mjs';
+
+const policy = loadPolicy();
+const now = new Date('2026-11-20T12:00:00Z');
+const minutesAgo = (n) => new Date(now.getTime() - n * 60_000).toISOString();
+const GREEN = ['factory/tier', 'factory/ticket', 'factory/size', 'factory/delta', 'factory/guards', 'factory/plan-gate', 'factory/human-approval',
+  'factory/review', 'factory/doc-review', 'references', 'factory-self-test', 'factory/test-evidence'];
+const failed = (title = '') => ({ status: 'completed', conclusion: 'failure', title });
+const running = (minutes) => ({ status: 'in_progress', conclusion: null, startedAt: minutesAgo(minutes) });
+
+/** A green, undrafted code pull request; `checks` overrides a check run by name, and null removes it. */
+function pr(checks = {}, extra = {}) {
+  const runs = GREEN.filter((name) => checks[name] !== null).map((name) => ({ name, status: 'completed', conclusion: 'success', title: '', ...checks[name] }));
+  return { labels: ['factory', 'tier:medium'], draft: false, kind: 'code', approved: false, checks: runs, rounds: 0, referencesFixTried: false, worktree: null, ...extra };
+}
+const act = (checks, extra) => nextAction(pr(checks, extra), policy, now);
+
+test('a failed review is a fix round with its number', () => {
+  const a = act({ 'factory/review': failed('changes required') }, { rounds: 2 });
+  assert.equal(a.action, 'fix');
+  assert.equal(a.round, 2);
+  assert.equal(a.cause, 'factory/review');
+  assert.ok(a.reason);
+});
+
+test('needs-human is the owner\'s, before anything else', () => {
+  const a = act({ 'factory/review': failed() }, { labels: ['factory', 'needs-human'], draft: true });
+  assert.equal(a.action, 'human');
+  assert.match(a.reason, /needs-human/);
+});
+
+test('a draft needs nothing', () => {
+  assert.equal(act({ 'factory/review': null }, { draft: true }).action, 'none');
+});
+
+test('without a completed factory/tier the gates are waited for', () => {
+  assert.equal(act({ 'factory/tier': null, references: failed() }).action, 'wait');
+  assert.equal(act({ 'factory/tier': running(1), 'factory/review': null }).action, 'wait');
+});
+
+test('a failed references job is one fix round, then gate-failed', () => {
+  const first = act({ references: failed() });
+  assert.deepEqual([first.action, first.cause, first.round], ['fix', 'references', null]);
+  const second = act({ references: failed() }, { referencesFixTried: true });
+  assert.deepEqual([second.action, second.cause], ['gate-failed', 'references']);
+  assert.equal(act({ references: failed() }, { kind: 'plan' }).action, 'gate-failed'); // no fix round on a plan
+});
+
+test('a failed gate is gate-failed', () => {
+  for (const name of ['factory/tier', 'factory/ticket', 'factory/size', 'factory/delta', 'factory/guards']) {
+    const a = act({ [name]: failed(), 'factory/review': failed() });
+    assert.deepEqual([a.action, a.cause], ['gate-failed', name]);
+  }
+  assert.equal(act({ 'factory/plan-gate': failed('2 problem(s) in the ticket list') }, { kind: 'plan' }).action, 'gate-failed');
+});
+
+test('a failed self-test is gate-failed', () => {
+  assert.deepEqual(act({ 'factory-self-test': failed() }).cause, 'factory-self-test');
+  assert.equal(act({ 'factory-self-test': failed() }).action, 'gate-failed');
+  assert.equal(act({ 'factory/test-evidence': failed() }).action, 'gate-failed');
+});
+
+test('a review in progress is waited for, a stale one is owed', () => {
+  assert.equal(act({ 'factory/review': running(29) }).action, 'wait');
+  assert.equal(act({ 'factory/doc-review': running(3) }, { kind: 'plan' }).action, 'wait');
+  assert.equal(act({ 'factory/review': running(30) }).action, 'review');
+  assert.equal(act({ 'factory/review': { status: 'in_progress', conclusion: null } }).action, 'review'); // no start time
+});
+
+test('a missing review check is owed', () => {
+  assert.equal(act({ 'factory/review': null }).action, 'review');
+  assert.equal(act({ 'factory/doc-review': null }, { kind: 'spec' }).action, 'review');
+  assert.equal(act({ 'factory/review': null, 'factory/doc-review': running(2) }).action, 'wait'); // row 5 before row 6
+});
+
+test('a plan\'s or a spec\'s failed review is the owner\'s', () => {
+  for (const kind of ['plan', 'spec']) {
+    const a = act({ 'factory/doc-review': failed() }, { kind, rounds: 1 });
+    assert.deepEqual([a.action, a.reason, a.round], ['human', 'a plan or spec fix is attended', null]);
+  }
+});
+
+test('a worktree ahead of the pull request waits for the push', () => {
+  const review = { 'factory/review': failed() };
+  assert.equal(act(review, { rounds: 1, worktree: { locked: false, ahead: true } }).action, 'wait');
+  assert.equal(act(review, { rounds: 1, worktree: { locked: true, ahead: false } }).action, 'wait');
+  assert.equal(act(review, { rounds: 1, worktree: { locked: false, ahead: false } }).action, 'fix');
+});
+
+test('an unapproved tier-high plan is the owner\'s', () => {
+  const plan = { kind: 'plan', labels: ['factory', 'tier:low', 'tier:high'] };
+  assert.equal(act({}, plan).action, 'human');
+  assert.equal(act({}, { ...plan, approved: true }).action, 'wait');
+  assert.equal(act({ 'factory/human-approval': failed('tier high: waiting for an approving review') }, { approved: true }).action, 'human');
+});
+
+test('a flagged plan gate is the owner\'s', () => {
+  const a = act({ 'factory/plan-gate': failed('flagged: needs a human maintainer\'s approving review') }, { kind: 'plan' });
+  assert.equal(a.action, 'human');
+  assert.equal(act({ 'factory/plan-gate': failed('flagged: needs a human maintainer\'s approving review'), 'factory/doc-review': null }, { kind: 'plan' }).action, 'review');
+});
+
+test('a green pull request waits for GitHub to merge', () => {
+  assert.deepEqual(act(), { action: 'wait', reason: 'the checks are green: GitHub merges', round: null, cause: null });
+});
