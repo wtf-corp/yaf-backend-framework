@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { loadPolicy } from '../lib.mjs';
-import { verdictOf, renderSummary, heldForHuman } from '../post-review.mjs';
+import { verdictOf, renderSummary, heldForHuman, humanNeeded } from '../post-review.mjs';
 
 const policy = loadPolicy();
 const DOC = 'factory/doc-review';
@@ -38,6 +38,15 @@ test('held for a human: a spec is, a plan when a changed plan is flagged, unread
   assert.equal(heldForHuman('plan', null, policy), false);
   assert.equal(heldForHuman('plan', [flaggedPlan, '```factory:delta\nnot json\n```\n'], policy), false);
   assert.equal(heldForHuman('code', [flaggedPlan], policy), false);
+});
+
+test('a request is needed only after a passed review of a tier-high or held pull request', () => {
+  assert.equal(humanNeeded(true, ['factory', 'tier:high'], false), true);
+  assert.equal(humanNeeded(true, ['tier:medium'], true), true);
+  assert.equal(humanNeeded(true, ['tier:medium'], false), false);
+  assert.equal(humanNeeded(true, [], false), false);
+  assert.equal(humanNeeded(false, ['tier:high'], false), false);
+  assert.equal(humanNeeded(false, ['tier:medium'], true), false);
 });
 
 test('a Major without the marker still fails', () => {

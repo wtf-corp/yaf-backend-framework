@@ -36,3 +36,16 @@ export function humanApprovalVerdict(tier, approver) {
     ? { pass: true, title: `approved by ${approver}` }
     : { pass: false, title: 'tier high: waiting for an approving review by a human maintainer on the current commit' };
 }
+
+/**
+ * The logins to request a review from. needed: a human must approve the pull request. approver: approvingHuman's
+ * result. requestedUsers, requestedTeams: the logins and team slugs whose review is requested now.
+ * humans: the policy's `humans`. Nobody once a human has approved, and nobody while a team's review is requested
+ * (GitHub's own request to the code owners). Never the author, anyone already requested, or anyone who has
+ * submitted a review of the head commit.
+ */
+export function reviewersToRequest({ needed, approver, author, requestedUsers, requestedTeams, reviews, headSha, humans }) {
+  if (!needed || approver || requestedTeams.length > 0) return [];
+  const reviewed = reviews.filter((r) => r.user && r.state !== 'PENDING' && r.commit_id === headSha).map((r) => r.user.login);
+  return humans.logins.filter((login) => login !== author && !requestedUsers.includes(login) && !reviewed.includes(login));
+}

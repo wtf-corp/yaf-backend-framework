@@ -4,9 +4,10 @@
 //   REVIEW_OUTPUT='<json>' node .github/factory/post-review.mjs --check factory/doc-review
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { api, repoSlug, readEvent, setCheck, loadPolicy } from './lib.mjs';
+import { api, repoSlug, readEvent, setCheck, loadPolicy, makeHumanCheck } from './lib.mjs';
 import { prKind } from './classify.mjs';
 import { planFlags } from './plan.mjs';
+import { approvingHuman, reviewersToRequest } from './human-approval.mjs';
 
 const MARKER = (check) => `<!-- factory:review-summary ${check} -->`;
 const ROUNDS = /<!-- factory:rounds=(\d+) -->/;
@@ -23,6 +24,14 @@ export function heldForHuman(kind, plans, policy) {
   } catch {
     return false; // a plan that cannot be parsed is not shown to be flagged: fail closed
   }
+}
+
+/**
+ * True when the maintainers' review is to be requested: the review being posted has passed, and the pull request
+ * waits for a human, because it has the label `tier:high` or is held for a human (heldForHuman).
+ */
+export function humanNeeded(pass, labels, held) {
+  return pass && (held || labels.includes('tier:high'));
 }
 
 /**
@@ -101,4 +110,27 @@ if (process.argv[1]?.endsWith('post-review.mjs')) {
     console.log(`fix rounds exhausted (${rounds - 1} of ${policy.limits.fixRounds}): needs-human applied`);
   }
   setCheck(pr.head.sha, check, verdict.pass ? 'success' : 'failure', verdict.title, body);
+
+  // The review has passed: ask the maintainers, unless they are asked already or one has reviewed this commit.
+  // The event file may hold only the number and the commits, so the rest is fetched. A failure changes no check.
+  if (verdict.pass) {
+    try {
+      const live = api(`repos/${repo}/pulls/${pr.number}`);
+      const author = live.user.login;
+      const needed = humanNeeded(verdict.pass, live.labels.map((l) => l.name), held);
+      const reviews = needed ? api(`repos/${repo}/pulls/${pr.number}/reviews?per_page=100`, { paginate: true }) : [];
+      const approver = approvingHuman(reviews, { author, headSha: pr.head.sha, isHuman: makeHumanCheck(policy) });
+      const requestedUsers = live.requested_reviewers.map((u) => u.login);
+      const requestedTeams = live.requested_teams.map((t) => t.slug);
+      const reviewers = reviewersToRequest({ needed, approver, author, requestedUsers, requestedTeams, reviews, headSha: pr.head.sha, humans: policy.humans });
+      // With no logins in the policy, the team is asked instead, under the same conditions.
+      const teams = needed && !approver && requestedTeams.length === 0 && policy.humans.logins.length === 0 ? [policy.humans.team] : [];
+      if (reviewers.length + teams.length > 0) {
+        api(`repos/${repo}/pulls/${pr.number}/requested_reviewers`, { method: 'POST', body: { reviewers, team_reviewers: teams } });
+        console.log(`review requested from ${[...reviewers, ...teams].join(', ')}`);
+      }
+    } catch (e) {
+      console.log(`warning: the review request failed: ${String(e.message).split('\n')[0]}`);
+    }
+  }
 }
