@@ -1,5 +1,8 @@
-# Enables auto-merge (squash) on pull requests in tier low and medium. GitHub then merges when every
-# required check has passed; this workflow decides nothing about quality.
+# Enables auto-merge (squash) on pull requests in tier low and medium, and in tier high once a human
+# maintainer has approved the head commit. GitHub then merges when every required check has passed;
+# this workflow decides nothing about quality. It also takes auto-merge off a pull request that is
+# tier high and not approved, or that needs a human: for that it runs after every gates run, a failed
+# one too, and while the factory is paused. The decision is made by automerge.mjs.
 #
 # It runs on `workflow_run`, i.e. from the default branch with the app credential, and never checks
 # out or runs anything from the pull request. The merge is done with the factory app's token so that
@@ -16,7 +19,7 @@ permissions: {}
 jobs:
   automerge:
     name: automerge
-    if: github.event.workflow_run.event != 'merge_group' && github.event.workflow_run.conclusion == 'success'
+    if: github.event.workflow_run.event != 'merge_group'
     runs-on: ubuntu-latest
     environment: factory-merge            # holds the factory app's private key
     permissions:
@@ -26,34 +29,24 @@ jobs:
       - name: Paused?
         id: pause
         run: echo "paused=${{ vars.FACTORY_PAUSED }}" >> "$GITHUB_OUTPUT"
+      - name: Check out the default branch (never the pull request)
+        uses: actions/checkout@v4          # pin by commit SHA when installing
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - name: Token of the factory app
         id: app
-        if: steps.pause.outputs.paused != 'true'
         uses: actions/create-github-app-token@v1   # pin by commit SHA when installing
         with:
           app-id: ${{ vars.FACTORY_APP_ID }}
           private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
-      - name: Enable auto-merge for tier low and medium
-        if: steps.pause.outputs.paused != 'true'
+      - name: Arm or disarm auto-merge
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
-          REPO: ${{ github.repository }}
           HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
-        run: |
-          set -euo pipefail
-          # The pull request whose head is the commit the gates ran on. Read through the API, never from the event's free text.
-          pr=$(gh api "repos/$REPO/commits/$HEAD_SHA/pulls" --jq '[.[] | select(.state == "open" and .head.sha == "'"$HEAD_SHA"'")][0].number // empty')
-          if [ -z "$pr" ]; then echo "no open pull request for $HEAD_SHA"; exit 0; fi
-          info=$(gh api "repos/$REPO/pulls/$pr")
-          draft=$(jq -r .draft <<<"$info")
-          labels=$(jq -r '[.labels[].name] | join(" ")' <<<"$info")
-          case " $labels " in
-            *" tier:high "*|*" needs-human "*) echo "#$pr is tier high or needs a human: not enabling auto-merge"; exit 0 ;;
-          esac
-          case " $labels " in
-            *" tier:low "*|*" tier:medium "*) ;;
-            *) echo "#$pr has no tier label yet"; exit 0 ;;
-          esac
-          if [ "$draft" = "true" ]; then echo "#$pr is a draft"; exit 0; fi
-          gh pr merge "$pr" --repo "$REPO" --auto --squash
-          echo "auto-merge enabled on #$pr"
+          FACTORY_PAUSED: ${{ steps.pause.outputs.paused }}
+          GATES_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+        # The script finds the pull request from HEAD_SHA through the API, never from the event's free text.
+        run: node .github/factory/automerge.mjs

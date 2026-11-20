@@ -23,7 +23,7 @@ factory/
     │   ├── factory-gates.yml         tier, ticket, size, delta, guards, plan gate, human approval; skills mirror; test evidence
     │   ├── factory-pr-review.yml     the pull-request reviewer agent → check factory/review
     │   ├── factory-doc-review.yml    the spec / plan reviewer agent → check factory/doc-review
-    │   ├── factory-automerge.yml     enables auto-merge for tier low and medium
+    │   ├── factory-automerge.yml     enables auto-merge: tier low and medium, tier high once approved; takes it off an unapproved tier high
     │   ├── factory-tickets.yml       creates issues from a merged plan
     │   ├── factory-status.yml        Project status: Done, Ready
     │   └── factory-digest.yml        daily digest
@@ -52,7 +52,7 @@ Scripts are Node 22 ES modules with no dependencies. They call GitHub through th
 5. **Local review.** The orchestrator re-runs the verification itself, then spawns a `code-reviewer` with only the ticket, the spec sections and the diff. It runs the tests, including without the change. Findings go back to an implementer; at most `limits.fixRounds` rounds, then `needs-human`.
 6. **Pull request.** The orchestrator opens it (`Closes #n`, `Plan: …#Tn`) and sets the ticket `In review`.
 7. **Gates.** `factory-gates.yml` computes the tier and reports `factory/tier`, `ticket`, `size`, `delta`, `guards`, `plan-gate`, `human-approval`. `factory-pr-review.yml` runs the five-pass review and reports `factory/review`. The normal `ci.yml` builds and tests.
-8. **Merge.** Tier low and medium: `factory-automerge.yml` enables auto-merge and GitHub merges when every required check is green. Tier high: `factory/human-approval` stays red until a human maintainer who is not the author approves the current commit; the human then merges or enables auto-merge.
+8. **Merge.** Tier low and medium: `factory-automerge.yml` enables auto-merge and GitHub merges when every required check is green. Tier high: `factory/human-approval` stays red until a human maintainer who is not the author approves the current commit; the gates run that follows the approval then has `factory-automerge.yml` enable auto-merge on it too. An approval is therefore the decision to merge: no second step follows it. The workflow runs `automerge.mjs` after every gates run and takes auto-merge off a tier-high pull request whose current commit is not approved, also when a human enabled it by hand.
 9. **Done.** The merge closes the issue; `factory-status.yml` moves it to `Done` and moves tickets it was blocking to `Ready`. The release job of `ci.yml` does the rest.
 
 ## The design decisions built into the kit
@@ -180,7 +180,7 @@ The skill is the instruction; in short the session reads the Project, checks `FA
 
 `status.mjs` needs `GH_TOKEN` (the app's), `GITHUB_REPOSITORY`, `FACTORY_PROJECT_OWNER` and `FACTORY_PROJECT_NUMBER` in the environment.
 
-To pause everything: set repository variable `FACTORY_PAUSED` to `true`. Auto-merge stops being enabled and the orchestrator picks up nothing; checks keep running. Pull requests that already have auto-merge enabled still merge when green: disable it on them by hand if you need a hard stop.
+To pause everything: set repository variable `FACTORY_PAUSED` to `true`. Auto-merge stops being enabled and the orchestrator picks up nothing; checks keep running. Pull requests that already have auto-merge enabled still merge when green: disable it on them by hand if you need a hard stop. The workflow does that itself for a tier-high pull request that is not approved, paused or not.
 
 ## Tuning the policy
 
