@@ -1,0 +1,43 @@
+name: Bug report
+description: Something in a YAF package does not behave as documented.
+title: "Bug: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not post secrets, personal data or production logs that contain them.
+        A security problem is not a bug report: report it privately, as `SECURITY.md` describes.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The `YAF.*` package versions you use.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened
+      description: Include the error code or exception type and message.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: The smallest code or repository that shows the problem, and the steps to run it.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: .NET SDK and runtime version, operating system, database and broker versions where they matter.
+    validations:
+      required: true
