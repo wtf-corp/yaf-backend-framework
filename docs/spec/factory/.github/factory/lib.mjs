@@ -67,10 +67,10 @@ export function setCheck(sha, name, conclusion, title, summary = '') {
 /**
  * The body of a check run that is in progress: what a running review reports on the head commit before its
  * verdict. It has no conclusion; the completed run reported afterwards is newer, and the newest of a name counts.
- * now: a Date or milliseconds.
+ * It has no start time either: GitHub stamps it, as it stamps the completed run, so their order needs no local clock.
  */
-export function inProgressCheck(name, sha, title, now) {
-  return { name, head_sha: sha, status: 'in_progress', started_at: new Date(now).toISOString(), output: { title, summary: title } };
+export function inProgressCheck(name, sha, title) {
+  return { name, head_sha: sha, status: 'in_progress', output: { title, summary: title } };
 }
 
 export function writeSummary(markdown) {
