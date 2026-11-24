@@ -82,6 +82,14 @@ internal static class ErrorCodeNaming
         return string.Join(".", parts);
     }
 
+    /// <summary>
+    /// The code of the field: the code of <c>[ErrorCode]</c>, else <c>&lt;serviceCode&gt;.&lt;default path&gt;</c>, or <see langword="null"/>
+    /// when a default code is needed and the service code is missing or invalid (<c>YAF3004</c> reports that).
+    /// </summary>
+    public static string? Code(IFieldSymbol field, string? serviceCode) =>
+        ExplicitCode(field)
+        ?? (serviceCode is not null && IsValidServiceCode(serviceCode) ? serviceCode + "." + DefaultPath(field) : null);
+
     /// <summary>The code given by <c>[ErrorCode]</c> on the field, or <see langword="null"/> when there is none.</summary>
     public static string? ExplicitCode(IFieldSymbol field)
     {
