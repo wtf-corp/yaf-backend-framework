@@ -38,6 +38,7 @@ Every ADR has the sections Context, Drivers, Options considered, Decision, Conse
 | ADR | Decision |
 |---|---|
 | [0018](0018-testing-strategy.md) | Testing strategy |
+| [0030](0030-benchmark-library.md) | BenchmarkDotNet as the benchmark library, test-only (Proposed) |
 | [0019](0019-local-development-host.md) | Local development host: Aspire with PostgreSQL and RabbitMQ; LocalStack opt-in |
 | [0020](0020-versioning-and-release-automation.md) | Automatic versioning and release (GitHub example) |
 | [0021](0021-documentation-and-generated-references.md) | Documentation site and generated references |
