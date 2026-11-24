@@ -229,4 +229,142 @@ public sealed class ResultCombinatorTests
 
         next.Errors.Should().ContainSingle().Which.Code.Should().Be(CoreErrors.Uninitialised.Code);
     }
+
+    [Fact]
+    public void Ensure_OnSuccessAndPredicateTrue_KeepsValue()
+    {
+        Result<int> result = 42;
+
+        var ensured = result.Ensure(value => value > 0, s_full);
+
+        ensured.Value.Should().Be(42);
+    }
+
+    [Fact]
+    public void Ensure_OnSuccessAndPredicateFalse_FailsWithDescriptor()
+    {
+        Result<int> result = 42;
+
+        var ensured = result.Ensure(value => value < 0, s_full);
+
+        ensured.Errors.Should().ContainSingle().Which.Code.Should().Be(s_full.Code);
+    }
+
+    [Fact]
+    public void Ensure_OnFailure_KeepsErrorsAndSkipsPredicate()
+    {
+        Result<int> result = s_closed;
+        var called = false;
+
+        var ensured = result.Ensure(_ => called = true, s_full);
+
+        ensured.Errors.Should().ContainSingle().Which.Code.Should().Be(s_closed.Code);
+        called.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Ensure_NullDescriptor_Throws()
+    {
+        Result<int> result = 42;
+
+        var act = () => result.Ensure(_ => true, null!);
+
+        act.Should().Throw<ArgumentNullException>().WithParameterName("error");
+    }
+
+    [Fact]
+    public void Tap_OnSuccess_RunsActionAndKeepsValue()
+    {
+        Result<int> result = 42;
+        var seen = new List<int>();
+
+        var tapped = result.Tap(seen.Add);
+
+        tapped.Value.Should().Be(42);
+        seen.Should().Equal(42);
+    }
+
+    [Fact]
+    public void Tap_OnFailure_KeepsErrorsAndSkipsAction()
+    {
+        Result<int> result = s_full;
+        var seen = new List<int>();
+
+        var tapped = result.Tap(seen.Add);
+
+        tapped.Errors.Should().ContainSingle().Which.Code.Should().Be(s_full.Code);
+        seen.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Else_OnSuccess_KeepsValueAndSkipsFallback()
+    {
+        Result<int> result = 42;
+        var called = false;
+
+        var value = result.Else(_ =>
+        {
+            called = true;
+            return -1;
+        });
+
+        value.Value.Should().Be(42);
+        called.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Else_OnFailure_SucceedsWithFallbackFromErrors()
+    {
+        Result<int> result = new[] { s_full.ToError(), s_closed.ToError() };
+
+        var value = result.Else(errors => errors.Count);
+
+        value.IsSuccess.Should().BeTrue();
+        value.Value.Should().Be(2);
+    }
+
+    [Fact]
+    public void Else_OnDefault_PassesUninitialised()
+    {
+        var result = default(Result<string>);
+
+        var value = result.Else(errors => errors[0].Code);
+
+        value.Value.Should().Be(CoreErrors.Uninitialised.Code);
+    }
+
+    [Fact]
+    public void Combine_AllSucceed_IsSuccess()
+    {
+        var combined = Result.Combine(Result.Success(), Result.Success());
+
+        combined.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Combine_None_IsSuccess()
+    {
+        var combined = Result.Combine();
+
+        combined.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Combine_TwoFailures_KeepsAllErrorsInOrder()
+    {
+        Result first = new[] { s_full.ToError(), s_closed.ToError() };
+        Result second = s_closed;
+
+        var combined = Result.Combine(first, Result.Success(), second);
+
+        combined.Errors.Select(error => error.Code).Should().Equal(s_full.Code, s_closed.Code, s_closed.Code);
+    }
+
+    [Fact]
+    public void Combine_WithDefault_ReportsUninitialised()
+    {
+        var combined = Result.Combine(Result.Success(), default);
+
+        combined.Errors.Should().ContainSingle().Which.Code.Should().Be(CoreErrors.Uninitialised.Code);
+    }
 }
