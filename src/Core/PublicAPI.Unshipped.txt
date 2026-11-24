@@ -69,11 +69,19 @@ YAF.Core.Results.Result<T>.FirstError.get -> YAF.Core.Results.Error!
 YAF.Core.Results.Result<T>.IsFailure.get -> bool
 YAF.Core.Results.Result<T>.IsSuccess.get -> bool
 YAF.Core.Results.Result<T>.Map<TOut>(System.Func<T, TOut>! selector) -> YAF.Core.Results.Result<TOut>
+YAF.Core.Results.Result<T>.MapAsync<TOut>(System.Func<T, System.Threading.Tasks.Task<TOut>!>! selector) -> System.Threading.Tasks.Task<YAF.Core.Results.Result<TOut>>!
+YAF.Core.Results.Result<T>.MapAsync<TOut>(System.Func<T, System.Threading.Tasks.ValueTask<TOut>>! selector) -> System.Threading.Tasks.ValueTask<YAF.Core.Results.Result<TOut>>
 YAF.Core.Results.Result<T>.Match<TOut>(System.Func<T, TOut>! onSuccess, System.Func<System.Collections.Generic.IReadOnlyList<YAF.Core.Results.Error!>!, TOut>! onFailure) -> TOut
+YAF.Core.Results.Result<T>.MatchAsync<TOut>(System.Func<T, System.Threading.Tasks.Task<TOut>!>! onSuccess, System.Func<System.Collections.Generic.IReadOnlyList<YAF.Core.Results.Error!>!, System.Threading.Tasks.Task<TOut>!>! onFailure) -> System.Threading.Tasks.Task<TOut>!
+YAF.Core.Results.Result<T>.MatchAsync<TOut>(System.Func<T, System.Threading.Tasks.ValueTask<TOut>>! onSuccess, System.Func<System.Collections.Generic.IReadOnlyList<YAF.Core.Results.Error!>!, System.Threading.Tasks.ValueTask<TOut>>! onFailure) -> System.Threading.Tasks.ValueTask<TOut>
 YAF.Core.Results.Result<T>.Result() -> void
 YAF.Core.Results.Result<T>.Switch(System.Action<T>! onSuccess, System.Action<System.Collections.Generic.IReadOnlyList<YAF.Core.Results.Error!>!>! onFailure) -> void
+YAF.Core.Results.Result<T>.SwitchAsync(System.Func<T, System.Threading.Tasks.Task!>! onSuccess, System.Func<System.Collections.Generic.IReadOnlyList<YAF.Core.Results.Error!>!, System.Threading.Tasks.Task!>! onFailure) -> System.Threading.Tasks.Task!
+YAF.Core.Results.Result<T>.SwitchAsync(System.Func<T, System.Threading.Tasks.ValueTask>! onSuccess, System.Func<System.Collections.Generic.IReadOnlyList<YAF.Core.Results.Error!>!, System.Threading.Tasks.ValueTask>! onFailure) -> System.Threading.Tasks.ValueTask
 YAF.Core.Results.Result<T>.Tap(System.Action<T>! action) -> YAF.Core.Results.Result<T>
 YAF.Core.Results.Result<T>.Then<TOut>(System.Func<T, YAF.Core.Results.Result<TOut>>! continuation) -> YAF.Core.Results.Result<TOut>
+YAF.Core.Results.Result<T>.ThenAsync<TOut>(System.Func<T, System.Threading.Tasks.Task<YAF.Core.Results.Result<TOut>>!>! continuation) -> System.Threading.Tasks.Task<YAF.Core.Results.Result<TOut>>!
+YAF.Core.Results.Result<T>.ThenAsync<TOut>(System.Func<T, System.Threading.Tasks.ValueTask<YAF.Core.Results.Result<TOut>>>! continuation) -> System.Threading.Tasks.ValueTask<YAF.Core.Results.Result<TOut>>
 YAF.Core.Results.Result<T>.Value.get -> T
 override YAF.Core.Results.Error.Equals(object? obj) -> bool
 override YAF.Core.Results.Error.GetHashCode() -> int
