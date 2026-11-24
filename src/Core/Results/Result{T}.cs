@@ -164,5 +164,42 @@ public readonly struct Result<T> : IResult
         return _isSuccess ? continuation(_value) : new Result<TOut>(FailureErrors);
     }
 
+    /// <summary>Turns a success into a failure when its value breaks a rule. A failure keeps its errors and <paramref name="predicate"/> is not called.</summary>
+    /// <param name="predicate">The rule, called with the value of a success; <see langword="true"/> when the value satisfies it.</param>
+    /// <param name="error">The declared error of the failure when <paramref name="predicate"/> returns <see langword="false"/>.</param>
+    /// <returns>This result, or a failure with the error of <see cref="ErrorDescriptor.ToError"/> when the value breaks the rule.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="predicate"/> or <paramref name="error"/> is <see langword="null"/>.</exception>
+    public Result<T> Ensure(Func<T, bool> predicate, ErrorDescriptor error)
+    {
+        ArgumentNullException.ThrowIfNull(predicate);
+        ArgumentNullException.ThrowIfNull(error);
+        return !_isSuccess || predicate(_value) ? this : new Result<T>(ResultErrors.Single(error.ToError()));
+    }
+
+    /// <summary>Runs an action with the value of a success, for example to log or record it. A failure keeps its errors and <paramref name="action"/> is not called.</summary>
+    /// <param name="action">The action, called with the value of a success.</param>
+    /// <returns>This result.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="action"/> is <see langword="null"/>.</exception>
+    public Result<T> Tap(Action<T> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        if (_isSuccess)
+        {
+            action(_value);
+        }
+
+        return this;
+    }
+
+    /// <summary>Replaces a failure with a fallback value computed from its errors. A success keeps its value and <paramref name="fallback"/> is not called.</summary>
+    /// <param name="fallback">Computes the value from the errors of a failure, at least one.</param>
+    /// <returns>This success, or a success with the value of <paramref name="fallback"/>.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="fallback"/> is <see langword="null"/>.</exception>
+    public Result<T> Else(Func<IReadOnlyList<Error>, T> fallback)
+    {
+        ArgumentNullException.ThrowIfNull(fallback);
+        return _isSuccess ? this : new Result<T>(fallback(FailureErrors));
+    }
+
     private ReadOnlyCollection<Error> FailureErrors => _errors ?? ResultErrors.Uninitialised;
 }

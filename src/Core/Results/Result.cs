@@ -96,6 +96,23 @@ public readonly struct Result : IResult
     /// <exception cref="ArgumentException"><paramref name="errors"/> is empty or contains <see langword="null"/>.</exception>
     public static Result Failure(IEnumerable<Error> errors) => new(isSuccess: false, ResultErrors.Copy(errors));
 
+    /// <summary>Combines results, for example of independent checks: a success when all succeed, otherwise a failure with all their errors.</summary>
+    /// <param name="results">The results, in order. A <c>default</c> result counts as a failure with the error of <see cref="CoreErrors.Uninitialised"/>.</param>
+    /// <returns>A success when every result succeeds (also when there are none), or a failure with the errors of all failed results, in order.</returns>
+    public static Result Combine(params ReadOnlySpan<Result> results)
+    {
+        List<Error>? errors = null;
+        foreach (var result in results)
+        {
+            if (result.IsFailure)
+            {
+                (errors ??= []).AddRange(result.Errors);
+            }
+        }
+
+        return errors is null ? Success() : new(isSuccess: false, errors.AsReadOnly());
+    }
+
     /// <summary>Runs an action after a success. A failure keeps its errors and <paramref name="action"/> is not called.</summary>
     /// <param name="action">The action, called on a success.</param>
     /// <returns>This result: a success after <paramref name="action"/> has run, or the failure.</returns>
