@@ -1,0 +1,13 @@
+<Project>
+
+  <!-- Lets the error code generator shipped in YAF.Core intercept the error factories and read the service code, so an app sets only
+       <YafServiceCode> (specs/0000-framework/03-results-and-errors.md §2; specs/0006-core/research.md §3, §4). -->
+  <PropertyGroup>
+    <InterceptorsNamespaces>$(InterceptorsNamespaces);YAF.Generated</InterceptorsNamespaces>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <CompilerVisibleProperty Include="YafServiceCode" />
+  </ItemGroup>
+
+</Project>
