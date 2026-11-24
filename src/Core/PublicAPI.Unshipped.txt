@@ -1,1 +1,63 @@
 #nullable enable
+YAF.Core.Results.Error
+YAF.Core.Results.Error.<Clone>$() -> YAF.Core.Results.Error!
+YAF.Core.Results.Error.Arguments.get -> System.Collections.Generic.IReadOnlyDictionary<string!, object?>!
+YAF.Core.Results.Error.Arguments.init -> void
+YAF.Core.Results.Error.Code.get -> string!
+YAF.Core.Results.Error.Code.init -> void
+YAF.Core.Results.Error.Deconstruct(out string! Code, out YAF.Core.Results.ErrorKind Kind, out string! Message) -> void
+YAF.Core.Results.Error.Equals(YAF.Core.Results.Error? other) -> bool
+YAF.Core.Results.Error.Error(string! Code, YAF.Core.Results.ErrorKind Kind, string! Message) -> void
+YAF.Core.Results.Error.Kind.get -> YAF.Core.Results.ErrorKind
+YAF.Core.Results.Error.Kind.init -> void
+YAF.Core.Results.Error.Message.get -> string!
+YAF.Core.Results.Error.Message.init -> void
+YAF.Core.Results.Error.Target.get -> string?
+YAF.Core.Results.Error.Target.init -> void
+YAF.Core.Results.ErrorCodeAttribute
+YAF.Core.Results.ErrorCodeAttribute.Code.get -> string!
+YAF.Core.Results.ErrorCodeAttribute.ErrorCodeAttribute(string! code) -> void
+YAF.Core.Results.ErrorDescriptor
+YAF.Core.Results.ErrorDescriptor.<Clone>$() -> YAF.Core.Results.ErrorDescriptor!
+YAF.Core.Results.ErrorDescriptor.At(string! target) -> YAF.Core.Results.Error!
+YAF.Core.Results.ErrorDescriptor.Code.get -> string!
+YAF.Core.Results.ErrorDescriptor.Code.init -> void
+YAF.Core.Results.ErrorDescriptor.Deconstruct(out string! Code, out YAF.Core.Results.ErrorKind Kind, out string! MessageTemplate) -> void
+YAF.Core.Results.ErrorDescriptor.Equals(YAF.Core.Results.ErrorDescriptor? other) -> bool
+YAF.Core.Results.ErrorDescriptor.ErrorDescriptor(string! Code, YAF.Core.Results.ErrorKind Kind, string! MessageTemplate) -> void
+YAF.Core.Results.ErrorDescriptor.Kind.get -> YAF.Core.Results.ErrorKind
+YAF.Core.Results.ErrorDescriptor.Kind.init -> void
+YAF.Core.Results.ErrorDescriptor.MessageTemplate.get -> string!
+YAF.Core.Results.ErrorDescriptor.MessageTemplate.init -> void
+YAF.Core.Results.ErrorDescriptor.ToError() -> YAF.Core.Results.Error!
+YAF.Core.Results.ErrorDescriptor.With(params System.ReadOnlySpan<(string! Name, object? Value)> args) -> YAF.Core.Results.Error!
+YAF.Core.Results.ErrorKind
+YAF.Core.Results.ErrorKind.Conflict = 5 -> YAF.Core.Results.ErrorKind
+YAF.Core.Results.ErrorKind.Failure = 9 -> YAF.Core.Results.ErrorKind
+YAF.Core.Results.ErrorKind.Forbidden = 3 -> YAF.Core.Results.ErrorKind
+YAF.Core.Results.ErrorKind.NotFound = 4 -> YAF.Core.Results.ErrorKind
+YAF.Core.Results.ErrorKind.PreconditionFailed = 6 -> YAF.Core.Results.ErrorKind
+YAF.Core.Results.ErrorKind.RateLimited = 7 -> YAF.Core.Results.ErrorKind
+YAF.Core.Results.ErrorKind.Unauthenticated = 2 -> YAF.Core.Results.ErrorKind
+YAF.Core.Results.ErrorKind.Unavailable = 8 -> YAF.Core.Results.ErrorKind
+YAF.Core.Results.ErrorKind.Validation = 1 -> YAF.Core.Results.ErrorKind
+YAF.Core.Results.IErrorCatalog
+override YAF.Core.Results.Error.Equals(object? obj) -> bool
+override YAF.Core.Results.Error.GetHashCode() -> int
+override YAF.Core.Results.Error.ToString() -> string!
+override YAF.Core.Results.ErrorDescriptor.Equals(object? obj) -> bool
+override YAF.Core.Results.ErrorDescriptor.GetHashCode() -> int
+override YAF.Core.Results.ErrorDescriptor.ToString() -> string!
+static YAF.Core.Results.Error.Conflict(string! messageTemplate) -> YAF.Core.Results.ErrorDescriptor!
+static YAF.Core.Results.Error.Failure(string! messageTemplate) -> YAF.Core.Results.ErrorDescriptor!
+static YAF.Core.Results.Error.Forbidden(string! messageTemplate) -> YAF.Core.Results.ErrorDescriptor!
+static YAF.Core.Results.Error.NotFound(string! messageTemplate) -> YAF.Core.Results.ErrorDescriptor!
+static YAF.Core.Results.Error.PreconditionFailed(string! messageTemplate) -> YAF.Core.Results.ErrorDescriptor!
+static YAF.Core.Results.Error.RateLimited(string! messageTemplate) -> YAF.Core.Results.ErrorDescriptor!
+static YAF.Core.Results.Error.Unauthenticated(string! messageTemplate) -> YAF.Core.Results.ErrorDescriptor!
+static YAF.Core.Results.Error.Unavailable(string! messageTemplate) -> YAF.Core.Results.ErrorDescriptor!
+static YAF.Core.Results.Error.Validation(string! messageTemplate) -> YAF.Core.Results.ErrorDescriptor!
+static YAF.Core.Results.Error.operator !=(YAF.Core.Results.Error? left, YAF.Core.Results.Error? right) -> bool
+static YAF.Core.Results.Error.operator ==(YAF.Core.Results.Error? left, YAF.Core.Results.Error? right) -> bool
+static YAF.Core.Results.ErrorDescriptor.operator !=(YAF.Core.Results.ErrorDescriptor? left, YAF.Core.Results.ErrorDescriptor? right) -> bool
+static YAF.Core.Results.ErrorDescriptor.operator ==(YAF.Core.Results.ErrorDescriptor? left, YAF.Core.Results.ErrorDescriptor? right) -> bool
