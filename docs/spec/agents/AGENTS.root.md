@@ -94,7 +94,7 @@ Requirements conflict or are ambiguous · a guard blocks the planned approach ·
 
 ## Conventions in one screen
 
-- File-scoped namespaces; one public type per file; `_camelCase` fields; `Async` suffix with a trailing `CancellationToken`.
+- File-scoped namespaces; one public type per file; `_camelCase` private fields, `s_camelCase` private static fields, PascalCase constants; `Async` suffix with a trailing `CancellationToken`.
 - Setup extensions: `Add*` (services), `Use*` (pipeline), `Map*` (endpoints); idempotent.
 - Options: one class per feature, registered with `AddYafOptions<T>(section)`, validated at startup.
 - Logging: `[LoggerMessage]` methods only; log names, ids and error codes — never values.

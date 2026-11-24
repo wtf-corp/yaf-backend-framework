@@ -64,7 +64,7 @@ public class CreateSessionHandlerTests
         var handler = new CreateSessionHandler(_sessions);
 
         var result = await handler.HandleAsync(
-            new CreateSessionCommand("Keynote", 100, T0, T0.AddHours(1)), CancellationToken.None);
+            new CreateSessionCommand("Keynote", 100, s_t0, s_t0.AddHours(1)), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         _sessions.Added.Should().ContainSingle().Which.Id.Should().Be(result.Value.Id);
@@ -74,14 +74,14 @@ public class CreateSessionHandlerTests
     public async Task Validate_EndBeforeStart_ReturnsTargetedError()
     {
         var result = await new CreateSessionValidator().ValidateAsync(
-            new CreateSessionCommand("Keynote", 100, T0, T0.AddHours(-1)), CancellationToken.None);
+            new CreateSessionCommand("Keynote", 100, s_t0, s_t0.AddHours(-1)), CancellationToken.None);
 
         var error = result.Errors.Should().ContainSingle().Subject;
         error.Code.Should().Be(CreateSessionValidator.Errors.EndBeforeStart.Code);
         error.Target.Should().Be("endsAt");
     }
 
-    private static readonly DateTimeOffset T0 = new(2027, 3, 1, 9, 0, 0, TimeSpan.Zero);
+    private static readonly DateTimeOffset s_t0 = new(2027, 3, 1, 9, 0, 0, TimeSpan.Zero);
 }
 ```
 

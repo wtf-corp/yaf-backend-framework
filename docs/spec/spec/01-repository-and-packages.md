@@ -157,7 +157,7 @@ SBOMs: each package embeds an SPDX manifest (`GenerateSBOM`); the release additi
 ## 5. Coding conventions
 
 - File-scoped namespaces; one public type per file; file name = type name; partial files `Type.Aspect.cs`.
-- Private fields `_camelCase`; async methods end in `Async` and take a `CancellationToken` as the last parameter; no `async void`; `ConfigureAwait(false)` in library code.
+- Private fields `_camelCase`, private static fields (readonly or not) `s_camelCase`, constants PascalCase; async methods end in `Async` and take a `CancellationToken` as the last parameter; no `async void`; `ConfigureAwait(false)` in library code.
 - Setup extensions: `Add<Thing>` on `IServiceCollection` / `IHostApplicationBuilder`, `Use<Thing>` on the request pipeline, `Map<Thing>` on endpoints. Each `Add*` is idempotent.
 - Options: one options class per feature, bound from a documented section, validated with a source-generated `IValidateOptions<T>` and `ValidateOnStart()` (`10-configuration.md`).
 - Logging: `[LoggerMessage]` partial methods only, in a nested or sibling `Log` class; event ids are stable and listed in the package's article.
