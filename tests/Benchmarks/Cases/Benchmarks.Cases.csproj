@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The benchmark classes, run by ../Benchmarks.csproj. A library, because BenchmarkDotNet needs them public and CA1515
+       asks a console app for internal types (owner's decision on #136). Never packed (ADR-0030 decision 2). -->
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../../src/Core/Core.csproj" />
+  </ItemGroup>
+
+</Project>

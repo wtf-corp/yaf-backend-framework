@@ -20,6 +20,8 @@
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
     <!-- Architecture rules in tests/Architecture.Tests (ADR-0018). Version from specs/0006-core/research.md §10, on nuget.org 2026-11-24. -->
     <PackageVersion Include="TngTech.ArchUnitNET.xUnitV3" Version="0.13.5" />
+    <!-- Benchmarks in tests/Benchmarks only, never in a package (ADR-0030). Latest stable on nuget.org, checked 2026-11-24. -->
+    <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
   </ItemGroup>
 
 </Project>
