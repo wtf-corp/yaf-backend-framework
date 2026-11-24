@@ -72,7 +72,7 @@ Probe A2, an analyzer project with `AnalysisMode` `All` and `TreatWarningsAsErro
 
 - `RS2008: Enable analyzer release tracking for the analyzer project containing rule 'YAF1001'`. `Microsoft.CodeAnalysis.CSharp` 5.0.0 brings `Microsoft.CodeAnalysis.Analyzers` 3.11.0 transitively (nuspec of 5.0.0), which owns the rule. The project needs `AnalyzerReleases.Shipped.md` and `AnalyzerReleases.Unshipped.md` as additional files, and each new diagnostic adds a row (shared between the diagnostic tickets).
 - `CA1308` on `ToLowerInvariant` (the snake-case conversion). Codes are ASCII `[a-z0-9_.]`, so a hand-written ASCII lowering is used, and a non-ASCII identifier is an invalid code (YAF3004, Q5). No suppression.
-- `CA1062` (validate `context`) and `CA1050` also fire. They are fixed in code.
+- `CA1062` (validate `context`) and `CA1050` also fire. They are fixed in code. Assembly references of the built probe analyzer (a generator and a `DiagnosticAnalyzer`, `netstandard2.0`, Roslyn 5.0.0, Release), read with `Assembly.GetReferencedAssemblies()`: `netstandard` 2.0.0.0, `Microsoft.CodeAnalysis` 5.0.0.0, `Microsoft.CodeAnalysis.CSharp` 5.0.0.0, `System.Collections.Immutable` 9.0.0.0 (probe A5, on review F1). No `System.Reflection.Metadata` or `System.Memory`. T22's rule for `Analyzers` allows exactly these.
 - `EnforceExtendedAnalyzerRules` turns on the RS1035 family (no file or environment access in analyzers).
 
 `netstandard2.0` has no `IsExternalInit` and no nullable attributes. Records or `init` in the analyzer code need an internal declaration of `IsExternalInit` in the project. That is a source file, not a polyfill package (ADR-0003).
