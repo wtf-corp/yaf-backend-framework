@@ -1,0 +1,101 @@
+# Pull request workflow (17 §2; plan specs/0005-repository-skeleton/plan.md#T6).
+# M0 runs build-test, pr-title, security (secret scan) and process (instruction validation).
+# The #if NET check, coverage, pack and test-result upload come with later milestones (plan deviation 2).
+name: ci
+
+on:
+  pull_request:
+    branches: [main, next]
+    types: [opened, synchronize, reopened, edited] # edited: a title change re-runs pr-title
+  push:
+    branches: [main, next]
+  merge_group:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          global-json-file: global.json
+      - run: dotnet restore YAF.slnx --locked-mode
+      - run: dotnet build YAF.slnx -c Release --no-restore
+      - run: dotnet test --solution YAF.slnx -c Release --no-build
+
+  pr-title:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: The title is a Conventional Commit (yaf-commits-and-pull-requests)
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          re='^(feat|fix|perf|refactor|docs|test|build|ci|chore)(\([a-z0-9-]+\))?!?: [^ ].*$'
+          if [[ "$PR_TITLE" =~ $re ]]; then
+            echo "The title is a Conventional Commit."
+          else
+            echo "::error::The title must be 'type(scope)!: summary' with type one of feat, fix, perf, refactor, docs, test, build, ci, chore."
+            exit 1
+          fi
+
+  security:
+    runs-on: ubuntu-latest
+    env:
+      GITLEAKS_VERSION: 8.30.1
+      # SHA-256 of gitleaks_8.30.1_linux_x64.tar.gz, from gitleaks_8.30.1_checksums.txt of release v8.30.1.
+      GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install gitleaks (pinned, checksum-verified)
+        run: |
+          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -sSfL -o "$RUNNER_TEMP/$archive" "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/$archive"
+          echo "$GITLEAKS_SHA256  $RUNNER_TEMP/$archive" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" gitleaks
+      - name: Scan the commits of this change for secrets
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.sha }}
+          MQ_BASE: ${{ github.event.merge_group.base_sha }}
+          MQ_HEAD: ${{ github.event.merge_group.head_sha }}
+        run: |
+          case "$EVENT" in
+            pull_request) range="$PR_BASE..$PR_HEAD" ;;
+            merge_group) range="$MQ_BASE..$MQ_HEAD" ;;
+            push)
+              if [ -z "$PUSH_BEFORE" ] || [ "$PUSH_BEFORE" = "0000000000000000000000000000000000000000" ]; then
+                range="-1 $PUSH_AFTER"
+              else
+                range="$PUSH_BEFORE..$PUSH_AFTER"
+              fi ;;
+          esac
+          echo "Scanning $range"
+          "$RUNNER_TEMP/gitleaks" git --no-banner --redact --verbose --log-opts="$range" .
+
+  process:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - run: node .github/scripts/validate-instructions.mjs
