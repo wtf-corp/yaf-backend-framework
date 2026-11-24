@@ -4,8 +4,8 @@ namespace Core.Tests.Results;
 
 public sealed class ResultTests
 {
-    private static readonly ErrorDescriptor Full = new("test.session.full", ErrorKind.Conflict, "Session is full.");
-    private static readonly ErrorDescriptor Closed = new("test.session.closed", ErrorKind.Conflict, "Session is closed.");
+    private static readonly ErrorDescriptor s_full = new("test.session.full", ErrorKind.Conflict, "Session is full.");
+    private static readonly ErrorDescriptor s_closed = new("test.session.closed", ErrorKind.Conflict, "Session is closed.");
 
     [Fact]
     public void Default_IsFailureWithUninitialised()
@@ -36,7 +36,7 @@ public sealed class ResultTests
     [Fact]
     public void Value_OnFailure_Throws()
     {
-        Result<int> result = Full;
+        Result<int> result = s_full;
 
         var act = () => result.Value;
 
@@ -105,77 +105,77 @@ public sealed class ResultTests
     [Fact]
     public void ImplicitConversion_FromError_IsFailure()
     {
-        Result<int> result = Full.ToError();
+        Result<int> result = s_full.ToError();
 
         result.IsFailure.Should().BeTrue();
-        result.FirstError.Code.Should().Be(Full.Code);
+        result.FirstError.Code.Should().Be(s_full.Code);
     }
 
     [Fact]
     public void ImplicitConversion_FromErrorDescriptor_IsFailure()
     {
-        Result result = Full;
+        Result result = s_full;
 
         result.IsFailure.Should().BeTrue();
-        result.FirstError.Code.Should().Be(Full.Code);
+        result.FirstError.Code.Should().Be(s_full.Code);
     }
 
     [Fact]
     public void ImplicitConversion_FromErrorArray_IsFailure()
     {
-        Error[] errors = [Full.ToError(), Closed.ToError()];
+        Error[] errors = [s_full.ToError(), s_closed.ToError()];
 
         Result<int> result = errors;
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Select(e => e.Code).Should().Equal(Full.Code, Closed.Code);
+        result.Errors.Select(e => e.Code).Should().Equal(s_full.Code, s_closed.Code);
     }
 
     [Fact]
     public void ImplicitConversion_FromErrorArray_CopiesErrors()
     {
-        Error[] errors = [Full.ToError()];
+        Error[] errors = [s_full.ToError()];
         Result result = errors;
 
-        errors[0] = Closed.ToError();
+        errors[0] = s_closed.ToError();
 
-        result.FirstError.Code.Should().Be(Full.Code);
+        result.FirstError.Code.Should().Be(s_full.Code);
     }
 
     [Fact]
     public void ImplicitConversion_FromErrorList_IsFailure()
     {
-        List<Error> errors = [Closed.ToError(), Full.ToError()];
+        List<Error> errors = [s_closed.ToError(), s_full.ToError()];
 
         Result result = errors;
 
-        result.Errors.Select(e => e.Code).Should().Equal(Closed.Code, Full.Code);
+        result.Errors.Select(e => e.Code).Should().Equal(s_closed.Code, s_full.Code);
     }
 
     [Fact]
     public void ImplicitConversion_FromOtherResultErrors_PropagatesFailure()
     {
-        Result<int> other = Full;
+        Result<int> other = s_full;
 
         Result<string> result = other.Errors.ToArray();
 
-        result.FirstError.Code.Should().Be(Full.Code);
+        result.FirstError.Code.Should().Be(s_full.Code);
     }
 
     [Fact]
     public void Failure_FromEnumerable_KeepsOrder()
     {
-        var result = Result.Failure(new[] { Closed.ToError(), Full.ToError() }.AsEnumerable());
+        var result = Result.Failure(new[] { s_closed.ToError(), s_full.ToError() }.AsEnumerable());
 
-        result.Errors.Select(e => e.Code).Should().Equal(Closed.Code, Full.Code);
+        result.Errors.Select(e => e.Code).Should().Equal(s_closed.Code, s_full.Code);
     }
 
     [Fact]
     public void Failure_GenericFromError_IsFailure()
     {
-        var result = Result<int>.Failure(Full.ToError());
+        var result = Result<int>.Failure(s_full.ToError());
 
-        result.FirstError.Code.Should().Be(Full.Code);
+        result.FirstError.Code.Should().Be(s_full.Code);
     }
 
     [Fact]
@@ -189,7 +189,7 @@ public sealed class ResultTests
     [Fact]
     public void Failure_NullError_Throws()
     {
-        var act = () => Result.Failure([Full.ToError(), null!]);
+        var act = () => Result.Failure([s_full.ToError(), null!]);
 
         act.Should().Throw<ArgumentException>();
     }
@@ -197,7 +197,7 @@ public sealed class ResultTests
     [Fact]
     public void IsSuccess_ThroughInterface_ReadsResult()
     {
-        IResult result = Result.Success(1);
+        var result = AsInterface(Result.Success(1));
 
         result.IsSuccess.Should().BeTrue();
         result.Errors.Should().BeEmpty();
@@ -206,8 +206,10 @@ public sealed class ResultTests
     [Fact]
     public void Errors_ThroughInterfaceOnDefault_IsUninitialised()
     {
-        IResult result = default(Result<int>);
+        var result = AsInterface(default(Result<int>));
 
         result.Errors.Should().ContainSingle().Which.Code.Should().Be(CoreErrors.Uninitialised.Code);
     }
+
+    private static IResult AsInterface(IResult result) => result;
 }
