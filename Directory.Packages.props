@@ -15,6 +15,9 @@
     <PackageVersion Include="Microsoft.Extensions.Compliance.Abstractions" Version="11.0.1" />
     <!-- Assertions in test projects (ADR-0018). Latest stable on nuget.org, checked 2026-11-24. -->
     <PackageVersion Include="AwesomeAssertions" Version="9.6.0" />
+    <!-- Roslyn for src/Analyzers (private assets) and tests/Analyzers.Tests (ADR-0003 allow-list). Pinned to 5.0.0, the oldest
+         version with every API the generators use, so hosts with an older compiler load them (specs/0006-core/research.md §3). -->
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
   </ItemGroup>
 
 </Project>
