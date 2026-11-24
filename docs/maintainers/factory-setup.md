@@ -149,15 +149,19 @@ The ruleset for `main`, as it stands here (ruleset id `27648742`). Save it as `r
           { "context": "factory/doc-review", "integration_id": 5837737 },
           { "context": "factory/plan-gate", "integration_id": 15368 },
           { "context": "factory/human-approval", "integration_id": 15368 },
-          { "context": "references", "integration_id": 15368 } ] } }
+          { "context": "references", "integration_id": 15368 },
+          { "context": "build-test", "integration_id": 15368 },
+          { "context": "pr-title", "integration_id": 15368 },
+          { "context": "security", "integration_id": 15368 },
+          { "context": "process", "integration_id": 15368 } ] } }
   ]
 }
 ```
 
-- **The rules** are as read back from `repos/<org>/<repo>/rules/branches/main` on 2026-11-20. The read-back does not show `name`, `enforcement`, `bypass_actors` or `conditions`: those are as the owner applied them; confirm against the live setting. It also shows fields the file does not set, with the values GitHub keeps: `required_reviewers` empty, `dismissal_restriction` off, `require_extra_approval_for_unattributed_changes` true.
-- **Required checks** are the nine names of `checks` in [`policy.json`](../spec/factory/.github/factory/policy.json) plus `references`, a job name. The kit README also asks for the build, test, security and title jobs of `ci.yml`; they come with M0 (section 10).
-- **Strict is off for now.** The owner applied the ruleset with "require branches to be up to date before merging" on, and turned it off on 2026-11-19 until M0 has CI (#56). With it on, every merge put the other open pull requests behind `main`, and updating a branch is a push: the gates and the model review run again and an approval is dismissed. Turn it back on, or use a merge queue, once `ci.yml` builds and tests something; the kit README asks for one of the two.
-- **`integration_id`** pins a required check to the app that must report it. 15368 is GitHub Actions, which reports the gates' check runs and job `references`. Here `factory/review` and `factory/doc-review` are pinned to 5837737, the reviewer app, while the model reviews run locally (section 6). A repository whose reviews run in CI pins all ten to 15368.
+- **The rules** are as read back from `repos/<org>/<repo>/rules/branches/main` on 2026-11-20, and the required checks again on 2026-11-24. The read-back does not show `name`, `enforcement`, `bypass_actors` or `conditions`: those are as the owner applied them; confirm against the live setting. It also shows fields the file does not set, with the values GitHub keeps: `required_reviewers` empty, `dismissal_restriction` off, `require_extra_approval_for_unattributed_changes` true.
+- **Required checks** are the nine names of `checks` in [`policy.json`](../spec/factory/.github/factory/policy.json), plus `references` and the four jobs of `ci.yml` that the kit README asks for: `build-test`, `pr-title`, `security`, `process`. The owner added those four on 2026-11-24 ([plan 0005](../../specs/0005-repository-skeleton/plan.md), O1).
+- **Strict is off, and there is no merge queue.** The owner applied the ruleset with "require branches to be up to date before merging" on, and turned it off on 2026-11-19 (#56). With it on, every merge put the other open pull requests behind `main`, and updating a branch is a push: the gates and the model review run again and an approval is dismissed. A merge queue would stall while the reviews run locally: nobody reports `factory/review` and `factory/doc-review` on a queue commit. The owner decided on 2026-11-20 to keep both off until the reviews are back in CI, then to revisit ([plan 0005](../../specs/0005-repository-skeleton/plan.md), Q4 and deviation 7). The kit README asks for one of the two.
+- **`integration_id`** pins a required check to the app that must report it. 15368 is GitHub Actions, which reports the gates' check runs and job `references`. Here `factory/review` and `factory/doc-review` are pinned to 5837737, the reviewer app, while the model reviews run locally (section 6). A repository whose reviews run in CI pins all fourteen to 15368.
 - "The author cannot approve" is GitHub's own behaviour, not a ruleset field.
 
 Then check that exactly one ruleset applies to `main` (rulesets stack, section 9):
@@ -233,7 +237,7 @@ The kit README's seven trials ("Install at M0" step 7), with throwaway pull requ
 
 - Move the model reviews back to CI: the steps end the section "Model reviews run locally (temporary)" in [`AGENTS.md`](../../AGENTS.md).
 - Trials 2 to 7 (section 8).
-- `ci.yml` in M0, its build, test, security and title checks in the ruleset, then strict back on or a merge queue (section 5).
+- Strict back on or a merge queue, once the reviews are back in CI (section 5).
 - A ruleset for `next` after `1.0.0`.
 - The kit README's ["Verify before relying on it"](../spec/factory/README.md#verify-before-relying-on-it) list stays open.
 - Checklist items 6 (the human-only labels are protected by process) and 7 (local settings and their gaps) are left to the [kit README](../spec/factory/README.md#human-setup-checklist).

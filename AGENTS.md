@@ -133,7 +133,7 @@ The factory can run with nobody at the keyboard. The command is `.claude/command
 - Each review and each writer is a model session on the local login. Watch the subscription's usage. How many implementers run at once, how many reviews a ticket gets and when a fix round starts are in "Token economy".
 - Tier-high work waits for the owner whatever the loop does.
 - Nothing is stacked: a ticket that depends on an open one waits for its merge.
-- The run does not update a branch that is behind `main`: the strict policy is off until M0 has a build.
+- The run does not update a branch that is behind `main`: the strict policy is off, and there is no merge queue, until the reviews are back in CI ([plan 0005](specs/0005-repository-skeleton/plan.md#decision-log), Q4).
 
 **Optional.** Set `permissions.denyInsteadOfPrompting` in your own user settings. A call that would prompt is then denied, and the run goes on.
 
