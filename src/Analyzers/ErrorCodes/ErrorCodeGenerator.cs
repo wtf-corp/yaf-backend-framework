@@ -17,44 +17,28 @@ internal sealed class ErrorCodeGenerator : IIncrementalGenerator
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         var serviceCode = context.AnalyzerConfigOptionsProvider.Select(
-            static (provider, _) => provider.GlobalOptions.TryGetValue("build_property.YafServiceCode", out var value)
-                && !string.IsNullOrWhiteSpace(value) ? value.Trim() : null);
+            static (provider, _) => ErrorCodeNaming.ServiceCode(provider.GlobalOptions));
 
         var calls = context.SyntaxProvider
-            .CreateSyntaxProvider(static (node, _) => IsCandidate(node), static (syntax, token) => ToCall(syntax, token))
+            .CreateSyntaxProvider(static (node, _) => ErrorCodeNaming.IsCandidate(node), static (syntax, token) => ToCall(syntax, token))
             .Where(static call => call is not null)
             .Collect();
 
         context.RegisterSourceOutput(calls.Combine(serviceCode), static (output, input) => Emit(output, input.Left!, input.Right));
     }
 
-    private static bool IsCandidate(SyntaxNode node) =>
-        node is InvocationExpressionSyntax { Parent: EqualsValueClauseSyntax { Parent: VariableDeclaratorSyntax } } invocation
-        && FactoryName(invocation) is { } name
-        && ErrorCodeNaming.FactoryNames.Contains(name);
-
-    private static string? FactoryName(InvocationExpressionSyntax invocation) => invocation.Expression switch
-    {
-        MemberAccessExpressionSyntax member => member.Name.Identifier.ValueText,
-        SimpleNameSyntax simple => simple.Identifier.ValueText,
-        _ => null,
-    };
-
     private static ErrorFactoryCall? ToCall(GeneratorSyntaxContext syntax, CancellationToken token)
     {
         var invocation = (InvocationExpressionSyntax)syntax.Node;
         var model = syntax.SemanticModel;
-        if (model.GetSymbolInfo(invocation, token).Symbol is not IMethodSymbol { IsStatic: true } method
-            || method.ContainingType.ToDisplayString() != ErrorCodeNaming.ErrorTypeName
-            || model.GetDeclaredSymbol(invocation.Parent!.Parent!, token) is not IFieldSymbol { IsStatic: true } field
-            || !field.ContainingType.AllInterfaces.Any(static type => type.ToDisplayString() == ErrorCodeNaming.CatalogueTypeName)
+        if (ErrorCodeNaming.CatalogueField(invocation, model, token) is not { } field
             || model.GetInterceptableLocation(invocation, token) is not { } location)
         {
             return null;
         }
 
         return new ErrorFactoryCall(
-            method.Name,
+            ErrorCodeNaming.FactoryName(invocation)!,
             ErrorCodeNaming.ExplicitCode(field),
             ErrorCodeNaming.DefaultPath(field),
             location.Version,

@@ -1,5 +1,7 @@
 using System.Text;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace YAF.Analyzers.ErrorCodes;
 
@@ -16,6 +18,54 @@ internal static class ErrorCodeNaming
     /// <summary>The nine factories, one per member of <c>ErrorKind</c> and named like it.</summary>
     public static readonly string[] FactoryNames =
         ["Validation", "Unauthenticated", "Forbidden", "NotFound", "Conflict", "PreconditionFailed", "RateLimited", "Unavailable", "Failure"];
+
+    /// <summary>The longest code allowed (03 §2).</summary>
+    public const int MaxCodeLength = 100;
+
+    /// <summary>A factory call by name that initialises a variable: worth asking the semantic model about.</summary>
+    public static bool IsCandidate(SyntaxNode node) =>
+        node is InvocationExpressionSyntax { Parent: EqualsValueClauseSyntax { Parent: VariableDeclaratorSyntax } } invocation
+        && FactoryName(invocation) is { } name
+        && FactoryNames.Contains(name);
+
+    /// <summary>The name of the invoked method as written, or <see langword="null"/>.</summary>
+    public static string? FactoryName(InvocationExpressionSyntax invocation) => invocation.Expression switch
+    {
+        MemberAccessExpressionSyntax member => member.Name.Identifier.ValueText,
+        SimpleNameSyntax simple => simple.Identifier.ValueText,
+        _ => null,
+    };
+
+    /// <summary>
+    /// The static field of an error catalogue that a candidate call of a factory of <c>Error</c> initialises, or <see langword="null"/>.
+    /// </summary>
+    public static IFieldSymbol? CatalogueField(InvocationExpressionSyntax invocation, SemanticModel model, CancellationToken token)
+    {
+        if (model.GetSymbolInfo(invocation, token).Symbol is not IMethodSymbol { IsStatic: true } method
+            || method.ContainingType.ToDisplayString() != ErrorTypeName
+            || model.GetDeclaredSymbol(invocation.Parent!.Parent!, token) is not IFieldSymbol { IsStatic: true } field
+            || !field.ContainingType.AllInterfaces.Any(static type => type.ToDisplayString() == CatalogueTypeName))
+        {
+            return null;
+        }
+
+        return field;
+    }
+
+    /// <summary>The MSBuild property <c>YafServiceCode</c>, trimmed, or <see langword="null"/> when it is missing or blank.</summary>
+    public static string? ServiceCode(AnalyzerConfigOptions options) =>
+        options.TryGetValue("build_property.YafServiceCode", out var value) && !string.IsNullOrWhiteSpace(value) ? value.Trim() : null;
+
+    /// <summary>A service code is one segment of a code: <c>[a-z0-9_]+</c>.</summary>
+    public static bool IsValidServiceCode(string serviceCode) =>
+        serviceCode.Length > 0 && serviceCode.All(static c => IsLower(c) || IsDigit(c) || c == '_');
+
+    /// <summary>A code is <c>[a-z0-9_.]</c>, does not start or end with a dot and has at most 100 characters (03 §2).</summary>
+    public static bool IsValidCode(string code) =>
+        code.Length is > 0 and <= MaxCodeLength
+        && code[0] != '.'
+        && code[code.Length - 1] != '.'
+        && code.All(static c => IsLower(c) || IsDigit(c) || c is '_' or '.');
 
     /// <summary>
     /// The default code without the service code: the containing types of the catalogue, outermost first, without namespace and type
