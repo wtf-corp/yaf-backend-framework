@@ -116,9 +116,13 @@ The agent's `.claude/settings.json` denies `gh secret`, `gh variable set`, rules
 
 Endpoint and field names [docs: https://docs.github.com/en/rest/repos/rules, "Create a repository ruleset", API version 2022-11-28]: `name` and `enforcement` are required; `conditions.ref_name.include` accepts `~DEFAULT_BRANCH`; rule types `deletion` and `non_fast_forward` take no parameters; `pull_request` requires `dismiss_stale_reviews_on_push`, `require_code_owner_review`, `require_last_push_approval`, `required_approving_review_count` (0–10) and `required_review_thread_resolution`, and accepts `allowed_merge_methods` (`merge`, `squash`, `rebase`); `required_status_checks` requires `required_status_checks` (items `context`, optional `integration_id`) and `strict_required_status_checks_policy`.
 
-What the owner applied [owner]: target the default branch, no bypass actors; rules `deletion` and `non_fast_forward`; `pull_request` with 0 required approvals, code-owner review required, stale reviews dismissed, squash as the only merge method; `required_status_checks`, strict, with the nine names of `policy.json` `checks` plus `references`. Eight are pinned to `integration_id` 15368 (GitHub Actions). `factory/review` and `factory/doc-review` were first pinned to 15368 too and are now pinned to 5837737, the reviewer app, for as long as the reviews run locally (section 3, item 8).
+What the owner applied [owner]: target the default branch, no bypass actors; rules `deletion` and `non_fast_forward`; `pull_request` with 0 required approvals, code-owner review required, stale reviews dismissed, squash as the only merge method; `required_status_checks`, strict at first, with the nine names of `policy.json` `checks` plus `references`. Eight are pinned to `integration_id` 15368 (GitHub Actions). `factory/review` and `factory/doc-review` were first pinned to 15368 too and are now pinned to 5837737, the reviewer app, for as long as the reviews run locally (section 3, item 8).
 
-The file below is the ruleset as it stands on 2026-11-19 (ruleset id 27648742) [owner]: the file the owner applied with `gh api -X POST repos/<org>/<repo>/rulesets --input ruleset-main.json`, reflowed to fewer lines, with the two review checks re-pinned. The runbook shows it as applied here and says in one line that a repository whose reviews run in CI uses 15368 for all ten.
+The file below is the ruleset as it stands on 2026-11-19 (ruleset id 27648742) [owner]: the file the owner applied with `gh api -X POST repos/<org>/<repo>/rulesets --input ruleset-main.json`, reflowed to fewer lines, with the two review checks re-pinned and the strict policy off.
+
+Corrected on 2026-11-24: the owner turned the strict policy ("require branches to be up to date before merging") off on 2026-11-19, until M0 has CI, and on 2026-11-20 decided to keep it off, with no merge queue, until the reviews are back in CI ([plan 0003](../0003-unattended-orchestration/plan.md#decision-log), precondition and decision log; [plan 0005](../0005-repository-skeleton/plan.md#decision-log), Q4). Read back on 2026-11-24 with `gh api repos/<org>/<repo>/rulesets/27648742`: `strict_required_status_checks_policy` is `false` [repo].
+
+The runbook shows it as applied here and says in one line that a repository whose reviews run in CI uses 15368 for all ten.
 
 ```json
 {
@@ -138,7 +142,7 @@ The file below is the ruleset as it stands on 2026-11-19 (ruleset id 27648742) [
         "required_review_thread_resolution": false,
         "allowed_merge_methods": ["squash"] } },
     { "type": "required_status_checks", "parameters": {
-        "strict_required_status_checks_policy": true,
+        "strict_required_status_checks_policy": false,
         "do_not_enforce_on_create": false,
         "required_status_checks": [
           { "context": "factory/tier", "integration_id": 15368 },
