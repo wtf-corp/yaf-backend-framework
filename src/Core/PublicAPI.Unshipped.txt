@@ -61,9 +61,19 @@ YAF.Core.Results.Result.Result() -> void
 YAF.Core.Results.Result.Then(System.Action! action) -> YAF.Core.Results.Result
 YAF.Core.Results.Result.Then(System.Func<YAF.Core.Results.Result>! continuation) -> YAF.Core.Results.Result
 YAF.Core.Results.Result.Then<T>(System.Func<YAF.Core.Results.Result<T>>! continuation) -> YAF.Core.Results.Result<T>
+YAF.Core.Results.Result.ThenAsync(System.Func<System.Threading.Tasks.Task!>! action) -> System.Threading.Tasks.Task<YAF.Core.Results.Result>!
+YAF.Core.Results.Result.ThenAsync(System.Func<System.Threading.Tasks.Task<YAF.Core.Results.Result>!>! continuation) -> System.Threading.Tasks.Task<YAF.Core.Results.Result>!
+YAF.Core.Results.Result.ThenAsync(System.Func<System.Threading.Tasks.ValueTask<YAF.Core.Results.Result>>! continuation) -> System.Threading.Tasks.ValueTask<YAF.Core.Results.Result>
+YAF.Core.Results.Result.ThenAsync(System.Func<System.Threading.Tasks.ValueTask>! action) -> System.Threading.Tasks.ValueTask<YAF.Core.Results.Result>
+YAF.Core.Results.Result.ThenAsync<T>(System.Func<System.Threading.Tasks.Task<YAF.Core.Results.Result<T>>!>! continuation) -> System.Threading.Tasks.Task<YAF.Core.Results.Result<T>>!
+YAF.Core.Results.Result.ThenAsync<T>(System.Func<System.Threading.Tasks.ValueTask<YAF.Core.Results.Result<T>>>! continuation) -> System.Threading.Tasks.ValueTask<YAF.Core.Results.Result<T>>
 YAF.Core.Results.Result<T>
 YAF.Core.Results.Result<T>.Else(System.Func<System.Collections.Generic.IReadOnlyList<YAF.Core.Results.Error!>!, T>! fallback) -> YAF.Core.Results.Result<T>
+YAF.Core.Results.Result<T>.ElseAsync(System.Func<System.Collections.Generic.IReadOnlyList<YAF.Core.Results.Error!>!, System.Threading.Tasks.Task<T>!>! fallback) -> System.Threading.Tasks.Task<YAF.Core.Results.Result<T>>!
+YAF.Core.Results.Result<T>.ElseAsync(System.Func<System.Collections.Generic.IReadOnlyList<YAF.Core.Results.Error!>!, System.Threading.Tasks.ValueTask<T>>! fallback) -> System.Threading.Tasks.ValueTask<YAF.Core.Results.Result<T>>
 YAF.Core.Results.Result<T>.Ensure(System.Func<T, bool>! predicate, YAF.Core.Results.ErrorDescriptor! error) -> YAF.Core.Results.Result<T>
+YAF.Core.Results.Result<T>.EnsureAsync(System.Func<T, System.Threading.Tasks.Task<bool>!>! predicate, YAF.Core.Results.ErrorDescriptor! error) -> System.Threading.Tasks.Task<YAF.Core.Results.Result<T>>!
+YAF.Core.Results.Result<T>.EnsureAsync(System.Func<T, System.Threading.Tasks.ValueTask<bool>>! predicate, YAF.Core.Results.ErrorDescriptor! error) -> System.Threading.Tasks.ValueTask<YAF.Core.Results.Result<T>>
 YAF.Core.Results.Result<T>.Errors.get -> System.Collections.Generic.IReadOnlyList<YAF.Core.Results.Error!>!
 YAF.Core.Results.Result<T>.FirstError.get -> YAF.Core.Results.Error!
 YAF.Core.Results.Result<T>.IsFailure.get -> bool
@@ -79,6 +89,8 @@ YAF.Core.Results.Result<T>.Switch(System.Action<T>! onSuccess, System.Action<Sys
 YAF.Core.Results.Result<T>.SwitchAsync(System.Func<T, System.Threading.Tasks.Task!>! onSuccess, System.Func<System.Collections.Generic.IReadOnlyList<YAF.Core.Results.Error!>!, System.Threading.Tasks.Task!>! onFailure) -> System.Threading.Tasks.Task!
 YAF.Core.Results.Result<T>.SwitchAsync(System.Func<T, System.Threading.Tasks.ValueTask>! onSuccess, System.Func<System.Collections.Generic.IReadOnlyList<YAF.Core.Results.Error!>!, System.Threading.Tasks.ValueTask>! onFailure) -> System.Threading.Tasks.ValueTask
 YAF.Core.Results.Result<T>.Tap(System.Action<T>! action) -> YAF.Core.Results.Result<T>
+YAF.Core.Results.Result<T>.TapAsync(System.Func<T, System.Threading.Tasks.Task!>! action) -> System.Threading.Tasks.Task<YAF.Core.Results.Result<T>>!
+YAF.Core.Results.Result<T>.TapAsync(System.Func<T, System.Threading.Tasks.ValueTask>! action) -> System.Threading.Tasks.ValueTask<YAF.Core.Results.Result<T>>
 YAF.Core.Results.Result<T>.Then<TOut>(System.Func<T, YAF.Core.Results.Result<TOut>>! continuation) -> YAF.Core.Results.Result<TOut>
 YAF.Core.Results.Result<T>.ThenAsync<TOut>(System.Func<T, System.Threading.Tasks.Task<YAF.Core.Results.Result<TOut>>!>! continuation) -> System.Threading.Tasks.Task<YAF.Core.Results.Result<TOut>>!
 YAF.Core.Results.Result<T>.ThenAsync<TOut>(System.Func<T, System.Threading.Tasks.ValueTask<YAF.Core.Results.Result<TOut>>>! continuation) -> System.Threading.Tasks.ValueTask<YAF.Core.Results.Result<TOut>>

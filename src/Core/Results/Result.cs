@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Runtime.CompilerServices;
 
 namespace YAF.Core.Results;
 
@@ -147,5 +148,82 @@ public readonly struct Result : IResult
     {
         ArgumentNullException.ThrowIfNull(continuation);
         return _isSuccess ? continuation() : new Result<T>(_errors ?? ResultErrors.Uninitialised);
+    }
+
+    /// <summary>Runs an asynchronous action after a success. A failure keeps its errors and <paramref name="action"/> is not called. An <see langword="async"/> lambda picks this overload.</summary>
+    /// <param name="action">The action, called on a success.</param>
+    /// <returns>A task with this result, completed after <paramref name="action"/> on a success.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="action"/> is <see langword="null"/>; thrown before the task is returned.</exception>
+    [OverloadResolutionPriority(1)]
+    public Task<Result> ThenAsync(Func<Task> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        return _isSuccess ? KeepAfterAsync(action(), this) : Task.FromResult(this);
+    }
+
+    /// <summary>Runs an action that returns a <see cref="ValueTask"/> after a success. A failure keeps its errors and <paramref name="action"/> is not called.</summary>
+    /// <param name="action">The action, called on a success.</param>
+    /// <returns>A value task with this result, completed after <paramref name="action"/> on a success.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="action"/> is <see langword="null"/>; thrown before the value task is returned.</exception>
+    public ValueTask<Result> ThenAsync(Func<ValueTask> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        return _isSuccess ? KeepAfterAsync(action(), this) : new ValueTask<Result>(this);
+    }
+
+    /// <summary>Continues a success with an asynchronous operation that can fail. A failure keeps its errors and <paramref name="continuation"/> is not called. An <see langword="async"/> lambda picks this overload.</summary>
+    /// <param name="continuation">The operation, called on a success.</param>
+    /// <returns>The task of <paramref name="continuation"/>, or a completed task with this failure.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="continuation"/> is <see langword="null"/>; thrown before the task is returned.</exception>
+    [OverloadResolutionPriority(1)]
+    public Task<Result> ThenAsync(Func<Task<Result>> continuation)
+    {
+        ArgumentNullException.ThrowIfNull(continuation);
+        return _isSuccess ? continuation() : Task.FromResult(this);
+    }
+
+    /// <summary>Continues a success with an operation that can fail and returns a <see cref="ValueTask{TResult}"/>. A failure keeps its errors and <paramref name="continuation"/> is not called.</summary>
+    /// <param name="continuation">The operation, called on a success.</param>
+    /// <returns>The value task of <paramref name="continuation"/>, or a completed value task with this failure.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="continuation"/> is <see langword="null"/>; thrown before the value task is returned.</exception>
+    public ValueTask<Result> ThenAsync(Func<ValueTask<Result>> continuation)
+    {
+        ArgumentNullException.ThrowIfNull(continuation);
+        return _isSuccess ? continuation() : new ValueTask<Result>(this);
+    }
+
+    /// <summary>Continues a success with an asynchronous operation that returns a value and can fail. A failure keeps its errors and <paramref name="continuation"/> is not called. An <see langword="async"/> lambda picks this overload.</summary>
+    /// <typeparam name="T">The type of the value of the operation.</typeparam>
+    /// <param name="continuation">The operation, called on a success.</param>
+    /// <returns>The task of <paramref name="continuation"/>, or a completed task with a failure with the same errors.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="continuation"/> is <see langword="null"/>; thrown before the task is returned.</exception>
+    [OverloadResolutionPriority(1)]
+    public Task<Result<T>> ThenAsync<T>(Func<Task<Result<T>>> continuation)
+    {
+        ArgumentNullException.ThrowIfNull(continuation);
+        return _isSuccess ? continuation() : Task.FromResult(new Result<T>(_errors ?? ResultErrors.Uninitialised));
+    }
+
+    /// <summary>Continues a success with an operation that returns a value, can fail and returns a <see cref="ValueTask{TResult}"/>. A failure keeps its errors and <paramref name="continuation"/> is not called.</summary>
+    /// <typeparam name="T">The type of the value of the operation.</typeparam>
+    /// <param name="continuation">The operation, called on a success.</param>
+    /// <returns>The value task of <paramref name="continuation"/>, or a completed value task with a failure with the same errors.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="continuation"/> is <see langword="null"/>; thrown before the value task is returned.</exception>
+    public ValueTask<Result<T>> ThenAsync<T>(Func<ValueTask<Result<T>>> continuation)
+    {
+        ArgumentNullException.ThrowIfNull(continuation);
+        return _isSuccess ? continuation() : new ValueTask<Result<T>>(new Result<T>(_errors ?? ResultErrors.Uninitialised));
+    }
+
+    private static async Task<Result> KeepAfterAsync(Task pending, Result result)
+    {
+        await pending.ConfigureAwait(false);
+        return result;
+    }
+
+    private static async ValueTask<Result> KeepAfterAsync(ValueTask pending, Result result)
+    {
+        await pending.ConfigureAwait(false);
+        return result;
     }
 }
