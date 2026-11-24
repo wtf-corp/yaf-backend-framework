@@ -93,3 +93,21 @@ dotnet_diagnostic.CA1040.severity = none
 [src/Core/Results/Error.cs]
 # CA1716: 03 §1 names the type Error (a Visual Basic keyword). Owner's decision on #114, 2026-11-24.
 dotnet_diagnostic.CA1716.severity = none
+
+[src/Core/Results/Result.cs]
+# CA1002: 03 §1 prescribes the implicit conversion from List<Error>. Owner's decision on #116, 2026-11-24.
+dotnet_diagnostic.CA1002.severity = none
+# CA2225: Success/Failure are the named alternates of the implicit conversions 03 §1 prescribes; From* methods would duplicate them. Owner's decision on #116, 2026-11-24.
+dotnet_diagnostic.CA2225.severity = none
+# CA1815: results are not compared; 03 §1 defines no equality (an error list has no meaningful equality). Owner's decision on #116, 2026-11-24.
+dotnet_diagnostic.CA1815.severity = none
+
+[src/Core/Results/Result\{T\}.cs]
+# CA1000: 03 §1 prescribes static Success/Failure on Result<T> alongside Result.Success(value). Owner's decision on #116, 2026-11-24.
+dotnet_diagnostic.CA1000.severity = none
+# CA1002: 03 §1 prescribes the implicit conversion from List<Error>. Owner's decision on #116, 2026-11-24.
+dotnet_diagnostic.CA1002.severity = none
+# CA2225: Success/Failure are the named alternates of the implicit conversions 03 §1 prescribes; From* methods would duplicate them. Owner's decision on #116, 2026-11-24.
+dotnet_diagnostic.CA2225.severity = none
+# CA1815: results are not compared; 03 §1 defines no equality (an error list has no meaningful equality). Owner's decision on #116, 2026-11-24.
+dotnet_diagnostic.CA1815.severity = none
