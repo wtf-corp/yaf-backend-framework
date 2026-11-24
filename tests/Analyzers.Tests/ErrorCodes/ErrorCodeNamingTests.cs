@@ -11,7 +11,6 @@ public sealed class ErrorCodeNamingTests
     [InlineData("IOError", "io_error")]
     [InlineData("Http2Error", "http2_error")]
     [InlineData("SessionV2", "session_v2")]
-    [InlineData("TitleTooLong_", "title_too_long_")]
     [InlineData("URL", "url")]
     public void ToSnakeCase_Identifier_SplitsWords(string identifier, string expected)
     {

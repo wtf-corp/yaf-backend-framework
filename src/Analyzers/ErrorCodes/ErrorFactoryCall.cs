@@ -5,9 +5,4 @@ namespace YAF.Analyzers.ErrorCodes;
 /// the default code without the service code, and the interceptable location. Values only, so the incremental pipeline can cache it.
 /// </summary>
 internal sealed record ErrorFactoryCall(
-    string Kind,
-    string? ExplicitCode,
-    string DefaultPath,
-    int LocationVersion,
-    string LocationData,
-    string DisplayLocation);
+    string Kind, string? ExplicitCode, string DefaultPath, int LocationVersion, string LocationData, string DisplayLocation);
