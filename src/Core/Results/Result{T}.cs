@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Runtime.CompilerServices;
 
 namespace YAF.Core.Results;
 
@@ -200,6 +201,108 @@ public readonly struct Result<T> : IResult
         ArgumentNullException.ThrowIfNull(fallback);
         return _isSuccess ? this : new Result<T>(fallback(FailureErrors));
     }
+
+    /// <summary>Returns the value of one of two asynchronous functions: <paramref name="onSuccess"/> with the value, or <paramref name="onFailure"/> with the errors. An <see langword="async"/> lambda picks this overload.</summary>
+    /// <typeparam name="TOut">The type of the returned value.</typeparam>
+    /// <param name="onSuccess">Called with the value of a success.</param>
+    /// <param name="onFailure">Called with the errors of a failure, at least one.</param>
+    /// <returns>The task of the called function.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="onSuccess"/> or <paramref name="onFailure"/> is <see langword="null"/>; thrown before any function is called.</exception>
+    [OverloadResolutionPriority(1)]
+    public Task<TOut> MatchAsync<TOut>(Func<T, Task<TOut>> onSuccess, Func<IReadOnlyList<Error>, Task<TOut>> onFailure)
+    {
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+        return _isSuccess ? onSuccess(_value) : onFailure(Errors);
+    }
+
+    /// <summary>Returns the value of one of two functions that return a <see cref="ValueTask{TResult}"/>: <paramref name="onSuccess"/> with the value, or <paramref name="onFailure"/> with the errors.</summary>
+    /// <typeparam name="TOut">The type of the returned value.</typeparam>
+    /// <param name="onSuccess">Called with the value of a success.</param>
+    /// <param name="onFailure">Called with the errors of a failure, at least one.</param>
+    /// <returns>The value task of the called function.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="onSuccess"/> or <paramref name="onFailure"/> is <see langword="null"/>; thrown before any function is called.</exception>
+    public ValueTask<TOut> MatchAsync<TOut>(Func<T, ValueTask<TOut>> onSuccess, Func<IReadOnlyList<Error>, ValueTask<TOut>> onFailure)
+    {
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+        return _isSuccess ? onSuccess(_value) : onFailure(Errors);
+    }
+
+    /// <summary>Runs one of two asynchronous actions: <paramref name="onSuccess"/> with the value, or <paramref name="onFailure"/> with the errors. An <see langword="async"/> lambda picks this overload.</summary>
+    /// <param name="onSuccess">Called with the value of a success.</param>
+    /// <param name="onFailure">Called with the errors of a failure, at least one.</param>
+    /// <returns>The task of the called action.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="onSuccess"/> or <paramref name="onFailure"/> is <see langword="null"/>; thrown before any action is called.</exception>
+    [OverloadResolutionPriority(1)]
+    public Task SwitchAsync(Func<T, Task> onSuccess, Func<IReadOnlyList<Error>, Task> onFailure)
+    {
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+        return _isSuccess ? onSuccess(_value) : onFailure(Errors);
+    }
+
+    /// <summary>Runs one of two actions that return a <see cref="ValueTask"/>: <paramref name="onSuccess"/> with the value, or <paramref name="onFailure"/> with the errors.</summary>
+    /// <param name="onSuccess">Called with the value of a success.</param>
+    /// <param name="onFailure">Called with the errors of a failure, at least one.</param>
+    /// <returns>The value task of the called action.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="onSuccess"/> or <paramref name="onFailure"/> is <see langword="null"/>; thrown before any action is called.</exception>
+    public ValueTask SwitchAsync(Func<T, ValueTask> onSuccess, Func<IReadOnlyList<Error>, ValueTask> onFailure)
+    {
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+        return _isSuccess ? onSuccess(_value) : onFailure(Errors);
+    }
+
+    /// <summary>Transforms the value of a success with an asynchronous function. A failure keeps its errors and <paramref name="selector"/> is not called. An <see langword="async"/> lambda picks this overload.</summary>
+    /// <typeparam name="TOut">The type of the new value.</typeparam>
+    /// <param name="selector">Computes the new value from the value of a success.</param>
+    /// <returns>A task with a success with the new value, or a completed task with a failure with the same errors.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="selector"/> is <see langword="null"/>; thrown before the task is returned.</exception>
+    [OverloadResolutionPriority(1)]
+    public Task<Result<TOut>> MapAsync<TOut>(Func<T, Task<TOut>> selector)
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+        return _isSuccess ? ToSuccessAsync(selector(_value)) : Task.FromResult(new Result<TOut>(FailureErrors));
+    }
+
+    /// <summary>Transforms the value of a success with a function that returns a <see cref="ValueTask{TResult}"/>. A failure keeps its errors and <paramref name="selector"/> is not called.</summary>
+    /// <typeparam name="TOut">The type of the new value.</typeparam>
+    /// <param name="selector">Computes the new value from the value of a success.</param>
+    /// <returns>A value task with a success with the new value, or a completed value task with a failure with the same errors.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="selector"/> is <see langword="null"/>; thrown before the value task is returned.</exception>
+    public ValueTask<Result<TOut>> MapAsync<TOut>(Func<T, ValueTask<TOut>> selector)
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+        return _isSuccess ? ToSuccessAsync(selector(_value)) : new ValueTask<Result<TOut>>(new Result<TOut>(FailureErrors));
+    }
+
+    /// <summary>Continues a success with an asynchronous operation that can fail. A failure keeps its errors and <paramref name="continuation"/> is not called. An <see langword="async"/> lambda picks this overload.</summary>
+    /// <typeparam name="TOut">The type of the value of the operation.</typeparam>
+    /// <param name="continuation">The operation, called with the value of a success.</param>
+    /// <returns>The task of <paramref name="continuation"/>, or a completed task with a failure with the same errors.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="continuation"/> is <see langword="null"/>; thrown before the task is returned.</exception>
+    [OverloadResolutionPriority(1)]
+    public Task<Result<TOut>> ThenAsync<TOut>(Func<T, Task<Result<TOut>>> continuation)
+    {
+        ArgumentNullException.ThrowIfNull(continuation);
+        return _isSuccess ? continuation(_value) : Task.FromResult(new Result<TOut>(FailureErrors));
+    }
+
+    /// <summary>Continues a success with an operation that can fail and returns a <see cref="ValueTask{TResult}"/>. A failure keeps its errors and <paramref name="continuation"/> is not called.</summary>
+    /// <typeparam name="TOut">The type of the value of the operation.</typeparam>
+    /// <param name="continuation">The operation, called with the value of a success.</param>
+    /// <returns>The value task of <paramref name="continuation"/>, or a completed value task with a failure with the same errors.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="continuation"/> is <see langword="null"/>; thrown before the value task is returned.</exception>
+    public ValueTask<Result<TOut>> ThenAsync<TOut>(Func<T, ValueTask<Result<TOut>>> continuation)
+    {
+        ArgumentNullException.ThrowIfNull(continuation);
+        return _isSuccess ? continuation(_value) : new ValueTask<Result<TOut>>(new Result<TOut>(FailureErrors));
+    }
+
+    private static async Task<Result<TValue>> ToSuccessAsync<TValue>(Task<TValue> pending) => new(await pending.ConfigureAwait(false));
+
+    private static async ValueTask<Result<TValue>> ToSuccessAsync<TValue>(ValueTask<TValue> pending) => new(await pending.ConfigureAwait(false));
 
     private ReadOnlyCollection<Error> FailureErrors => _errors ?? ResultErrors.Uninitialised;
 }
