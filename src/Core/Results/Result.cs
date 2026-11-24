@@ -95,4 +95,40 @@ public readonly struct Result : IResult
     /// <exception cref="ArgumentNullException"><paramref name="errors"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException"><paramref name="errors"/> is empty or contains <see langword="null"/>.</exception>
     public static Result Failure(IEnumerable<Error> errors) => new(isSuccess: false, ResultErrors.Copy(errors));
+
+    /// <summary>Runs an action after a success. A failure keeps its errors and <paramref name="action"/> is not called.</summary>
+    /// <param name="action">The action, called on a success.</param>
+    /// <returns>This result: a success after <paramref name="action"/> has run, or the failure.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="action"/> is <see langword="null"/>.</exception>
+    public Result Then(Action action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        if (_isSuccess)
+        {
+            action();
+        }
+
+        return this;
+    }
+
+    /// <summary>Continues a success with an operation that can fail. A failure keeps its errors and <paramref name="continuation"/> is not called.</summary>
+    /// <param name="continuation">The operation, called on a success.</param>
+    /// <returns>The result of <paramref name="continuation"/>, or this failure.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="continuation"/> is <see langword="null"/>.</exception>
+    public Result Then(Func<Result> continuation)
+    {
+        ArgumentNullException.ThrowIfNull(continuation);
+        return _isSuccess ? continuation() : this;
+    }
+
+    /// <summary>Continues a success with an operation that returns a value and can fail. A failure keeps its errors and <paramref name="continuation"/> is not called.</summary>
+    /// <typeparam name="T">The type of the value of the operation.</typeparam>
+    /// <param name="continuation">The operation, called on a success.</param>
+    /// <returns>The result of <paramref name="continuation"/>, or a failure with the same errors.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="continuation"/> is <see langword="null"/>.</exception>
+    public Result<T> Then<T>(Func<Result<T>> continuation)
+    {
+        ArgumentNullException.ThrowIfNull(continuation);
+        return _isSuccess ? continuation() : new Result<T>(_errors ?? ResultErrors.Uninitialised);
+    }
 }
