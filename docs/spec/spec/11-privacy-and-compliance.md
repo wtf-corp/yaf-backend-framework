@@ -137,10 +137,12 @@ Each row becomes one or more `[Control]`-tagged tests. Ids are YAF's own; the so
 | C-SD-2 | Security testing in the pipeline | Security test pack, conformance suites | ISO A.8.29; NIS2 21(2)(f) |
 | C-SD-3 | Change control and traceability | Conventional commits, generated changelog, package validation, approved-file diffs | ISO A.8.32; SOC 2 CC8.1 |
 | C-SD-4 | Synthetic test data only | Builders in `YAF.Testing`; no production data path | ISO A.8.33 |
-| C-SC-1 | Dependency integrity and vulnerability gate | Lock files, audit as error, source mapping, dependency review | ISO A.8.8; NIS2 21(2)(d); SSDF PS/RV |
+| C-SC-1 | Dependency integrity and vulnerability gate | Pinned versions in `Directory.Packages.props`, audit as error, source mapping, dependency review | ISO A.8.8; NIS2 21(2)(d); SSDF PS/RV |
 | C-SC-2 | SBOM and provenance per release | CycloneDX/SPDX SBOM, attestations | NIS2 21(2)(d); CRA Annex I part II; SLSA Build L2 |
 | C-RS-1 | Resilient, recoverable messaging | Outbox, inbox, retries, dead-lettering, graceful shutdown, health | GDPR 32(1)(b)-(c); NIS2 21(2)(c) |
 | C-IN-1 | Incident timeline support | Security event and read-audit queries, key access evidence | NIS2 23; GDPR 33 |
+
+> **Amended 2026-11-24**, by the owner's decision of 2026-11-24 (`specs/0007-no-package-lock-files/plan.md`, decision log; ADR-0032): C-SC-1 no longer uses NuGet lock files. Its mechanism names what remains; the content-hash check of restored packages and the detection of changes in the transitive graph are given up.
 
 Controls that arrive with later packages and are not in the 1.0 catalogue: C-DP-9 request deadlines (privacy coordinator; GDPR 12(3)), incident register with reporting deadlines (extends C-IN-1), C-AI-1…5 (`13-ai.md`; AI Act 12, 13, 14, 19, 26, 50).
 
