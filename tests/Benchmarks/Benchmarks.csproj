@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Runs the benchmarks of Cases/ by hand, not in CI and not in the test run (ADR-0018, ADR-0030). Never packed (ADR-0030 decision 2). -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Cases/**" />
+    <None Remove="Cases/**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="Cases/Benchmarks.Cases.csproj" />
+  </ItemGroup>
+
+</Project>
