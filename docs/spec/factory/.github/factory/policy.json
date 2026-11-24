@@ -53,7 +53,7 @@
     ]
   },
   "sensitivePaths": [
-    "src/Http/Authentication/**",
+    
     "src/Application/Authorization/**",
     "src/Application/Context/**",
     "src/Persistence.EfCore*/Tenancy/**",
