@@ -4,6 +4,10 @@
   <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
 
   <PropertyGroup>
+    <!-- Folder src/<Name> builds package YAF.<Name>; the root namespace equals the package id (01 §2). -->
+    <AssemblyName>YAF.$(MSBuildProjectName)</AssemblyName>
+    <RootNamespace>YAF.$(MSBuildProjectName)</RootNamespace>
+    <PackageId>YAF.$(MSBuildProjectName)</PackageId>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <WarningsAsErrors>$(WarningsAsErrors);CS1591;CS1573</WarningsAsErrors>
     <IsPackable>true</IsPackable>
