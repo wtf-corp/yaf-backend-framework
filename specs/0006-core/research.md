@@ -127,3 +127,12 @@ BenchmarkDotNet console arguments, from "Console arguments", benchmarkdotnet.org
 An `internal sealed` `DiagnosticAnalyzer` loads (probe A4, on review question 2): a consumer referencing the analyzer project got its `warning YAF9999: Method 'Bad' is bad`. So the analyzer classes stay `internal`, and `src/Analyzers` needs no `PublicAPI.*.txt` and no delta entry.
 
 Not verified, left to the ticket that uses it, which records what it found on its pull request: the ArchUnitNET rule API for assembly dependencies (T22, from the project's documentation for 0.13.5).
+
+## 11. What `dotnet pack YAF.slnx` packs
+
+For T25 (doc review of #111, question on T25). On `main`, `IsPackable` is `true` only in `src/Directory.Build.props`, which nothing under `tests/` imports; `tests/Skeleton.Tests` sets it `false` in its own project file. Probe K1 (SDK `11.0.100`, 2026-11-24), two projects with no `IsPackable` of their own:
+
+- a console project (`OutputType` `Exe`, no package reference): `IsPackable` is `true` and `dotnet pack` writes `Bench.1.0.0.nupkg`. The SDK's default is `true`, also for an executable. `tests/Benchmarks` is such a project, so it would be packed;
+- a test project referencing `xunit.v3` 4.0.3: `IsPackable` is `false` (it comes from the package, read with `dotnet msbuild -getProperty:IsPackable`) and `dotnet pack` writes nothing.
+
+So the plan sets `IsPackable` false in `tests/Benchmarks` (T24) and, not relying on the `xunit.v3` default, in each new test project, as `Skeleton.Tests` does. `Analyzers` sets it false itself (T13).
