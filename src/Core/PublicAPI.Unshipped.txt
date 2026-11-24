@@ -1,4 +1,10 @@
 #nullable enable
+YAF.Core.Ids.ITypedId
+YAF.Core.Ids.ITypedId.Value.get -> System.Guid
+YAF.Core.Ids.ITypedId<TSelf>
+YAF.Core.Ids.ITypedId<TSelf>.From(System.Guid value) -> TSelf
+YAF.Core.Ids.TypedIdAttribute
+YAF.Core.Ids.TypedIdAttribute.TypedIdAttribute() -> void
 YAF.Core.Results.Error
 YAF.Core.Results.Error.<Clone>$() -> YAF.Core.Results.Error!
 YAF.Core.Results.Error.Arguments.get -> System.Collections.Generic.IReadOnlyDictionary<string!, object?>!
