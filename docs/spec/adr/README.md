@@ -20,7 +20,8 @@ Every ADR has the sections Context, Drivers, Options considered, Decision, Conse
 | ADR | Decision |
 |---|---|
 | [0007](0007-domain-model-patterns.md) | Domain model patterns |
-| [0008](0008-results-and-error-catalogue.md) | Own result type and approved error catalogue |
+| [0008](0008-results-and-error-catalogue.md) | Own result type and approved error catalogue (superseded by 0031) |
+| [0031](0031-results-and-error-catalogue-revised.md) | Own result type and approved error catalogue, revised for M1: `[Union]` on `Result<T>` only, factories without a code parameter, `YAF3004` (Proposed) |
 | [0009](0009-application-pipeline-and-dispatcher.md) | Application pipeline and own dispatcher behind YAF's request contracts |
 | [0010](0010-persistence-tenancy-and-unit-of-work.md) | Persistence, tenancy and unit of work |
 | [0011](0011-data-protection-at-rest.md) | Data protection at rest |

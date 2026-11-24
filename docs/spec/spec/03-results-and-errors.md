@@ -43,7 +43,7 @@ public readonly struct Result<T>
 | `T Value` | Throws `InvalidOperationException` on a failure |
 | `IReadOnlyList<Error> Errors`, `Error FirstError` | Empty list on success |
 | `static Success()`, `Success(T)`, `Failure(Error)`, `Failure(IEnumerable<Error>)` | |
-| Implicit conversions | From `T`, from `Error`, from `ErrorDescriptor`, from `Error[]` / `List<Error>`. None back to `T`. The language does not allow a user-defined conversion from an interface type, so when `T` is an interface (`Result<ISessionView>`, `Result<IReadOnlyList<…>>`) there is no conversion from `T`: write `Result.Success(value)` |
+| Implicit conversions | From `T`, from `Error`, from `ErrorDescriptor`, from `Error[]` / `List<Error>`. None back to `T`. The language does not allow a user-defined conversion from an interface type. On `Result<T>`, the union conversions that `[Union]` brings convert from an interface `T` (`Result<ISessionView>`, `Result<IReadOnlyList<…>>`) and from `IReadOnlyList<Error>`; `Result<IReadOnlyList<Error>>` has no conversion from that list. `Result.Success(value)` works for every `T` |
 | `Match(onSuccess, onFailure)`, `Switch(...)` | |
 | `Map(Func<T, TOut>)`, `Then(Func<T, Result<TOut>>)`, `Ensure(Func<T, bool>, ErrorDescriptor)`, `Tap(Action<T>)`, `Else(Func<IReadOnlyList<Error>, T>)` | Each has `Task` and `ValueTask` overloads (`ThenAsync` …). Keep the set to these |
 | `Result.Then(Action)`, `Result.Then(Func<Result>)`, `Result.Then<T>(Func<Result<T>>)` | Continue from a non-generic result |
@@ -52,7 +52,9 @@ public readonly struct Result<T>
 | Failure propagation between result types | `return other.Errors.ToArray();` (the `Error[]` conversion) |
 | `IResult` (non-generic interface: `IsSuccess`, `Errors`) | Lets pipeline middleware inspect any result without knowing `T` |
 
-The structs carry `[Union]` with the non-boxing members (`HasValue`, `TryGetValue(out T)`, `TryGetValue(out IReadOnlyList<Error>)`), so callers get exhaustive `switch` patterns. The bare `union` keyword is not used for these types (it boxes and cannot give `default` a safe meaning).
+`Result<T>` carries `[Union]` with the non-boxing members (`HasValue`, `TryGetValue(out T)`, `TryGetValue(out IReadOnlyList<Error>)`), through the public nested interface `Result<T>.IUnionMembers`, so callers get exhaustive `switch` patterns. The nested interface keeps the union pattern's `object? Value` from clashing with `T Value`. The non-generic `Result` carries no `[Union]`: its only case would be the error list. The bare `union` keyword is not used for these types (it boxes and cannot give `default` a safe meaning).
+
+> **Amended 2026-11-24**, by the owner's decision of 2026-11-24 (`specs/0006-core/plan.md`, decision log Q3): `[Union]` only on `Result<T>`, through `IUnionMembers`, with the union conversions it brings.
 
 Design rules:
 
@@ -80,11 +82,13 @@ public partial class Session
 }
 ```
 
-- `Error.Validation / NotFound / Conflict / …(messageTemplate)` (one per `ErrorKind`: `Validation`, `Unauthenticated`, `Forbidden`, `NotFound`, `Conflict`, `PreconditionFailed`, `RateLimited`, `Unavailable`, `Failure`) are factory methods whose `code` parameter is filled at compile time by the **error code generator** in the `Analyzers` project, shipped inside `YAF.Core` (an interceptor per call site).
+- `Error.Validation / NotFound / Conflict / …(messageTemplate)` (one per `ErrorKind`: `Validation`, `Unauthenticated`, `Forbidden`, `NotFound`, `Conflict`, `PreconditionFailed`, `RateLimited`, `Unavailable`, `Failure`) are factory methods that take only the message template, with no `code` parameter. At compile time the **error code generator** in the `Analyzers` project, shipped inside `YAF.Core`, replaces each call with a descriptor that carries the generated code (an interceptor per call site).
 - Default code: `<ServiceCode>.<DeclaringTypePath>.<Field>` in snake case with dots, where `ServiceCode` comes from the MSBuild property `YafServiceCode` (for example `catalog`) and the declaring type path omits the catalogue class itself and the namespace: `catalog.session.full`. `[ErrorCode]` overrides it. Codes are lower-case `[a-z0-9_.]`, at most 100 characters.
 - Naming: `Errors` in aggregates, handlers and validators alike. One catalogue per declaring type.
-- Analyzer `YAF3001` (error): an `Error` or `ErrorDescriptor` created outside an `IErrorCatalog` static field. `YAF3002` (error): two descriptors with the same code in one compilation. An analyzer sees one compilation only; the same code declared in two assemblies of a service (the default code omits the namespace, so `Session.Errors.NotFound` in the domain and a `Session` type elsewhere would collide) is caught by the approval test and the startup check of §2.1. `YAF3003` (warning): a message template placeholder without a matching argument at a `With` call.
+- Analyzer `YAF3001` (error): an `Error` or `ErrorDescriptor` created outside an `IErrorCatalog` static field. `YAF3002` (error): two descriptors with the same code in one compilation. An analyzer sees one compilation only; the same code declared in two assemblies of a service (the default code omits the namespace, so `Session.Errors.NotFound` in the domain and a `Session` type elsewhere would collide) is caught by the approval test and the startup check of §2.1. `YAF3003` (warning): a message template placeholder without a matching argument at a `With` call. `YAF3004` (error): a factory call that needs a default code while `YafServiceCode` is missing or invalid, or a generated or `[ErrorCode]` code that breaks the rules above.
 - Without the generator (a project that forgot it) the factory methods throw at type initialisation with a message naming the missing package; there is no silent fallback code.
+
+> **Amended 2026-11-24**, by the owner's decisions of 2026-11-24 (`specs/0006-core/plan.md`, decision log Q5 and the decision on review finding F3): the diagnostic `YAF3004`, and the factories' signature `(string messageTemplate)`, because the interceptor replaces the whole call.
 
 ### 2.1 The error catalogue is an approved contract
 
@@ -141,3 +145,5 @@ The transaction middleware rolls back on any failed result (`04-application.md` 
 - A test with two assemblies declaring the same code shows the approval check and the startup check both fail and name the two declaring types.
 - A benchmark project (`tests/Benchmarks`, not run in CI) shows a successful `Result<T>` round trip allocates nothing.
 - The mapper has a table-driven test covering each kind and the mixed-kind precedence.
+
+> **Amended 2026-11-24**, by the owner's decision of 2026-11-24 (`specs/0006-core/plan.md`, decision log Q1): the third and fifth items are accepted in M3, not M1, together with `ResultFactory` (§1) and the `[assembly: YafService]` attribute with its registry (§2.1) (`18-build-plan.md` §2).

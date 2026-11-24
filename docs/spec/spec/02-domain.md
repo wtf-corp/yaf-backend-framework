@@ -36,7 +36,9 @@ Nothing EF-related is generated into a domain project. `ITypedId<TSelf>` declare
 Rules:
 
 - IDs are UUID version 7, assigned **by the domain at creation**. There is no "empty until saved" id. `default(SessionId)` is invalid and `Guard`ed at aggregate construction.
-- An id type is never reused across aggregate types. Analyzer `YAF1001` flags a raw `Guid` parameter named `*Id` on a public domain or application member.
+- An id type is never reused across aggregate types. Analyzer `YAF1001` flags a raw `Guid` parameter named `*Id` on a public or protected member of a public type, in any project that references `YAF.Core`.
+
+  > **Amended 2026-11-24**, by the owner's decision of 2026-11-24 (`specs/0006-core/plan.md`, decision log Q4): an analyzer cannot see a layer, so the scope is every public type of a project that references `YAF.Core`, which matches "ids through typed ids".
 - Child entities get their id from the aggregate that creates them.
 
 ## 4. Entities and aggregate roots
