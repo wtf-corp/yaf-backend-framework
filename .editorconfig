@@ -36,6 +36,26 @@ dotnet_naming_symbols.private_fields.applicable_accessibilities = private
 dotnet_naming_style.underscore_camel_case.required_prefix = _
 dotnet_naming_style.underscore_camel_case.capitalization = camel_case
 
+# Private static fields, readonly or not: s_camelCase. Private constants: PascalCase.
+# 01 §5; plan 0005 Q10. The more specific rule wins, not the file order; a static group also
+# catches const fields, so constants need a group of their own.
+dotnet_naming_rule.private_static_fields_s_camel_case.symbols = private_static_fields
+dotnet_naming_rule.private_static_fields_s_camel_case.style = s_camel_case
+dotnet_naming_rule.private_static_fields_s_camel_case.severity = error
+dotnet_naming_symbols.private_static_fields.applicable_kinds = field
+dotnet_naming_symbols.private_static_fields.applicable_accessibilities = private
+dotnet_naming_symbols.private_static_fields.required_modifiers = static
+dotnet_naming_style.s_camel_case.required_prefix = s_
+dotnet_naming_style.s_camel_case.capitalization = camel_case
+
+dotnet_naming_rule.private_constants_pascal_case.symbols = private_constants
+dotnet_naming_rule.private_constants_pascal_case.style = pascal_case
+dotnet_naming_rule.private_constants_pascal_case.severity = error
+dotnet_naming_symbols.private_constants.applicable_kinds = field
+dotnet_naming_symbols.private_constants.applicable_accessibilities = private
+dotnet_naming_symbols.private_constants.required_modifiers = const
+dotnet_naming_style.pascal_case.capitalization = pascal_case
+
 [{src,samples,templates}/**.cs]
 # Async methods end in Async. The CancellationToken-last rule is CA1068, on through AnalysisMode All.
 # Not for tests/: test methods are named Method_Scenario_Expected (AGENTS.md; async examples in the
