@@ -1,0 +1,267 @@
+# 0006 — Core (M1): plan
+
+**Spec** `specs/0000-framework/` (here `docs/spec/`), milestone M1 of `18-build-plan.md` §2: `03` (results and errors), `02` §2–3 (`YAF.Core`, typed identifiers), with `01` §2, §4–6 (packages, build settings, conventions), `11` §2 (the classification taxonomy that `02` §2 points to), ADR-0003, ADR-0008, ADR-0018. Exit criterion: acceptance of `03` §5 · **Status** Draft
+
+## Approach
+
+M1 creates the first two projects under `src/`: the package `YAF.Core` and the project `Analyzers`, which is packed into it (`01` §2.1). `YAF.Core` holds the result and error types, the typed-id contracts and the four framework ids, the classification attributes, `Guard` and `Optional<T>` (`02` §2). `Analyzers` holds the typed-id generator, the error-code generator and the diagnostics `YAF3001`–`YAF3003` and `YAF1001`. The work is 25 tickets in two lanes that can run side by side: the `YAF.Core` types (T2–T11, T14), which are tier medium, and the analyzers (T12–T20), which are tier high because `src/Analyzers/**` is a sensitive path. Tests, packaging in CI and two articles close the milestone (T21–T25).
+
+The shape comes from probes on SDK 11.0.100 ([research](./research.md)):
+
+- **The error code generator uses interceptors**, as `03` §2 says. One interceptor per `Error.NotFound("…")` call site replaces the call with `new ErrorDescriptor(code, kind, template)`. The consumer needs `InterceptorsNamespaces` and `CompilerVisibleProperty Include="YafServiceCode"`. `YAF.Core`'s package sets both in a `buildTransitive` props file, so an app sets only `<YafServiceCode>` (research §3, §4). The generated code builds without warnings in a consumer with warnings as errors (research §3).
+- **`[Union]` on `Result<T>` through a union member provider.** C# 15's basic union pattern needs a public `object? Value`, which clashes with `03` §1's `T Value`. A nested `IUnionMembers` interface moves it out of the way. With it, the switch over value and errors is exhaustive and allocates nothing (research §2). The non-generic `Result` has no second case, so it carries no `[Union]` (Q3).
+- **`Task` and `ValueTask` overloads with the same name are ambiguous for an async lambda.** The `Task` overload gets `[OverloadResolutionPriority(1)]`, so the common call picks `Task` and a `ValueTask`-returning delegate picks `ValueTask` (research §8).
+- **Analyzer package version 5.0.0.** The oldest Roslyn with every API the generators use. It loads in the SDK's 5.12 compiler (research §3).
+- **Generators are tested in memory** with `CSharpGeneratorDriver`, an emitted assembly loaded in a collectible load context, and references from the trusted platform assemblies. No testing package (research §7).
+- **`YAF.Core` uses its own typed-id generator** for `TenantId`, `UserId`, `DataSubjectId` and `CorrelationId` (`02` §2: "readonly record struct over Guid"). The generated members are public API of `YAF.Core` and go into its `PublicAPI.Unshipped.txt` (research §5).
+- **`CoreErrors.Uninitialised` is declared with the `ErrorDescriptor` constructor** and an explicit code, `core.uninitialised`, in a static field of an `IErrorCatalog` class. YAF3001 allows that (it is a catalogue field). So `Result` does not wait for the error code generator.
+- **What M1 does not build** (Q1): `ResultFactory`, the `[assembly: YafService]` attribute with its static error registry, and acceptance items 3 and 5 of `03` §5. Each needs something of M2 or M3: the approval helper of `YAF.Testing`, `IErrorCatalogProvider` and its startup check in `YAF.Application`, the dispatcher generator that knows the closed result types, and `IProblemDetailsMapper` in `YAF.Http`.
+
+Namespaces follow folders (`01` §2): `YAF.Core` (`Guard`, `Optional<T>`), `YAF.Core.Results` (results, errors, catalogue markers, `CoreErrors`), `YAF.Core.Ids` (typed-id contracts, `[TypedId]`, framework ids), `YAF.Core.Classification` (taxonomy and attributes). `YAF.Core.Results` rather than `YAF.Core.Errors`: a namespace `Errors` would collide in reading with the nested `Errors` catalogues of `03` §2.
+
+Files read to decide: `AGENTS.md`, `docs/spec/agents/AGENTS.root.md`, `docs/spec/agents/AGENTS.nested.md` (`src/`, `tests/`, `specs/`), `specs/AGENTS.md`, `18` §1, §2, §4, §5, `01`, `02`, `03`, `11` §1–3, `17` (articles, line 200–207), ADR-0003, ADR-0008, ADR-0018, skills `yaf-writing-plans` (and its template), `yaf-commits-and-pull-requests`, `yaf-public-api-change`, plan `specs/0005-repository-skeleton/plan.md` (decision log Q2, Q4, Q6, Q8, Q10; deviations 2, 8, 9), `docs/spec/factory/.claude/agents/planner.md`, `docs/spec/factory/.github/factory/policy.json`, `plan.mjs`, `delta.mjs`, and on `main`: `YAF.slnx`, `global.json`, `nuget.config`, `Directory.Build.props`, `src/Directory.Build.props`, `Directory.Packages.props`, `BannedSymbols.txt`, `.editorconfig`, `tests/Skeleton.Tests/`.
+
+### Alternatives rejected
+
+| Alternative | Why not |
+|---|---|
+| A `code` parameter with `[CallerMemberName]` instead of interceptors | It gives the field name only, not the declaring type path, and a caller can pass any string. `03` §2 names interceptors |
+| Generating `ErrorDescriptor` fields from a partial declaration instead of intercepting the factory call | Changes how every catalogue is written (`03` §2 shows initialisers) |
+| The basic union pattern with public constructors and a public `object? Value` | Clashes with `T Value` of `03` §1 (research §2) |
+| Async combinators only as extension methods on `Task<Result<T>>` | `03` §1 asks for `Task` and `ValueTask` overloads of each combinator; the ambiguity is solved by the priority attribute (research §8) |
+| `Microsoft.CodeAnalysis.CSharp.SourceGenerators.Testing` for generator tests | A further dependency that no ADR names; the plain driver does the same (research §7) |
+| Referencing `Microsoft.CodeAnalysis.CSharp` 5.12.0, the latest | Analyzers built against it fail to load in any host older than SDK 11.0.100's compiler; 5.0.0 has every API used (research §3) |
+| One ticket per generator with its analyzers and docs | `18` §5: "A generator, its analyzer and its documentation are three tickets". Each would also be over 400 lines |
+| Keeping `tests/Skeleton.Tests` | Its one test asserts that tests run on .NET 11, which every test project now shows. Plan 0005 left the choice to this plan (decision log) |
+| A `YAF.Core` approved file `errors.approved.txt` for `core.uninitialised` now | The format of the approved catalogue comes with the approval test and `IErrorCatalogProvider` (Q1). An approved file with an invented format would change shape later, and a removed line counts as breaking. T4 asserts the code instead |
+
+## Affected packages
+
+| Layer | Package / area | Change |
+|---|---|---|
+| Core | `YAF.Core` (new, `src/Core/`) | Results and errors, typed-id contracts and framework ids, classification attributes, `Guard`, `Optional<T>`; `IsAotCompatible`, `IsTrimmable`; packs the analyzers and a `buildTransitive` props file. T1–T11, T14, T15 (props) |
+| Domain | none | none |
+| Application | none | none |
+| Infrastructure | none | none |
+| Persistence | none | none |
+| Http | none | none |
+| Adapters | none | none |
+| Testing (`Testing`, `Testing.Integration`) | none | none. New test projects `tests/Core.Tests`, `tests/Analyzers.Tests`, `tests/Architecture.Tests`, `tests/Benchmarks` are not packages |
+| Analyzers | `Analyzers` (new, `src/Analyzers/`, `netstandard2.0`, not a package) | Typed-id generator, error-code generator, `YAF3001`–`YAF3004`, `YAF1001`. T12, T13, T15–T20 |
+| Sample | none | none (the sample starts in M3) |
+| Templates | none | none (M13) |
+| Docs | `docs/` (new tree) | `docs/AGENTS.md` pointer, `docs/articles/results-and-errors.md`, `docs/articles/analyzers.md`. T24, T25 |
+| Build and CI (not a layer) | `src/Directory.Build.props`, `Directory.Packages.props`, `YAF.slnx`, `.github/workflows/ci.yml` | T1, T12, T21, T22, T23 |
+
+## Public API, schema and error-code delta
+
+**Added**, all in package `YAF.Core`:
+
+- `YAF.Core.Results`: `ErrorKind` (the nine kinds of `03` §1, `Validation = 1`); `sealed record Error(string Code, ErrorKind Kind, string Message)` with `Target` and `Arguments` (init), and the static factories `Validation`, `Unauthenticated`, `Forbidden`, `NotFound`, `Conflict`, `PreconditionFailed`, `RateLimited`, `Unavailable`, `Failure`, each `(string messageTemplate) -> ErrorDescriptor`; `sealed record ErrorDescriptor(string Code, ErrorKind Kind, string MessageTemplate)` with `ToError()`, `With(params ReadOnlySpan<(string Name, object? Value)>)`, `At(string)`; `IErrorCatalog` (marker); `ErrorCodeAttribute(string code)` (fields); `CoreErrors : IErrorCatalog` with `Uninitialised`; `IResult` (`IsSuccess`, `Errors`); `readonly struct Result` and `readonly struct Result<T>` with the members of `03` §1 (`IsSuccess`, `IsFailure`, `Value`, `Errors`, `FirstError`, `Success`, `Failure`, the implicit conversions, `Match`, `Switch`, `Map`, `Then`, `Ensure`, `Tap`, `Else`, their `…Async` forms with `Task` and `ValueTask` overloads, `Result.Then` variants, `Result.Combine`); on `Result<T>`, `[Union]` with the nested `Result<T>.IUnionMembers`, `HasValue`, `TryGetValue(out T)`, `TryGetValue(out IReadOnlyList<Error>)`.
+- `YAF.Core.Ids`: `ITypedId` (`Guid Value`); `ITypedId<TSelf>` (`static abstract TSelf From(Guid value)`); `TypedIdAttribute`; `TenantId`, `UserId`, `DataSubjectId`, `CorrelationId` as generated `readonly partial record struct`s (each: `Value`, `New()`, `From(Guid)`, `Parse`/`TryParse` of `IParsable<T>`, `ToString()`; the JSON and type converters are `internal` nested types).
+- `YAF.Core.Classification`: `YafTaxonomy` (`const string Name = "YAF"` and one `DataClassification` per class); `PublicDataAttribute`, `InternalDataAttribute`, `PersonalDataAttribute(PersonalDataCategory)` with `Category`, `Purpose`, `ProvidedBySubject` (default `true`), `PropagateRectification` (default `false`), `SensitivePersonalDataAttribute(PersonalDataCategory)`, `SecretDataAttribute`, all deriving from `DataClassificationAttribute` (`11` §2); `PersonalDataCategory` (`Identity`, `Contact`, `Location`, `Financial`, `Health`, `Biometric`, `Behavioural`, `Credentials`, `Other`); `SearchableAttribute`, `StoredInClearAttribute(string reason)`, `FieldIdAttribute(string id)`.
+- `YAF.Core`: `static class Guard` (`NotNull`, `NotNullOrWhiteSpace`, `NotDefault<T>`, each with `[CallerArgumentExpression]`); `readonly struct Optional<T>` (`HasValue`, `Value`, implicit from `T`; `default` means "not supplied").
+- Error code `core.uninitialised` (`ErrorKind.Failure`, "The result was not initialised.").
+- MSBuild property `YafServiceCode` (read by the error code generator) and diagnostics `YAF1001`, `YAF3001`, `YAF3002`, `YAF3003`, and `YAF3004` (Q5), recorded in `src/Analyzers/AnalyzerReleases.Unshipped.md`.
+
+**Changed** none. **Removed** `tests/Skeleton.Tests` (a placeholder test project, not public API; decision log).
+
+Breaking: no (nothing is released yet).
+New dependency: yes. `Microsoft.Extensions.Compliance.Abstractions` (`02` §2, ADR-0003 allow-list), `Microsoft.CodeAnalysis.CSharp` (ADR-0003 allow-list, private assets), `AwesomeAssertions` and `TngTech.ArchUnitNET.xUnitV3` (ADR-0018), all chosen by the specification. `BenchmarkDotNet` is named by no ADR: Q2. They flag the plan; the owner agrees to them by approving it. Versions: research §10.
+
+The prefixes below cover every line shape the public API analyzer writes for these types (research §5). The error code is declared, but no approved file lists it in M1 (Alternatives).
+
+```factory:delta
+{
+  "publicApi": [
+    "YAF.Core.Guard*", "static YAF.Core.Guard*",
+    "YAF.Core.Optional<T>*", "static YAF.Core.Optional<T>*", "override YAF.Core.Optional<T>*",
+    "YAF.Core.Results.*", "static YAF.Core.Results.*", "static readonly YAF.Core.Results.*", "override YAF.Core.Results.*", "~override YAF.Core.Results.*",
+    "YAF.Core.Ids.*", "static YAF.Core.Ids.*", "override YAF.Core.Ids.*", "~override YAF.Core.Ids.*",
+    "YAF.Core.Classification.*", "static YAF.Core.Classification.*", "const YAF.Core.Classification.*", "override YAF.Core.Classification.*"
+  ],
+  "schema": [],
+  "errorCodes": ["core.uninitialised"],
+  "contracts": [],
+  "configuration": [],
+  "telemetry": [],
+  "dependencies": ["Microsoft.Extensions.Compliance.Abstractions", "Microsoft.CodeAnalysis.CSharp", "AwesomeAssertions", "TngTech.ArchUnitNET.xUnitV3", "BenchmarkDotNet"]
+}
+```
+
+## Schema and migration plan
+
+none
+
+## What the tickets contain
+
+- **T1.** `src/Core/Core.csproj` with `IsAotCompatible` and `IsTrimmable` (`01` §4; plan 0005 deviation 8) and the `Microsoft.Extensions.Compliance.Abstractions` reference; `src/Core/PublicAPI.Shipped.txt` and `PublicAPI.Unshipped.txt`, each `#nullable enable`. `src/Directory.Build.props` sets `AssemblyName`, `RootNamespace` and `PackageId` to `YAF.$(MSBuildProjectName)` (`01` §2: folder `src/<Name>` builds `YAF.<Name>`). `Directory.Packages.props` gets `Microsoft.Extensions.Compliance.Abstractions` and `AwesomeAssertions`. `tests/Core.Tests` (xUnit v3 on MTP as `Skeleton.Tests`, AwesomeAssertions) with `CoreAssemblyTests.Metadata_AotAndTrimming_AreDeclared`, which loads `YAF.Core` by name and reads its `AssemblyMetadata`. `tests/Skeleton.Tests` is removed and `YAF.slnx` lists `src/Core` and `tests/Core.Tests`. Lock files for both projects. `YAF.Core` has no public type yet.
+- **T2.** `ErrorKind`, `Error`, `ErrorDescriptor`, `IErrorCatalog`, `ErrorCodeAttribute`. `With` fills each `{Name}` placeholder from the argument of that name (ordinal); a placeholder without an argument stays as it is (YAF3003 warns at compile time). `Arguments` holds the arguments as given. Without the generator the nine factories throw `InvalidOperationException` naming the package `YAF.Core` and the property `YafServiceCode`; called from a static field initialiser this surfaces at type initialisation (`03` §2). Core.Tests has no analyzer, so `ErrorFactoryTests.NotFound_WithoutGenerator_Throws` tests exactly that. **T2 is the first `feat` ticket that declares public API and runs in tier medium: it is trial 2 of `17` §7** (plan 0005 Q6). It must touch nothing outside its `touches`.
+- **T3.** `ITypedId`, `ITypedId<TSelf>`, `TypedIdAttribute` (structs only). The test declares a hand-written id in the test project.
+- **T4.** `IResult`, `Result`, `Result<T>`, `CoreErrors`. `default` of either is a failure with `CoreErrors.Uninitialised`; `Value` throws on failure; `Errors` is empty on success and never allocates for it. Conversions: from `T`, `Error`, `ErrorDescriptor`, `Error[]`, `List<Error>`; none back to `T`. Tests cover `Result.Success(value)` with an interface `T`.
+- **T5.** `Match`, `Switch`, `Map`, `Then` on `Result<T>`; `Result.Then(Action)`, `Result.Then(Func<Result>)`, `Result.Then<T>(Func<Result<T>>)`. **T6.** `Ensure`, `Tap`, `Else`, `Result.Combine(params ReadOnlySpan<Result>)`, and `ResultAllocationTests.SuccessRoundTrip_AllocatesNothing` (warm-up call, then `GC.GetAllocatedBytesForCurrentThread` around `Success` → `Map` → `Then` → `Match`; research §2 measured 0 bytes in Release).
+- **T7.** `MapAsync`, `ThenAsync`, `MatchAsync`, `SwitchAsync`, each with a `Task` and a `ValueTask` overload, the `Task` one with `[OverloadResolutionPriority(1)]` (research §8). **T8.** The same for `EnsureAsync`, `TapAsync`, `ElseAsync` and the `Result.ThenAsync` variants. Library code uses `ConfigureAwait(false)` (`01` §5).
+- **T9.** `[Union]` and `Result<T>.IUnionMembers` (`Create(T)`, `Create(IReadOnlyList<Error>)`, `object? Value`, `HasValue`, both `TryGetValue`), with `HasValue` always `true` and `default` reported as the error case (research §2). The failing test is a `switch` with two arms and no discard; before T9 it fails the build with `CS8509` under warnings as errors.
+- **T10.** The classification types listed in the delta. `YafTaxonomy` gives the one taxonomy `YAF` of `11` §2. The other privacy markers (`[FreeText]`, `[NoDataSubject]`, `[Retention]`, `[OnErasure]`, `[AllowPersonalData]`, `[LogPayload]`) are not in `02` §2's list for `YAF.Core` and come with the milestones that use them.
+- **T11.** `Guard` (throws `ArgumentNullException` / `ArgumentException`, programmer errors only) and `Optional<T>`. JSON binding of `Optional<T>` for patch requests comes with M9 (decision log).
+- **T12.** `src/Analyzers/Analyzers.csproj`: `netstandard2.0`, `IsPackable` false, `EnforceExtendedAnalyzerRules`, `IsRoslynComponent`, `Microsoft.CodeAnalysis.CSharp` with private assets, `AnalyzerReleases.Shipped.md` and `AnalyzerReleases.Unshipped.md` as additional files (research §6), an internal `IsExternalInit`, `InternalsVisibleTo` for `Analyzers.Tests` only. `src/Core/Core.csproj` references it as an analyzer and packs its DLL under `analyzers/dotnet/cs` (research §4). `tests/Analyzers.Tests` with the in-memory harness of research §7 (a `GeneratorHarness` helper that compiles a snippet against `YAF.Core`, runs generators and analyzers, emits, and loads the result). `Directory.Packages.props` gets `Microsoft.CodeAnalysis.CSharp` 5.0.0; `YAF.slnx` lists both projects. No generator or diagnostic yet.
+- **T13.** For a `[TypedId] readonly partial record struct X;` the generator emits what `02` §3 lists: `ITypedId<X>`, `Guid Value`, a private constructor, `New()` with `Guid.CreateVersion7()`, `From(Guid)`, `IParsable<X>` (`Parse`, `TryParse`), `ToString()` in format `D`, and `internal` nested `JsonConverter<X>` and `TypeConverter` types attached by attributes. Nothing EF-related (`02` §3). Generated files carry `// <auto-generated/>`.
+- **T14.** `src/Core/Ids/TenantId.cs` and the three others, one line each with `[TypedId]`; their generated members in `PublicAPI.Unshipped.txt`.
+- **T15.** The error code generator: finds calls of the nine factories that initialise a static field of a type implementing `IErrorCatalog`; computes the code as `<YafServiceCode>.<declaring type path>.<field>` in snake case with dots, the path without the catalogue class and the namespace and without type parameters (`Session.Errors.Full` → `catalog.session.full`; `Repository<T>.Errors.NotFound` → `catalog.repository.not_found`; nested `Outer.Session.Errors.X` → `catalog.outer.session.x`); `[ErrorCode]` overrides the whole code. Snake case: a word break before an upper-case letter that follows a lower-case letter or digit, and before the last capital of a run followed by a lower-case letter (`HTTPRequest` → `http_request`); ASCII lowering by hand (`CA1308`, research §6). Emits `file`-local `InterceptsLocationAttribute` with an explicit constructor and one interceptor per call in namespace `YAF.Generated`. `src/Core/buildTransitive/YAF.Core.props` (packed to `build/` and `buildTransitive/`) adds `YAF.Generated` to `InterceptorsNamespaces` and makes `YafServiceCode` compiler-visible. No diagnostics yet: a missing service code emits no interceptor, so the factory throws as in T2 until T16.
+- **T16.** `YAF3004` (error): a factory call that needs a default code where `YafServiceCode` is missing or not `[a-z0-9_]+`; a computed or `[ErrorCode]` code that is not `[a-z0-9_.]`, starts or ends with a dot, or is longer than 100 characters (`03` §2). Q5.
+- **T17.** `YAF3001` (error): `new Error(…)`, `new ErrorDescriptor(…)` or a factory call anywhere other than the initialiser of a static field of an `IErrorCatalog` type. Creation inside the types `Error` and `ErrorDescriptor` themselves (`ToError`, `With`, `At`) and generated code are not reported.
+- **T18.** `YAF3002` (error): two descriptors with the same code in one compilation, reported on both fields with the other's name. It shares the code computation of T15.
+- **T19.** `YAF3003` (warning): at `descriptor.With(("Name", value), …)`, a placeholder of the descriptor's template without an argument of that name. Only when the descriptor is a field of the same compilation whose template is a constant and the names are constants; otherwise nothing is reported.
+- **T20.** `YAF1001` (warning, `02` §3): a parameter of type `Guid` or `Guid?` whose name ends in `Id` or is `id`, on a public or protected member of a public type. Generated code and `From(Guid)` of typed ids are not reported. Its scope is Q4.
+- **T21.** `tests/Architecture.Tests` with ArchUnitNET (ADR-0018; plan 0005 deviation 9): `YAF.Core` references only `System.*` and `Microsoft.Extensions.Compliance.Abstractions` (ADR-0003 allow-list); `Analyzers` references only `netstandard` and `Microsoft.CodeAnalysis*`; no public type of `YAF.Core` sits in an `Internal` namespace (`01` §6 item 2). The rule API is taken from ArchUnitNET's documentation for the pinned version (research §10).
+- **T22.** `tests/Benchmarks` (`03` §5 item 4; not run in CI, not in the test run): a BenchmarkDotNet console project with `[MemoryDiagnoser]` and `ResultBenchmarks.SuccessRoundTrip`. Q2.
+- **T23.** `.github/workflows/ci.yml`, job `build-test`: a `dotnet pack YAF.slnx -c Release --no-build` step, which runs package validation (`EnablePackageValidation`, no baseline until M14) and shows that the analyzers are packed. Plan 0005 deviation 2 said pack comes with the first milestone that has a package. **The owner pushes this branch** (AGENTS.md, "Unattended runs").
+- **T24.** `docs/AGENTS.md` (pointer file, like `specs/AGENTS.md`) and `docs/articles/results-and-errors.md` (`17` §6 article list: "results and errors", ending with "Rules", "Configuration", "Testing it"). Code is included from compiled test files by region (`17` line 206), so T24 adds `#region` markers in `tests/Core.Tests` and changes nothing else there. Typed ids go into the "domain" article (M2), classification into "privacy" (M10). **T25.** `docs/articles/analyzers.md`: every diagnostic of M1 with id, severity, what it reports and how to fix it (`src/AGENTS.md`, per-package notes).
+
+## Test strategy
+
+| Scenario | Requirements | Ticket | Level | Test project / check | Notes |
+|---|---|---|---|---|---|
+| `YAF.Core` declares AOT and trimming; builds with zero warnings and full XML docs | `02` §2; `01` §4; `02` §12 item 1 | T1, every ticket | unit, build | `Core.Tests`; V2 | |
+| Argument filling and `Target` | `03` §5 item 1 | T2 | unit | `Core.Tests` | `ErrorDescriptorTests` |
+| Factories throw without the generator, naming the package | `03` §2 | T2 | unit | `Core.Tests` | |
+| `default` results; implicit conversions; `Result.Success(value)` with an interface `T` | `03` §5 item 1 | T4 | unit | `Core.Tests` | assert on codes (`core.uninitialised`) |
+| Every combinator, sync | `03` §5 item 1 | T5, T6 | unit | `Core.Tests` | success and failure path each |
+| `Combine` | `03` §5 item 1 | T6 | unit | `Core.Tests` | all errors, in order |
+| Every combinator, async (`Task` and `ValueTask`) | `03` §5 item 1 | T7, T8 | unit | `Core.Tests` | async lambda resolves to `Task` |
+| A successful `Result<T>` round trip allocates nothing | `03` §5 item 4 | T6; T22 | unit; benchmark | `Core.Tests`; `tests/Benchmarks` | the unit test runs in CI; the benchmark does not (Q2) |
+| Exhaustive switch over `Result<T>` without boxing | `03` §1 (`[Union]`); `18` §4 | T9 | unit, build | `Core.Tests` | Q3 |
+| Classification attributes carry the `YAF` taxonomy | `02` §2; `11` §2 | T10 | unit | `Core.Tests` | |
+| `Guard`, `Optional<T>` | `02` §2 | T11 | unit | `Core.Tests` | |
+| Analyzers packed into `YAF.Core` under `analyzers/dotnet/cs` | `01` §2.1 | T12 | package probe | P1 | |
+| Typed id generation and parsing (`New` is version 7, `Parse`/`TryParse`, `ToString` `D`, JSON and type converter round trip) | `02` §3; `02` §12 item 2 (typed id part) | T13, T14 | generator, unit | `Analyzers.Tests`; `Core.Tests` | |
+| Generated codes for nested types, generics, `[ErrorCode]` | `03` §5 item 2 | T15 | generator | `Analyzers.Tests` | emitted and loaded, field values read |
+| A consumer of the package gets codes with only `YafServiceCode` set | `03` §2 | T15 | package probe | P2 | |
+| Invalid or missing service code and invalid codes | `03` §2 (code rules); Q5 | T16 | analyzer | `Analyzers.Tests` | `YAF3004` |
+| The three diagnostics | `03` §5 item 2; `03` §2 | T17, T18, T19 | analyzer | `Analyzers.Tests` | `YAF3001`, `YAF3002`, `YAF3003`, each with a violating and a clean snippet |
+| Raw `Guid` id parameter | `02` §3; `02` §12 item 4 | T20 | analyzer | `Analyzers.Tests` | Q4 |
+| Allowed references of `YAF.Core` and `Analyzers`; no public type in `Internal` | `01` §6 item 2 (part); ADR-0003 | T21 | architecture | `tests/Architecture.Tests` | |
+| `YAF.Core` packs and passes package validation in CI | `01` §6 item 3 (no baseline yet) | T23 | CI | V-T23 | baseline in M14 |
+| Two assemblies with one code: approval check and startup check fail and name both types | `03` §5 item 3 | — | — | — | M3 (Q1) |
+| Problem-details mapper table | `03` §5 item 5 | — | — | — | M3 (Q1) |
+| Articles | `17` §6; `src/AGENTS.md` | T24, T25 | docs | Verify greps | docs build in M14 (plan 0005 deviation 6) |
+
+## Risks and rollback
+
+| Risk | Likelihood | Mitigation | Rollback |
+|---|---|---|---|
+| `IResult` collides with `Microsoft.AspNetCore.Http.IResult` in files that import both namespaces | Certain from M3 | The name is the spec's (`03` §1). M3's plan decides on aliases in the HTTP packages; app code rarely needs `YAF.Core.Results.IResult` | — |
+| The union conversions of `[Union]` make `Result<T>` convertible from an interface `T` and from `IReadOnlyList<Error>`; for `Result<IReadOnlyList<Error>>` that conversion is ambiguous | Certain with T9 | Q3; documented in XML docs and in T24's article | Revert T9; `Result<T>` keeps everything else |
+| `AnalysisMode All` fires many rules in the analyzer code (`netstandard2.0`) | High | Fixed in code, no suppression (hard rule 1); research §6 lists what was seen | Plan update for a suppression, with the owner's `guard-change` |
+| An older IDE or compiler host cannot load the analyzers | Low | Pinned to Roslyn 5.0.0 (research §3) | Lower the pin in a `build` ticket |
+| Interceptors clash with another generator's attribute | Low | `file`-local attribute, own namespace `YAF.Generated` (research §3) | — |
+| A generic consumer catalogue (`Repository<T>.Errors`) runs its initialiser once per closed type | Medium | The code is the same for every closed type; T15 tests it | — |
+| `[PublicData]` collides with `Microsoft.Extensions.Compliance.Testing.PublicDataAttribute` in an app that references that package | Low | The names are the spec's (`02` §2); full qualification in such files | — |
+| `BenchmarkDotNet` brings a large transitive graph into the restore | Certain if Q2 is (a) or (c) | Only `tests/Benchmarks` references it; not built into any package | Remove T22's project |
+| The analyzers lane waits for the owner (13 tier-high tickets) | High | Two lanes: the medium `YAF.Core` lane goes on while high tickets wait | — |
+
+## Verification commands
+
+Git Bash, repository root, on the ticket's branch. `BASE` is `origin/main`.
+
+V1, every ticket: `git diff --name-only $BASE...HEAD` lists only the ticket's `touches`. `node docs/spec/factory/.github/factory/size.mjs $BASE HEAD` stays at the estimate or below and within 400. `node .github/scripts/sync-references.mjs --check` and `node .github/scripts/validate-instructions.mjs` exit 0.
+
+V2, every ticket, expected 0 warnings, 0 errors, all tests passing:
+
+    dotnet restore YAF.slnx --locked-mode && dotnet build YAF.slnx -c Release --no-restore && dotnet test --solution YAF.slnx -c Release --no-build
+
+P1, the package probe (T12). Before T12 it exits 1 (no analyzer in the package); after, 0:
+
+    out=$(mktemp -d); win=$(cygpath -m "$out" 2>/dev/null || echo "$out")
+    dotnet pack src/Core -c Release -o "$win/feed" > "$out/pack.log" 2>&1 && unzip -l "$out/feed/YAF.Core.0.0.0.nupkg" > "$out/list.txt"; r=$?
+    grep -q "analyzers/dotnet/cs/YAF.Analyzers.dll" "$out/list.txt" && grep -q "lib/net11.0/YAF.Core.dll" "$out/list.txt" || r=1
+    rm -rf "$out"; exit $r
+
+P2, the consumer probe (T15). A project outside the repository restores `YAF.Core` from a local feed into its own package folder, sets only `YafServiceCode`, and prints the generated code. Before T15 it exits 1 (the factory throws); after, 0:
+
+    out=$(mktemp -d); win=$(cygpath -m "$out" 2>/dev/null || echo "$out"); mkdir "$out/app"
+    dotnet pack src/Core -c Release -o "$win/feed" > "$out/pack.log" 2>&1 || { rm -rf "$out"; exit 1; }
+    printf '<configuration><packageSources><clear /><add key="local" value="%s/feed" /><add key="nuget.org" value="https://api.nuget.org/v3/index.json" /></packageSources></configuration>\n' "$win" > "$out/app/nuget.config"
+    printf '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net11.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><TreatWarningsAsErrors>true</TreatWarningsAsErrors><YafServiceCode>probe</YafServiceCode></PropertyGroup><ItemGroup><PackageReference Include="YAF.Core" Version="0.0.0" /></ItemGroup></Project>\n' > "$out/app/App.csproj"
+    printf 'using YAF.Core.Results;\n\nConsole.WriteLine(Shop.Basket.Errors.Empty.Code);\n\nnamespace Shop\n{\n    public static class Basket\n    {\n        public sealed class Errors : IErrorCatalog\n        {\n            public static readonly ErrorDescriptor Empty = Error.Validation("Basket is empty.");\n        }\n    }\n}\n' > "$out/app/Program.cs"
+    dotnet run --project "$win/app" -p:RestorePackagesPath="$win/packages" > "$out/run.log" 2>&1; grep -q "^probe.basket.empty" "$out/run.log"; r=$?
+    rm -rf "$out"; exit $r
+
+V-T23, on T23's pull request: job `build-test` runs the pack step and succeeds.
+
+The whole milestone, on `main` after T25: V2; P1 and P2 exit 0; `dotnet run --project tests/Benchmarks -c Release -- --filter "*SuccessRoundTrip*" --job Dry --memory` reports `-` or `0 B` under `Allocated` (research §10; only if T22 exists); the latest `ci.yml` run on `main` is green; every row of `03` §5 is either covered above or carried to M3 (Q1).
+
+## Research
+
+[`research.md`](./research.md): the SDK and compiler versions, C# 15 custom unions and the member-provider probe, interceptors and the generator probe, packing analyzers into a library, the public API analyzer's line shapes, analyzer-authoring diagnostics under `AnalysisMode All`, the in-memory generator harness, the `Task`/`ValueTask` overload probe, the compliance abstractions API, and the package versions and licences.
+
+## Decision log
+
+| Date | Decision | Reason | By |
+|---|---|---|---|
+| 2026-11-24 | Folder `0006-core` | Next free number (plan 0005 Q2) | Planner |
+| 2026-11-24 | `Guard` and `Optional<T>` are in M1 | `02` §2 lists them in `YAF.Core`; M1 cites `02` §2; M2 needs `Guard` for ids (`02` §3: "`default(SessionId)` is invalid and `Guard`ed") | Planner |
+| 2026-11-24 | Namespaces `YAF.Core`, `YAF.Core.Results`, `YAF.Core.Ids`, `YAF.Core.Classification` | Namespaces follow folders (`01` §2); the spec names no namespace for these types; `Errors` as a namespace would read like the nested catalogues. M15 reviews every public name (`18` §2) | Planner |
+| 2026-11-24 | `AssemblyName`, `RootNamespace`, `PackageId` = `YAF.$(MSBuildProjectName)` in `src/Directory.Build.props` | `01` §2: folder `src/<Name>` builds `YAF.<Name>`; once for every later package | Planner |
+| 2026-11-24 | The error code generator uses interceptors in namespace `YAF.Generated`, enabled by `YAF.Core`'s `buildTransitive` props | `03` §2; the feature needs the namespace listed (research §3, §4) | Planner |
+| 2026-11-24 | `CoreErrors.Uninitialised` = `new ErrorDescriptor("core.uninitialised", ErrorKind.Failure, "The result was not initialised.")` | A catalogue field, so YAF3001 allows it; `Result` does not depend on the generator | Planner |
+| 2026-11-24 | `Task` overloads carry `[OverloadResolutionPriority(1)]` | Same-named `Task`/`ValueTask` overloads are ambiguous for async lambdas (research §8) | Planner |
+| 2026-11-24 | `Microsoft.CodeAnalysis.CSharp` pinned at 5.0.0 | Oldest version with every API used; loads in older hosts (research §3) | Planner |
+| 2026-11-24 | Generator tests use the plain driver, no testing package | Research §7; no dependency beyond the allow-list | Planner |
+| 2026-11-24 | Typed-id converters are `internal` nested types | They are attached by attribute; no app needs to name them; less public surface (`yaf-public-api-change` rule 1) | Planner |
+| 2026-11-24 | `YafTaxonomy` is added as a public static class | `11` §2 asks for one taxonomy `YAF` on `DataClassification`; redaction (M5) needs the classification values. The spec names no type for it | Planner |
+| 2026-11-24 | Privacy markers other than those of `02` §2 (`[FreeText]`, `[NoDataSubject]`, `[Retention]`, `[OnErasure]`, `[AllowPersonalData]`, `[LogPayload]`) are not in M1 | `01` §2.1 places "privacy markers" in `YAF.Domain`; the analyzers that read them are M10 | Planner |
+| 2026-11-24 | `Optional<T>` ships without JSON binding | A converter for an open generic needs `MakeGenericType`, which breaks `IsAotCompatible`; patch binding belongs to HTTP (M9) | Planner |
+| 2026-11-24 | `tests/Skeleton.Tests` is removed in T1 | Plan 0005 left it to this plan. Its one assertion (.NET 11) is shown by every test project. Deleting a test is named here so that the owner confirms it with the plan (hard rule 1) | Planner; owner confirms by approving |
+| 2026-11-24 | No `errors.approved.txt` in M1; `core.uninitialised` is asserted by T4 | The approved format comes with the approval test (Q1) | Planner |
+| 2026-11-24 | Transitive dependencies of `Microsoft.Extensions.Compliance.Abstractions` (`Microsoft.Extensions.ObjectPool`) count as part of it | `02` §2 names the package; T21 checks the assembly references of `YAF.Core`, which name only the package's assembly | Planner |
+| 2026-11-24 | Typed ids are documented in the "domain" article (M2), classification in "privacy" (M10); M1 writes "results and errors" and the analyzers page | `17` §6 article list; `src/AGENTS.md` per-package notes | Planner |
+| 2026-11-24 | `18` §4 "[Union] support on Result": `Result<T>` carries `[Union]` through a member provider; the non-boxing members are those of `03` §1 | Probe U1 (research §2): exhaustive, allocation-free | Planner; Q3 for the parts that differ from `03` §1 |
+| 2026-11-24 | Plan 0005 Q6: T2 is the first `feat` ticket that declares public API, tier medium; it is trial 2 of `17` §7 | Owner's decision in plan 0005 | Human owner, 2026-11-20 |
+| — | **Q1 (open).** Move to M3: `ResultFactory` (`03` §1, "source-generated per closed result type"), the `[assembly: YafService]` attribute and the static error registry (`03` §2.1), acceptance items 3 (two assemblies with one code) and 5 (mapper table) of `03` §5. M1's exit is then items 1, 2 and 4. Recommended: yes. The closed result types are known to the dispatcher generator (M3); the registry has no consumer before `IErrorCatalogProvider` (M3); item 3 needs the approval helper (M2) and the startup check (M3); item 5 tests `YAF.Http` (M3) | Each depends on a later milestone (deviation 1) | Open — owner |
+| — | **Q2 (open).** `tests/Benchmarks` on `BenchmarkDotNet` 0.15.8 (MIT), a test-only dependency that no ADR names. Options: (a) BenchmarkDotNet as `03` §5 item 4 says, plus T6's allocation unit test in CI (recommended); (b) only the allocation unit test, and no benchmark project until M15; (c) BenchmarkDotNet without the unit test | ADR-0003 rule 4: a new dependency needs the owner; ADR-0018 asks for benchmarks but names no library | Open — owner |
+| — | **Q3 (open).** `[Union]`: (i) `Result<T>` gets the public nested `Result<T>.IUnionMembers`; (ii) the union conversions add implicit conversions from an interface `T` and from `IReadOnlyList<Error>`, which `03` §1 says do not exist (and `Result<IReadOnlyList<Error>>` cannot convert from that list); (iii) the non-generic `Result` carries no `[Union]`: its only case would be the error list, with `HasValue` meaning "has errors". Recommended: accept (i)–(iii) and amend `03` §1 and ADR-0008 in the follow-up spec pull request | Research §2 (deviation 2) | Open — owner |
+| — | **Q4 (open).** Scope of `YAF1001` ("a public domain or application member", `02` §3). (a) Every public or protected member of a public type in any project that references `YAF.Core`, which matches hard rule 7 "ids through typed ids" (recommended); (b) only in assemblies that reference `YAF.Domain` or `YAF.Application`, which do not exist before M2/M3, so `YAF1001` would report nothing in M1's tests outside such a reference | An analyzer cannot see a layer; the spec gives no rule (deviation 3 if (a)) | Open — owner |
+| — | **Q5 (open).** A fifth diagnostic, `YAF3004` (error), for a missing or invalid `YafServiceCode` and for a code that breaks `03` §2's rules (`[a-z0-9_.]`, at most 100 characters). Recommended: yes. Without it a missing property is found only at run time and a bad `[ErrorCode]` not at all, against "there is no silent fallback code" | A new analyzer id is a public contract (deviation 4) | Open — owner |
+
+**Follow-up outside this plan.** `18` §1 item 3 asks that a deviation of scope or public contract be made in the specification too. Once Q1, Q3, Q4 and Q5 are answered, a spec pull request of its own, which a code owner approves, amends `18` §2 (M1's exit criterion and M3's row, Q1), `03` §1, §2 and §5 and ADR-0008 (Q3, Q5), and `02` §3 (Q4). This plan does not edit `docs/spec/`.
+
+## Deviations from the specification
+
+1. **Part of `03` moves to M3** (Q1): `ResultFactory` (`03` §1), the `[assembly: YafService]` attribute and the static error registry (`03` §2.1), and acceptance items 3 and 5 of `03` §5, which `18` §2 makes M1's exit criterion. Why: each needs a component of M2 or M3.
+2. **`[Union]`** (Q3): only `Result<T>` carries it, through a public nested `IUnionMembers` interface, and the language adds union conversions from an interface `T` and from `IReadOnlyList<Error>`. `03` §1 says "the structs carry `[Union]`" and lists no such conversions. Why: research §2.
+3. **`YAF1001` reports on every public member, not only "domain or application" members** (`02` §3), if the owner answers Q4 (a).
+4. **A diagnostic `03` does not list, `YAF3004`** (Q5).
+5. **The articles are checked by greps, not the docs build** (ADR-0025). Why: `docfx.json` comes with M14, as in plan 0005 deviation 6.
+
+## Tickets
+
+T1 starts at once. Then two lanes, at most two implementers: the `YAF.Core` lane T2 → T3 → … → T11 → T14 (tier medium, each changes `src/Core/PublicAPI.Unshipped.txt`, so one after another), and the analyzers lane T12 → T13, T15 → T16 → … → T20 (tier high, wait for the owner; T15–T20 share `src/Analyzers/AnalyzerReleases.Unshipped.md` and the error-code helpers). `Directory.Packages.props` and `YAF.slnx` are changed by T1, T12, T21 and T22, in that order. T22 waits for Q2, T20 for Q4, T16 for Q5, T9 for Q3. **T23 changes `.github/workflows/`: the owner pushes its branch.** T2 is trial 2 of `17` §7 (plan 0005 Q6).
+
+| Key | Title | Type | Area | Requirements | Depends on | Touches | Tier | Size | Failing test first | Verify |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T1 | build: add the core package and its test project | chore | build | `01` §2, §4; `02` §2 (dependency, AOT); plan 0005 deviations 8, 9 | — | `src/Core/Core.csproj`, `src/Core/PublicAPI.Shipped.txt`, `src/Core/PublicAPI.Unshipped.txt`, `src/Directory.Build.props`, `Directory.Packages.props`, `YAF.slnx`, `tests/Core.Tests/`, `tests/Skeleton.Tests/` (removed) | high | 90 | `CoreAssemblyTests.Metadata_AotAndTrimming_AreDeclared`; V2 fails: `tests/Core.Tests` does not exist | V2 → 0 warnings, 1 test passed; V1 |
+| T2 | feat(core): add errors, error kinds and error descriptors | feat | core | `03` §1 (`ErrorKind`, `ErrorDescriptor`, `Error`), §2 (factories, `IErrorCatalog`, `[ErrorCode]`, no fallback); `03` §5 item 1 (argument filling, `Target`) | T1 | `src/Core/Results/`, `src/Core/PublicAPI.Unshipped.txt`, `tests/Core.Tests/Results/` | medium | 330 | `ErrorDescriptorTests.With_NamedArgument_FillsPlaceholder` — fails: `ErrorDescriptor` does not exist. Also `At_Target_SetsTarget`, `ErrorFactoryTests.NotFound_WithoutGenerator_Throws` | `dotnet test --project tests/Core.Tests -c Release` → passes; V2; V1. Trial 2: `factory/tier` medium, `factory/delta` "delta equals what the plan declared", merges by itself |
+| T3 | feat(core): add the typed id contracts | feat | core | `02` §2 (`ITypedId`, `ITypedId<TSelf>`), §3 | T2 | `src/Core/Ids/`, `src/Core/PublicAPI.Unshipped.txt`, `tests/Core.Tests/Ids/` | medium | 90 | `TypedIdContractTests.From_ThroughStaticAbstract_ReturnsSameValue` — fails: `ITypedId<TSelf>` does not exist | `dotnet test --project tests/Core.Tests -c Release` → passes; V2; V1 |
+| T4 | feat(core): add the result types | feat | core | `03` §1 (`Result`, `Result<T>`, `IResult`, conversions, `default`); `03` §5 item 1 (`default`, conversions, interface `T`) | T3 | `src/Core/Results/`, `src/Core/PublicAPI.Unshipped.txt`, `tests/Core.Tests/Results/` | medium | 340 | `ResultTests.Default_IsFailureWithUninitialised` — fails: `Result<T>` does not exist. Also `Value_OnFailure_Throws`, `Success_InterfaceValue_UsesResultSuccess`, `ImplicitConversion_FromErrorArray_IsFailure` | `dotnet test --project tests/Core.Tests -c Release` → passes; V2; V1 |
+| T5 | feat(core): add match, switch, map and then to results | feat | core | `03` §1 (`Match`, `Switch`, `Map`, `Then`, `Result.Then` variants); `03` §5 item 1 | T4 | `src/Core/Results/`, `src/Core/PublicAPI.Unshipped.txt`, `tests/Core.Tests/Results/` | medium | 330 | `ResultCombinatorTests.Map_OnFailure_KeepsErrors` — fails: `Map` does not exist. Each combinator on success and on failure | `dotnet test --project tests/Core.Tests -c Release` → passes; V2; V1 |
+| T6 | feat(core): add ensure, tap, else and combine to results | feat | core | `03` §1 (`Ensure`, `Tap`, `Else`, `Combine`); `03` §5 items 1, 4 | T5 | `src/Core/Results/`, `src/Core/PublicAPI.Unshipped.txt`, `tests/Core.Tests/Results/` | medium | 300 | `ResultCombinatorTests.Combine_TwoFailures_KeepsAllErrorsInOrder` — fails: `Combine` does not exist. Also `ResultAllocationTests.SuccessRoundTrip_AllocatesNothing` | `dotnet test --project tests/Core.Tests -c Release` → passes; V2; V1 |
+| T7 | feat(core): add async map, then, match and switch to results | feat | core | `03` §1 (`Task` and `ValueTask` overloads); `03` §5 item 1 (async) | T6 | `src/Core/Results/`, `src/Core/PublicAPI.Unshipped.txt`, `tests/Core.Tests/Results/` | medium | 360 | `ResultAsyncTests.MapAsync_AsyncLambda_ResolvesAndMaps` — fails: `MapAsync` does not exist. Each method with a `Task` and a `ValueTask` delegate | `dotnet test --project tests/Core.Tests -c Release` → passes; V2; V1 |
+| T8 | feat(core): add async ensure, tap, else and then to results | feat | core | `03` §1 (`Task` and `ValueTask` overloads, `Result.Then` variants); `03` §5 item 1 (async) | T7 | `src/Core/Results/`, `src/Core/PublicAPI.Unshipped.txt`, `tests/Core.Tests/Results/` | medium | 360 | `ResultAsyncTests.EnsureAsync_PredicateFalse_FailsWithDescriptor` — fails: `EnsureAsync` does not exist | `dotnet test --project tests/Core.Tests -c Release` → passes; V2; V1 |
+| T9 | feat(core): support exhaustive switches over a result's value and errors | feat | core | `03` §1 (`[Union]`, non-boxing members); `18` §4 (`[Union]`); Q3 | T8 | `src/Core/Results/`, `src/Core/PublicAPI.Unshipped.txt`, `tests/Core.Tests/Results/` | medium | 160 | `ResultUnionTests.Switch_ValueAndErrorArms_IsExhaustive` — the build fails with `CS8509` (no discard arm). Also `Switch_Default_TakesErrorArm`, `TryGetValue_Success_ReturnsValue`. Waits for Q3 | `dotnet test --project tests/Core.Tests -c Release` → passes; V2; V1 |
+| T10 | feat(core): add the data classification attributes | feat | core | `02` §2 (classification attributes, storage markers); `11` §2 (taxonomy `YAF`, `PersonalDataCategory`, `PersonalDataAttribute` properties) | T9 | `src/Core/Classification/`, `src/Core/PublicAPI.Unshipped.txt`, `tests/Core.Tests/Classification/` | medium | 280 | `ClassificationAttributeTests.PersonalData_Classification_IsYafPersonal` — fails: `PersonalDataAttribute` does not exist. Also defaults of `ProvidedBySubject`, `PropagateRectification`; `StoredInClear` keeps its reason | `dotnet test --project tests/Core.Tests -c Release` → passes; V2; V1 |
+| T11 | feat(core): add argument guards and optional values | feat | core | `02` §2 (`Guard`, `Optional<T>`) | T10 | `src/Core/Guard.cs`, `src/Core/Optional.cs`, `src/Core/PublicAPI.Unshipped.txt`, `tests/Core.Tests/` | medium | 220 | `GuardTests.NotDefault_DefaultStruct_ThrowsWithArgumentName` — fails: `Guard` does not exist. Also `OptionalTests.Default_IsNotSupplied`, `FromNull_IsSupplied` | `dotnet test --project tests/Core.Tests -c Release` → passes; V2; V1 |
+| T12 | build: add the analyzers project packed into the core package | chore | analyzers | `01` §2.1 (`Analyzers`, packed under `analyzers/dotnet/cs`), §4 (`netstandard2.0`); ADR-0003 (Roslyn, private assets) | T1 | `src/Analyzers/`, `src/Core/Core.csproj`, `Directory.Packages.props`, `YAF.slnx`, `tests/Analyzers.Tests/` | high | 200 | P1 exits 1: the package has no `analyzers/dotnet/cs/YAF.Analyzers.dll`. `GeneratorHarnessTests.EmptySnippet_CompilesWithoutDiagnostics` fails: the project does not exist | P1 exits 0; `dotnet test --project tests/Analyzers.Tests -c Release` → passes; V2; V1 |
+| T13 | feat(analyzers): generate the members of typed ids | feat | analyzers | `02` §3 (generated members, nothing EF-related); `02` §12 item 2 (typed id generation and parsing) | T3, T12 | `src/Analyzers/TypedIds/`, `tests/Analyzers.Tests/TypedIds/` | high | 380 | `TypedIdGeneratorTests.TypedId_Generated_ParsesWhatToStringWrites` — fails: no generator. Also `New_IsVersion7`, `Json_RoundTrip_KeepsValue`, `TypeConverter_FromString_ReturnsId` | `dotnet test --project tests/Analyzers.Tests -c Release` → passes; V2; V1 |
+| T14 | feat(core): add the framework identifiers | feat | core | `02` §2 (`TenantId`, `UserId`, `DataSubjectId`, `CorrelationId`) | T11, T13 | `src/Core/Ids/`, `src/Core/PublicAPI.Unshipped.txt`, `tests/Core.Tests/Ids/` | medium | 80 | `FrameworkIdTests.TenantId_New_IsVersion7` — fails: `TenantId` does not exist. Also `UserId_Parse_RoundTrips` | `dotnet test --project tests/Core.Tests -c Release` → passes; V2; V1 |
+| T15 | feat(analyzers): fill error codes at compile time | feat | analyzers | `03` §2 (generator, default code, `[ErrorCode]`, `YafServiceCode`); `03` §5 item 2 (nested types, generics, `[ErrorCode]`) | T2, T12 | `src/Analyzers/ErrorCodes/`, `src/Core/buildTransitive/YAF.Core.props`, `src/Core/Core.csproj`, `tests/Analyzers.Tests/ErrorCodes/` | high | 390 | `ErrorCodeGeneratorTests.NestedCatalogue_DefaultCode_IsSnakeCasePath` — fails: no generator, the factory throws. Also `GenericDeclaringType_DropsTypeParameters`, `ErrorCodeAttribute_OverridesCode`, `AcronymField_SplitsWords`; P2 exits 1 | `dotnet test --project tests/Analyzers.Tests -c Release` → passes; P2 exits 0; V2; V1 |
+| T16 | feat(analyzers): report missing service codes and invalid error codes | feat | analyzers | `03` §2 (code rules, no fallback); Q5 | T15 | `src/Analyzers/ErrorCodes/`, `src/Analyzers/AnalyzerReleases.Unshipped.md`, `tests/Analyzers.Tests/ErrorCodes/` | high | 200 | `ErrorCodeDiagnosticTests.MissingServiceCode_ReportsYAF3004` — fails: no diagnostic. Also `UpperCaseErrorCode_ReportsYAF3004`, `CodeOver100Characters_ReportsYAF3004`, `ValidCatalogue_ReportsNothing`. Waits for Q5 | `dotnet test --project tests/Analyzers.Tests -c Release` → passes; V2; V1 |
+| T17 | feat(analyzers): report errors created outside an error catalogue | feat | analyzers | `03` §2 (`YAF3001`); `03` §5 item 2 | T16 | `src/Analyzers/ErrorCodes/`, `src/Analyzers/AnalyzerReleases.Unshipped.md`, `tests/Analyzers.Tests/ErrorCodes/` | high | 220 | `CatalogueAnalyzerTests.DescriptorCreatedInMethod_ReportsYAF3001` — fails: no diagnostic. Also `NewErrorInHandler_ReportsYAF3001`, `CatalogueStaticField_ReportsNothing`, `CoreErrors_ReportsNothing` | `dotnet test --project tests/Analyzers.Tests -c Release` → passes; V2; V1 |
+| T18 | feat(analyzers): report duplicate error codes in a compilation | feat | analyzers | `03` §2 (`YAF3002`); `03` §5 item 2 | T17 | `src/Analyzers/ErrorCodes/`, `src/Analyzers/AnalyzerReleases.Unshipped.md`, `tests/Analyzers.Tests/ErrorCodes/` | high | 170 | `DuplicateCodeTests.ExplicitCodeEqualsDefaultCode_ReportsYAF3002OnBoth` — fails: no diagnostic. Also `SameFieldNameInDifferentTypes_ReportsNothing` | `dotnet test --project tests/Analyzers.Tests -c Release` → passes; V2; V1 |
+| T19 | feat(analyzers): warn about message placeholders without arguments | feat | analyzers | `03` §2 (`YAF3003`); `03` §5 item 2 | T18 | `src/Analyzers/ErrorCodes/`, `src/Analyzers/AnalyzerReleases.Unshipped.md`, `tests/Analyzers.Tests/ErrorCodes/` | high | 200 | `TemplateArgumentTests.WithoutCapacityArgument_ReportsYAF3003` — fails: no diagnostic. Also `AllPlaceholdersSupplied_ReportsNothing`, `NonConstantName_ReportsNothing` | `dotnet test --project tests/Analyzers.Tests -c Release` → passes; V2; V1 |
+| T20 | feat(analyzers): warn about raw Guid id parameters | feat | analyzers | `02` §3 (`YAF1001`); `02` §12 item 4; Q4 | T19 | `src/Analyzers/Ids/`, `src/Analyzers/AnalyzerReleases.Unshipped.md`, `tests/Analyzers.Tests/Ids/` | high | 180 | `RawGuidIdTests.PublicMethodGuidSessionId_ReportsYAF1001` — fails: no diagnostic. Also `PrivateMethod_ReportsNothing`, `TypedIdFrom_ReportsNothing`, `GuidNamedValue_ReportsNothing`. Waits for Q4 | `dotnet test --project tests/Analyzers.Tests -c Release` → passes; V2; V1 |
+| T21 | test: check the allowed references of the core package and the analyzers | test | tests | `01` §6 item 2 (part); ADR-0003 (allow-list, enforcement); ADR-0018 (ArchUnitNET); plan 0005 deviation 9 | T12 | `tests/Architecture.Tests/`, `Directory.Packages.props`, `YAF.slnx` | high | 140 | `DependencyTests.Core_ReferencesOnlyAllowList` — fails: the project does not exist. Also `Analyzers_ReferencesOnlyRoslyn`, `Core_HasNoPublicTypeInInternalNamespace`. A deliberately broken rule (a banned assembly name added locally) must fail before the real one is written | `dotnet test --project tests/Architecture.Tests -c Release` → passes; V2; V1 |
+| T22 | test: add the result allocation benchmark | test | tests | `03` §5 item 4; ADR-0018 (benchmarks, not in CI); Q2 | T6, T21 | `tests/Benchmarks/`, `Directory.Packages.props`, `YAF.slnx` | high | 70 | `test -f tests/Benchmarks/Benchmarks.csproj` exits 1. Waits for Q2; dropped by a plan update if Q2 is (b) | `dotnet run --project tests/Benchmarks -c Release -- --filter "*SuccessRoundTrip*" --job Dry --memory` → `Allocated` is `-` or `0 B`; V2 (the project builds and is not a test project); V1 |
+| T23 | ci: pack the packages in the build job | chore | ci | `01` §6 item 3 (package validation, no baseline yet); `17` §2 (`build-test`); plan 0005 deviation 2 | T15 | `.github/workflows/ci.yml` | high | 10 | `grep -q "dotnet pack YAF.slnx" .github/workflows/ci.yml` exits 1. **The owner pushes this branch** | `grep -q "dotnet pack YAF.slnx" .github/workflows/ci.yml`; V-T23; V1 |
+| T24 | docs: add the results and errors article | docs | docs | `17` §6 (article "results and errors", sections Rules, Configuration, Testing it; code from compiled tests); `03`; `yaf-public-api-change` rule 4 | T14, T16 | `docs/AGENTS.md`, `docs/articles/results-and-errors.md`, `tests/Core.Tests/` (region markers only) | high | 220 | `test -f docs/articles/results-and-errors.md` exits 1 | `f=docs/articles/results-and-errors.md; grep -q "^## Rules" $f && grep -q "^## Configuration" $f && grep -q "^## Testing it" $f && grep -q "YafServiceCode" $f && grep -q "code-csharp" $f && test -f docs/AGENTS.md`; V2; V1 |
+| T25 | docs: list the core analyzers and their fixes | docs | docs | `src/AGENTS.md` (every diagnostic in `docs/articles/analyzers.md`); `02` §3; `03` §2 | T20, T24 | `docs/articles/analyzers.md` | low | 90 | `test -f docs/articles/analyzers.md` exits 1 | `f=docs/articles/analyzers.md; grep -q "YAF1001" $f && grep -q "YAF3001" $f && grep -q "YAF3002" $f && grep -q "YAF3003" $f && grep -q "YAF3004" $f`; V1 |
