@@ -1,6 +1,6 @@
 # ADR-0008 — Results and the error catalogue
 
-> **Status** Accepted
+> **Status** Superseded by ADR-0031
 > **Date** 2026-11
 > **Deciders** Framework maintainers
 
