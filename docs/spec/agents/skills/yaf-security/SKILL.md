@@ -74,7 +74,7 @@ Operations
 20. **REQUIRED** Record security-relevant facts with `ISecurityEventRecorder` using the defined types (`authz.denied`, `tenant.violation`, `elevation.started`, …). Do not invent a parallel log.
 21. **REQUIRED** Any switch that weakens a control is named `Allow…`/`Disable…`, defaults to `false`, is registered in `UnsafeOptionsRegistry`, and is refused outside Development unless acknowledged.
 22. **REQUIRED** `YAF.Testing` and `YAF.Testing.Integration` types never ship in production assemblies (architecture test).
-23. **REQUIRED** A new dependency is justified in the PR, added to `Directory.Packages.props`, restored in locked mode; a core package needs an ADR for any new third-party reference.
+23. **REQUIRED** A new dependency is justified in the PR, added to `Directory.Packages.props` (versions only there, transitive pins included); a core package needs an ADR for any new third-party reference.
 24. **REQUIRED** Never disable, suppress or delete a failing guard to get green. Fix the cause or stop and ask.
 25. **REQUIRED** Audit and event tables are append-only for the runtime role; only the retention job's maintenance role drops expired partitions. Do not add grants, and do not describe the audit trail as complete up to the last second: the newest rows are stored but chained by the sealer shortly after commit.
 
