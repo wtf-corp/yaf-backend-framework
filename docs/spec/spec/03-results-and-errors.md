@@ -141,9 +141,9 @@ The transaction middleware rolls back on any failed result (`04-application.md` 
 ## 5. Acceptance criteria
 
 - Unit tests: every combinator, sync and async; `default` results; implicit conversions, and `Result.Success(value)` where `T` is an interface; `Combine`; argument filling and `Target`.
-- Generator tests compile snippets in memory and assert generated codes for nested types, generics, `[ErrorCode]`, and the three diagnostics.
+- Generator tests compile snippets in memory and assert generated codes for nested types, generics, `[ErrorCode]`, and the four diagnostics (`YAF3001`–`YAF3004`).
 - A test with two assemblies declaring the same code shows the approval check and the startup check both fail and name the two declaring types.
 - A benchmark project (`tests/Benchmarks`, not run in CI) shows a successful `Result<T>` round trip allocates nothing.
 - The mapper has a table-driven test covering each kind and the mixed-kind precedence.
 
-> **Amended 2026-11-24**, by the owner's decision of 2026-11-24 (`specs/0006-core/plan.md`, decision log Q1): the third and fifth items are accepted in M3, not M1, together with `ResultFactory` (§1) and the `[assembly: YafService]` attribute with its registry (§2.1) (`18-build-plan.md` §2).
+> **Amended 2026-11-24**, by the owner's decisions of 2026-11-24 (`specs/0006-core/plan.md`, decision log Q1 and Q5): the third and fifth items are accepted in M3, not M1, together with `ResultFactory` (§1) and the `[assembly: YafService]` attribute with its registry (§2.1) (`18-build-plan.md` §2). The second item covers `YAF3004` (Q5).
