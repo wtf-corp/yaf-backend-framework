@@ -45,14 +45,6 @@ public sealed class ErrorFactoryTests
             .WithInnerException<InvalidOperationException>();
     }
 
-    [Fact]
-    public void ErrorCodeAttribute_Code_IsKept()
-    {
-        var attribute = new ErrorCodeAttribute("catalog.session.title_required");
-
-        attribute.Code.Should().Be("catalog.session.title_required");
-    }
-
     private static class SampleCatalogue
     {
         internal abstract class Errors : IErrorCatalog

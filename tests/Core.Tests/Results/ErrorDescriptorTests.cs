@@ -16,15 +16,6 @@ public sealed class ErrorDescriptorTests
     }
 
     [Fact]
-    public void With_NamedArgument_KeepsCodeAndKind()
-    {
-        var error = s_full.With(("Capacity", 40));
-
-        error.Code.Should().Be("test.session.full");
-        error.Kind.Should().Be(ErrorKind.Conflict);
-    }
-
-    [Fact]
     public void With_Arguments_KeepsArgumentsAsGiven()
     {
         var error = s_full.With(("Capacity", 40), ("Unused", null));

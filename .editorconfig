@@ -81,3 +81,15 @@ dotnet_diagnostic.IDE0005.severity = error
 # CA1707: test names follow Method_Scenario_Expected (tests/AGENTS.md rule 2), which needs underscores.
 # Only for tests; src keeps the rule. Owner's decision Q8 (a), specs/0005-repository-skeleton/plan.md.
 dotnet_diagnostic.CA1707.severity = none
+
+[src/Core/Results/ErrorKind.cs]
+# CA1008: 03 §1 starts ErrorKind at Validation = 1, so default(ErrorKind) is no kind. Owner's decision on #114, 2026-11-24.
+dotnet_diagnostic.CA1008.severity = none
+
+[src/Core/Results/IErrorCatalog.cs]
+# CA1040: 03 §2 makes IErrorCatalog an empty marker interface. Owner's decision on #114, 2026-11-24.
+dotnet_diagnostic.CA1040.severity = none
+
+[src/Core/Results/Error.cs]
+# CA1716: 03 §1 names the type Error (a Visual Basic keyword). Owner's decision on #114, 2026-11-24.
+dotnet_diagnostic.CA1716.severity = none
