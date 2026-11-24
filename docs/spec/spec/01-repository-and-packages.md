@@ -133,9 +133,12 @@ A domain or application test project references `YAF.Testing` only, and so pulls
 | `AnalysisLevel` / `AnalysisMode` | `latest` / `All`, with a short documented suppression list in `.editorconfig` |
 | `EnforceCodeStyleInBuild` | `true` |
 | `Deterministic`, `ContinuousIntegrationBuild` (CI), `EmbedUntrackedSources`, `PublishRepositoryUrl` | `true` |
-| `RestorePackagesWithLockFile` | `true`; CI restores with `--locked-mode` |
 | `NuGetAudit` / `NuGetAuditMode` / `NuGetAuditLevel` | `true` / `all` / `low` |
 | `Version` | `0.0.0` in source; set by the release (`17-ci-release-docs.md`). Prereleases `1.0.0-alpha.N` / `-beta.N` until `1.0.0` |
+
+No NuGet lock files are committed. Package versions are pinned in `Directory.Packages.props`, with central package management (`ManagePackageVersionsCentrally`) and transitive pinning (`CentralPackageTransitivePinningEnabled`).
+
+> **Amended 2026-11-24**, by the owner's decision of 2026-11-24 (`specs/0007-no-package-lock-files/plan.md`, decision log; ADR-0032): the row of the lock-file property, with the locked restore in CI, is removed, and the paragraph above is added.
 
 `src/Directory.Build.props` adds: `GenerateDocumentationFile`, CS1591 and CS1573 as errors, `IsPackable`, `EnablePackageValidation` with `PackageValidationBaselineVersion` (the last released version), `IncludeSymbols` + `snupkg`, `GenerateSBOM`, `IsAotCompatible` and `IsTrimmable` for `YAF.Core` only (native AOT is a non-goal for the other packages while persistence depends on EF Core; specifications and validators compile expression trees), and `Microsoft.CodeAnalysis.PublicApiAnalyzers` with `PublicAPI.Shipped.txt` / `PublicAPI.Unshipped.txt` per project.
 

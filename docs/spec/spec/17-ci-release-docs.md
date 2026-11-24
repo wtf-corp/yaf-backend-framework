@@ -32,7 +32,7 @@ jobs:
     steps:
       - checkout (fetch-depth: 0)
       - setup-dotnet (global.json)
-      - dotnet restore YAF.slnx --locked-mode                              # NU190x stay warnings here; they are listed in the job summary (§2.1)
+      - dotnet restore YAF.slnx                                            # NU190x stay warnings here; they are listed in the job summary (§2.1)
       - dotnet build YAF.slnx -c Release --no-restore                      # warnings as errors, analyzers; every target framework
       - dotnet test --solution YAF.slnx -c Release --no-build              # Docker available; coverage + TRX; every target framework
       - check: "#if NET" appears only in files named *.NetNN.cs
@@ -55,6 +55,8 @@ jobs:
                           # vendored third-party skills match .agents/skills.lock; agent definitions in .claude/agents parse
 ```
 
+> **Amended 2026-11-24**, by the owner's decision of 2026-11-24 (`specs/0007-no-package-lock-files/plan.md`, decision log; ADR-0032): `build-test` restores without the locked restore; there are no NuGet lock files.
+
 The process gates are not jobs of `ci.yml`: they are the factory workflows of §2.2, which run on the same pull requests and report their own required checks.
 
 Rules: workflows declare least-privilege `permissions`; third-party actions pinned by SHA; no secrets in pull requests from forks; `pull_request_target` is not used.
@@ -66,8 +68,10 @@ A new advisory against a package the repository already uses is not caused by th
 | Check | When | Fails on | Effect |
 |---|---|---|---|
 | `dependency-review` in the `security` job | Every pull request | A package version the pull request adds or moves to has a known advisory (any severity) | The pull request cannot merge |
-| `audit.yml` | Daily, and on demand | `dotnet restore --locked-mode -p:AuditPipeline=true` on `main` and on `next`: any advisory, direct or transitive (NU1901–NU1904 as errors) | Opens or updates one issue labelled `dependency-advisory` listing package, advisory and severity, and closes it when the restore is clean again. Maintainers are notified; no pull request is blocked |
+| `audit.yml` | Daily, and on demand | `dotnet restore -p:AuditPipeline=true` on `main` and on `next`: any advisory, direct or transitive (NU1901–NU1904 as errors) | Opens or updates one issue labelled `dependency-advisory` listing package, advisory and severity, and closes it when the restore is clean again. Maintainers are notified; no pull request is blocked |
 | Audit step of the `release` job | Every release | An advisory of severity **high or critical** in what would be published | Nothing is published until the dependency is updated or the advisory is suppressed |
+
+> **Amended 2026-11-24**, by the owner's decision of 2026-11-24 (`specs/0007-no-package-lock-files/plan.md`, decision log; ADR-0032): `audit.yml` restores without the locked restore.
 
 A suppression is a `<NuGetAuditSuppress Include="<advisory URL>" />` entry in `Directory.Packages.props` with a comment giving the reason and an expiry date at most 30 days ahead. `Directory.Packages.props` is under CODEOWNERS, so a human approves it; a step in `build-test` fails when a suppression has expired or has no expiry. Low and moderate advisories do not block a release; the open `dependency-advisory` issue tracks them, and the release notes list every advisory open at release time.
 
@@ -177,7 +181,7 @@ Order inside semantic-release: analyze → verify → generate notes → **prepa
       - create GitHub App token (app id from vars, private key from the environment's secrets)
       - checkout with that token (fetch-depth: 0, persist-credentials for the push back)
       - setup-dotnet, setup-node, npm ci
-      - dotnet restore --locked-mode -p:AuditPipeline=true -p:NuGetAuditLevel=high   # high and critical advisories stop the release (§2.1)
+      - dotnet restore -p:AuditPipeline=true -p:NuGetAuditLevel=high   # high and critical advisories stop the release (§2.1)
       - NuGet login via OIDC (trusted publishing) → short-lived key in the job environment
       - npx semantic-release                    # GITHUB_TOKEN = the app token
 
@@ -188,6 +192,8 @@ jobs:
     permissions: { contents: write }            # or pages: write + id-token: write with the Pages actions
     steps: [ checkout at the tag, build DocFX, publish to gh-pages under vX.Y.Z/ and latest/, update the version switcher ]
 ```
+
+> **Amended 2026-11-24**, by the owner's decision of 2026-11-24 (`specs/0007-no-package-lock-files/plan.md`, decision log; ADR-0032): the `release` job restores without the locked restore.
 
 - The release job runs only after every gate of the pipeline is green for that exact commit; it does not rebuild from a different state.
 - No long-lived feed key exists; the trusted publishing policy names this repository, `ci.yml` and the `release` environment. The feed key is requested immediately before semantic-release runs (it is short-lived).
