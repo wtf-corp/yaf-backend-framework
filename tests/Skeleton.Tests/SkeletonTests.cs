@@ -1,6 +1,6 @@
 namespace Skeleton.Tests;
 
-public class SkeletonTests
+public sealed class SkeletonTests
 {
     [Fact]
     public void Runtime_Version_IsNet11()
