@@ -37,7 +37,7 @@ public readonly struct Result<T> : IResult
         _isSuccess = true;
     }
 
-    private Result(ReadOnlyCollection<Error> errors)
+    internal Result(ReadOnlyCollection<Error> errors)
     {
         _value = default!;
         _errors = errors;
@@ -110,4 +110,59 @@ public readonly struct Result<T> : IResult
     /// <exception cref="ArgumentNullException"><paramref name="errors"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException"><paramref name="errors"/> is empty or contains <see langword="null"/>.</exception>
     public static Result<T> Failure(IEnumerable<Error> errors) => new(ResultErrors.Copy(errors));
+
+    /// <summary>Returns the value of one of two functions: <paramref name="onSuccess"/> with the value, or <paramref name="onFailure"/> with the errors.</summary>
+    /// <typeparam name="TOut">The type of the returned value.</typeparam>
+    /// <param name="onSuccess">Called with the value of a success.</param>
+    /// <param name="onFailure">Called with the errors of a failure, at least one.</param>
+    /// <returns>What the called function returns.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="onSuccess"/> or <paramref name="onFailure"/> is <see langword="null"/>.</exception>
+    public TOut Match<TOut>(Func<T, TOut> onSuccess, Func<IReadOnlyList<Error>, TOut> onFailure)
+    {
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+        return _isSuccess ? onSuccess(_value) : onFailure(Errors);
+    }
+
+    /// <summary>Runs one of two actions: <paramref name="onSuccess"/> with the value, or <paramref name="onFailure"/> with the errors.</summary>
+    /// <param name="onSuccess">Called with the value of a success.</param>
+    /// <param name="onFailure">Called with the errors of a failure, at least one.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="onSuccess"/> or <paramref name="onFailure"/> is <see langword="null"/>.</exception>
+    public void Switch(Action<T> onSuccess, Action<IReadOnlyList<Error>> onFailure)
+    {
+        ArgumentNullException.ThrowIfNull(onSuccess);
+        ArgumentNullException.ThrowIfNull(onFailure);
+        if (_isSuccess)
+        {
+            onSuccess(_value);
+        }
+        else
+        {
+            onFailure(Errors);
+        }
+    }
+
+    /// <summary>Transforms the value of a success. A failure keeps its errors and <paramref name="selector"/> is not called.</summary>
+    /// <typeparam name="TOut">The type of the new value.</typeparam>
+    /// <param name="selector">Computes the new value from the value of a success.</param>
+    /// <returns>A success with the new value, or a failure with the same errors.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="selector"/> is <see langword="null"/>.</exception>
+    public Result<TOut> Map<TOut>(Func<T, TOut> selector)
+    {
+        ArgumentNullException.ThrowIfNull(selector);
+        return _isSuccess ? new Result<TOut>(selector(_value)) : new Result<TOut>(FailureErrors);
+    }
+
+    /// <summary>Continues a success with an operation that can fail. A failure keeps its errors and <paramref name="continuation"/> is not called.</summary>
+    /// <typeparam name="TOut">The type of the value of the operation.</typeparam>
+    /// <param name="continuation">The operation, called with the value of a success.</param>
+    /// <returns>The result of <paramref name="continuation"/>, or a failure with the same errors.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="continuation"/> is <see langword="null"/>.</exception>
+    public Result<TOut> Then<TOut>(Func<T, Result<TOut>> continuation)
+    {
+        ArgumentNullException.ThrowIfNull(continuation);
+        return _isSuccess ? continuation(_value) : new Result<TOut>(FailureErrors);
+    }
+
+    private ReadOnlyCollection<Error> FailureErrors => _errors ?? ResultErrors.Uninitialised;
 }
