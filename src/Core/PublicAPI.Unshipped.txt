@@ -76,6 +76,13 @@ YAF.Core.Results.Result<T>.EnsureAsync(System.Func<T, System.Threading.Tasks.Tas
 YAF.Core.Results.Result<T>.EnsureAsync(System.Func<T, System.Threading.Tasks.ValueTask<bool>>! predicate, YAF.Core.Results.ErrorDescriptor! error) -> System.Threading.Tasks.ValueTask<YAF.Core.Results.Result<T>>
 YAF.Core.Results.Result<T>.Errors.get -> System.Collections.Generic.IReadOnlyList<YAF.Core.Results.Error!>!
 YAF.Core.Results.Result<T>.FirstError.get -> YAF.Core.Results.Error!
+YAF.Core.Results.Result<T>.IUnionMembers
+YAF.Core.Results.Result<T>.IUnionMembers.Create(System.Collections.Generic.IReadOnlyList<YAF.Core.Results.Error!>! errors) -> YAF.Core.Results.Result<T>
+YAF.Core.Results.Result<T>.IUnionMembers.Create(T value) -> YAF.Core.Results.Result<T>
+YAF.Core.Results.Result<T>.IUnionMembers.HasValue.get -> bool
+YAF.Core.Results.Result<T>.IUnionMembers.TryGetValue(out System.Collections.Generic.IReadOnlyList<YAF.Core.Results.Error!>! errors) -> bool
+YAF.Core.Results.Result<T>.IUnionMembers.TryGetValue(out T value) -> bool
+YAF.Core.Results.Result<T>.IUnionMembers.Value.get -> object?
 YAF.Core.Results.Result<T>.IsFailure.get -> bool
 YAF.Core.Results.Result<T>.IsSuccess.get -> bool
 YAF.Core.Results.Result<T>.Map<TOut>(System.Func<T, TOut>! selector) -> YAF.Core.Results.Result<TOut>
