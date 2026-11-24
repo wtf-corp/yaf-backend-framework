@@ -61,7 +61,7 @@ test('a dependency patch update is low, anything else in the package file is hig
   assert.equal(isPatchBumpOnly(patch), true);
   assert.equal(isPatchBumpOnly(minor), false);
   assert.equal(isPatchBumpOnly(added), false);
-  const files = ['Directory.Packages.props', 'src/Core/packages.lock.json'];
+  const files = ['Directory.Packages.props', 'package-lock.json'];
   assert.equal(classify({ ...base, files, title: 'chore(deps): bump Npgsql', diff: new Map([['Directory.Packages.props', patch]]) }).tier, 'low');
   assert.equal(classify({ ...base, files, title: 'chore(deps): bump Npgsql', diff: new Map([['Directory.Packages.props', minor]]) }).tier, 'high');
   assert.equal(classify({ ...base, files, title: 'chore(deps): add Evil', diff: new Map([['Directory.Packages.props', added]]) }).tier, 'high');

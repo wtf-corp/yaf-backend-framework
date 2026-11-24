@@ -74,7 +74,7 @@ Operations
 20. **REQUIRED** Record security-relevant facts with `ISecurityEventRecorder` using the defined types (`authz.denied`, `tenant.violation`, `elevation.started`, …). Do not invent a parallel log.
 21. **REQUIRED** Any switch that weakens a control is named `Allow…`/`Disable…`, defaults to `false`, is registered in `UnsafeOptionsRegistry`, and is refused outside Development unless acknowledged.
 22. **REQUIRED** `YAF.Testing` and `YAF.Testing.Integration` types never ship in production assemblies (architecture test).
-23. **REQUIRED** A new dependency is justified in the PR, added to `Directory.Packages.props`, restored in locked mode; a core package needs an ADR for any new third-party reference.
+23. **REQUIRED** A new dependency is justified in the PR, added to `Directory.Packages.props` (versions only there, transitive pins included); a core package needs an ADR for any new third-party reference.
 24. **REQUIRED** Never disable, suppress or delete a failing guard to get green. Fix the cause or stop and ask.
 25. **REQUIRED** Audit and event tables are append-only for the runtime role; only the retention job's maintenance role drops expired partitions. Do not add grants, and do not describe the audit trail as complete up to the last second: the newest rows are stored but chained by the sealer shortly after commit.
 
@@ -104,7 +104,7 @@ public sealed record ExportRegistrationsQuery(SessionId SessionId) : IQuery<Resu
 - [ ] No secret, key or token in the diff (gitleaks clean), including tests and docs.
 - [ ] No new `Allow…`/`Disable…` option outside the registry; none enabled in committed non-Development settings.
 - [ ] External calls only from jobs, with timeouts and the resilience handler; user-supplied URLs go through the policy.
-- [ ] New packages reviewed (licence, maintenance, advisories); lock files updated.
+- [ ] New packages reviewed (licence, maintenance, advisories); versions only in `Directory.Packages.props`, from the one mapped source in `nuget.config`; a transitive package whose version matters pinned there (ADR-0032).
 - [ ] Guards untouched: no analyzer suppressed, no test skipped, no workflow permission widened.
 
 ## Requires human review (do not self-approve)
@@ -132,7 +132,7 @@ Changes under `src/Http/Authentication`, `src/Infrastructure/Cryptography`, `.gi
 - `dotnet build YAF.slnx` (analyzers, banned APIs).
 - `dotnet test --solution YAF.slnx` including `tests/Architecture.Tests` and the security test pack (in `YAF.Testing.Integration`) against the affected API.
 - `dotnet run --project <Api> -- --yaf-check` with the shipped configuration.
-- `gitleaks` clean; `dotnet restore --locked-mode` succeeds.
+- `gitleaks` clean; `dotnet restore YAF.slnx` succeeds with no NuGet audit finding; dependency review passes on the pull request (ADR-0032).
 - New controls carry `[Control("S<n>")]`-tagged tests so `docs/compliance/controls.md` has no empty row.
 
 ## References

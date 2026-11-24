@@ -29,7 +29,6 @@
       "**/*.g.cs",
       "**/*.Designer.cs",
       "**/*ModelSnapshot.cs",
-      "**/packages.lock.json",
       "package-lock.json",
       "**/*.approved.*",
       "**/PublicAPI.*.txt",
@@ -93,7 +92,6 @@
   ],
   "dependencyPatchFiles": [
     "Directory.Packages.props",
-    "**/packages.lock.json",
     "package-lock.json"
   ],
   "sharedFiles": [
