@@ -61,8 +61,9 @@ Convention for the folder: NuGet "Analyzer NuGet formats", learn.microsoft.com/n
 
 `Microsoft.CodeAnalysis.PublicApiAnalyzers` 5.6.0 (already in `Directory.Packages.props`). Probe A1, a library with the analyzer and empty `PublicAPI.*.txt` files:
 
-- Members emitted by a source generator are reported (`RS0016: Symbol 'Probe.GeneratedThing' is not part of the declared public API`). So the framework ids that YAF.Core generates for itself (T14) go into `src/Core/PublicAPI.Unshipped.txt`.
+- Members emitted by a source generator are reported (`RS0016: Symbol 'Probe.GeneratedThing' is not part of the declared public API`). So the framework ids that YAF.Core generates for itself (T15) go into `src/Core/PublicAPI.Unshipped.txt`.
 - Line shapes seen (the probe put every type in one namespace; the plan's namespaces differ), which decide the prefixes of the `factory:delta` block: `YAF.Core.Results.Error`, `YAF.Core.Results.Error.Code.get -> string!`, `static YAF.Core.Results.TenantId.From(System.Guid value) -> …`, `static readonly YAF.Core.Results.CoreErrors.Uninitialised -> …`, `const YAF.Core.Results.CoreErrors.Max = 100 -> int`, `override YAF.Core.Results.Error.ToString() -> string!`, `static … operator ==(…)`, `static … implicit operator …`, nested `YAF.Core.Results.R<T>.IUnionMembers.Create(T value) -> …`, enum members `… .Validation = 1 -> …`, and for a `record struct` the synthesized `~override YAF.Core.Results.TenantId.Equals(object obj) -> bool` (nullable-oblivious, hence `~`).
+- Static abstract and static interface members (probe A3, on review question 1): the analyzer reports `ITypedId<TSelf>.From` and a static `IUnionMembers.Create` with no modifier, `YAF.Core.Ids.ITypedId<TSelf>.From(System.Guid value) -> TSelf`. With those exact lines in `PublicAPI.Unshipped.txt` the build had no RS0016 or RS0017. Rewriting the line as `static abstract YAF.Core.Ids.ITypedId<TSelf>.From(…)` gave `RS0017` for it and `RS0016` for the member. So no `static abstract` prefix is needed.
 - `delta.mjs` matches an entry ending in `*` by line prefix (`entryMatches`), so every modifier that starts a line needs its own entry.
 
 ## 6. Writing analyzers under the repository's settings
@@ -118,9 +119,11 @@ Latest stable on nuget.org, queried 2026-11-24 (flat-container index). The imple
 | `Microsoft.CodeAnalysis.CSharp` | **5.0.0, pinned** (5.12.0 is latest) | MIT | `Analyzers` (private assets), `tests/Analyzers.Tests` | ADR-0003 allow-list; version from §3 |
 | `AwesomeAssertions` | 9.6.0 | Apache-2.0 | test projects | ADR-0018 |
 | `TngTech.ArchUnitNET.xUnitV3` | 0.13.5 (brings `TngTech.ArchUnitNET` 0.13.5: Mono.Cecil, Newtonsoft.Json, CycleDetection, JetBrains.Annotations) | Apache-2.0 | `tests/Architecture.Tests` | ADR-0018 |
-| `BenchmarkDotNet` | 0.15.8 (brings `Microsoft.CodeAnalysis.CSharp` 4.14.0, raised to the pinned 5.0.0 by transitive pinning, plus TraceEvent, ClrMD, Iced, Perfolizer) | MIT | `tests/Benchmarks` | **not named by an ADR**: plan Q2 |
+| `BenchmarkDotNet` | 0.15.8 (brings `Microsoft.CodeAnalysis.CSharp` 4.14.0, raised to the pinned 5.0.0 by transitive pinning, plus TraceEvent, ClrMD, Iced, Perfolizer) | MIT | `tests/Benchmarks` | the owner (plan Q2); recorded in ADR-0030 by T23 |
 | `xunit.v3`, `Microsoft.CodeAnalysis.PublicApiAnalyzers`, `Microsoft.CodeAnalysis.BannedApiAnalyzers` | 4.0.3, 5.6.0, 5.6.0 | | already in `Directory.Packages.props` | plan 0005 |
 
 BenchmarkDotNet console arguments, from "Console arguments", benchmarkdotnet.org/articles/guides/console-args.html: `--filter` (glob on the full name), `--job` (`Dry`, `Short`, …), `--memory` (MemoryDiagnoser), run through `BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args)`.
 
-Not verified, left to the ticket that uses it, which records what it found on its pull request: the ArchUnitNET rule API for assembly dependencies (T21, from the project's documentation for 0.13.5); whether an `internal` `DiagnosticAnalyzer` loads like the `internal` generator did (the first ticket that adds one, T16 or T17). If it does not, the analyzer classes are `public` and `src/Analyzers` gets `PublicAPI.*.txt` files that only that project uses.
+An `internal sealed` `DiagnosticAnalyzer` loads (probe A4, on review question 2): a consumer referencing the analyzer project got its `warning YAF9999: Method 'Bad' is bad`. So the analyzer classes stay `internal`, and `src/Analyzers` needs no `PublicAPI.*.txt` and no delta entry.
+
+Not verified, left to the ticket that uses it, which records what it found on its pull request: the ArchUnitNET rule API for assembly dependencies (T22, from the project's documentation for 0.13.5).
