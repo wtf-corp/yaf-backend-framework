@@ -5,6 +5,7 @@ YAF.Core.Ids.ITypedId<TSelf>
 YAF.Core.Ids.ITypedId<TSelf>.From(System.Guid value) -> TSelf
 YAF.Core.Ids.TypedIdAttribute
 YAF.Core.Ids.TypedIdAttribute.TypedIdAttribute() -> void
+YAF.Core.Results.CoreErrors
 YAF.Core.Results.Error
 YAF.Core.Results.Error.<Clone>$() -> YAF.Core.Results.Error!
 YAF.Core.Results.Error.Arguments.get -> System.Collections.Generic.IReadOnlyDictionary<string!, object?>!
@@ -48,6 +49,22 @@ YAF.Core.Results.ErrorKind.Unauthenticated = 2 -> YAF.Core.Results.ErrorKind
 YAF.Core.Results.ErrorKind.Unavailable = 8 -> YAF.Core.Results.ErrorKind
 YAF.Core.Results.ErrorKind.Validation = 1 -> YAF.Core.Results.ErrorKind
 YAF.Core.Results.IErrorCatalog
+YAF.Core.Results.IResult
+YAF.Core.Results.IResult.Errors.get -> System.Collections.Generic.IReadOnlyList<YAF.Core.Results.Error!>!
+YAF.Core.Results.IResult.IsSuccess.get -> bool
+YAF.Core.Results.Result
+YAF.Core.Results.Result.Errors.get -> System.Collections.Generic.IReadOnlyList<YAF.Core.Results.Error!>!
+YAF.Core.Results.Result.FirstError.get -> YAF.Core.Results.Error!
+YAF.Core.Results.Result.IsFailure.get -> bool
+YAF.Core.Results.Result.IsSuccess.get -> bool
+YAF.Core.Results.Result.Result() -> void
+YAF.Core.Results.Result<T>
+YAF.Core.Results.Result<T>.Errors.get -> System.Collections.Generic.IReadOnlyList<YAF.Core.Results.Error!>!
+YAF.Core.Results.Result<T>.FirstError.get -> YAF.Core.Results.Error!
+YAF.Core.Results.Result<T>.IsFailure.get -> bool
+YAF.Core.Results.Result<T>.IsSuccess.get -> bool
+YAF.Core.Results.Result<T>.Result() -> void
+YAF.Core.Results.Result<T>.Value.get -> T
 override YAF.Core.Results.Error.Equals(object? obj) -> bool
 override YAF.Core.Results.Error.GetHashCode() -> int
 override YAF.Core.Results.Error.ToString() -> string!
@@ -67,3 +84,20 @@ static YAF.Core.Results.Error.operator !=(YAF.Core.Results.Error? left, YAF.Core
 static YAF.Core.Results.Error.operator ==(YAF.Core.Results.Error? left, YAF.Core.Results.Error? right) -> bool
 static YAF.Core.Results.ErrorDescriptor.operator !=(YAF.Core.Results.ErrorDescriptor? left, YAF.Core.Results.ErrorDescriptor? right) -> bool
 static YAF.Core.Results.ErrorDescriptor.operator ==(YAF.Core.Results.ErrorDescriptor? left, YAF.Core.Results.ErrorDescriptor? right) -> bool
+static YAF.Core.Results.Result.Failure(System.Collections.Generic.IEnumerable<YAF.Core.Results.Error!>! errors) -> YAF.Core.Results.Result
+static YAF.Core.Results.Result.Failure(YAF.Core.Results.Error! error) -> YAF.Core.Results.Result
+static YAF.Core.Results.Result.Success() -> YAF.Core.Results.Result
+static YAF.Core.Results.Result.Success<T>(T value) -> YAF.Core.Results.Result<T>
+static YAF.Core.Results.Result.implicit operator YAF.Core.Results.Result(System.Collections.Generic.List<YAF.Core.Results.Error!>! errors) -> YAF.Core.Results.Result
+static YAF.Core.Results.Result.implicit operator YAF.Core.Results.Result(YAF.Core.Results.Error! error) -> YAF.Core.Results.Result
+static YAF.Core.Results.Result.implicit operator YAF.Core.Results.Result(YAF.Core.Results.Error![]! errors) -> YAF.Core.Results.Result
+static YAF.Core.Results.Result.implicit operator YAF.Core.Results.Result(YAF.Core.Results.ErrorDescriptor! descriptor) -> YAF.Core.Results.Result
+static YAF.Core.Results.Result<T>.Failure(System.Collections.Generic.IEnumerable<YAF.Core.Results.Error!>! errors) -> YAF.Core.Results.Result<T>
+static YAF.Core.Results.Result<T>.Failure(YAF.Core.Results.Error! error) -> YAF.Core.Results.Result<T>
+static YAF.Core.Results.Result<T>.Success(T value) -> YAF.Core.Results.Result<T>
+static YAF.Core.Results.Result<T>.implicit operator YAF.Core.Results.Result<T>(System.Collections.Generic.List<YAF.Core.Results.Error!>! errors) -> YAF.Core.Results.Result<T>
+static YAF.Core.Results.Result<T>.implicit operator YAF.Core.Results.Result<T>(T value) -> YAF.Core.Results.Result<T>
+static YAF.Core.Results.Result<T>.implicit operator YAF.Core.Results.Result<T>(YAF.Core.Results.Error! error) -> YAF.Core.Results.Result<T>
+static YAF.Core.Results.Result<T>.implicit operator YAF.Core.Results.Result<T>(YAF.Core.Results.Error![]! errors) -> YAF.Core.Results.Result<T>
+static YAF.Core.Results.Result<T>.implicit operator YAF.Core.Results.Result<T>(YAF.Core.Results.ErrorDescriptor! descriptor) -> YAF.Core.Results.Result<T>
+static readonly YAF.Core.Results.CoreErrors.Uninitialised -> YAF.Core.Results.ErrorDescriptor!
