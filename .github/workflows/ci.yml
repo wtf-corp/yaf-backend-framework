@@ -1,6 +1,6 @@
 # Pull request workflow (17 §2; plan specs/0005-repository-skeleton/plan.md#T6).
 # M0 runs build-test, pr-title, security (secret scan) and process (instruction validation).
-# The #if NET check, coverage, pack and test-result upload come with later milestones (plan deviation 2).
+# The #if NET check, coverage and test-result upload come with later milestones (plan deviation 2); pack came with M1 (specs/0006-core/plan.md#T25).
 name: ci
 
 on:
@@ -32,6 +32,8 @@ jobs:
       - run: dotnet restore YAF.slnx
       - run: dotnet build YAF.slnx -c Release --no-restore
       - run: dotnet test --solution YAF.slnx -c Release --no-build
+      # Packs YAF.Core (with the analyzers) and runs package validation; no baseline until M14 (plan specs/0006-core/plan.md#T25).
+      - run: dotnet pack YAF.slnx -c Release --no-build
 
   pr-title:
     if: github.event_name == 'pull_request'
