@@ -9,7 +9,7 @@ test('generated, lock, approved and public API files are not counted', () => {
   const numstat = parseNumstat([
     '120\t10\tsrc/Core/Result.cs',
     '50\t0\ttests/Core.Tests/ResultTests.cs',
-    '900\t0\tsrc/Core/packages.lock.json',
+    '900\t0\tpackage-lock.json',
     '40\t0\tsrc/Core/PublicAPI.Unshipped.txt',
     '12\t0\ttests/Core.Tests/errors.approved.txt',
     '700\t0\tsrc/Persistence.EfCore/Migrations/001_Init.Designer.cs',
@@ -19,6 +19,12 @@ test('generated, lock, approved and public API files are not counted', () => {
   const size = countSize(numstat, policy);
   assert.equal(size.lines, 180);
   assert.equal(size.excluded.length, 5);
+});
+
+test('a NuGet lock file is counted', () => {
+  const size = countSize(parseNumstat('900\t0\tsrc/Core/packages.lock.json'), policy);
+  assert.equal(size.lines, 900);
+  assert.deepEqual(size.excluded, []);
 });
 
 test('renames are attributed to the new path', () => {
