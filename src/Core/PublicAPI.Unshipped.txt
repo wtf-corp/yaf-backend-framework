@@ -36,6 +36,7 @@ YAF.Core.Classification.StoredInClearAttribute
 YAF.Core.Classification.StoredInClearAttribute.Reason.get -> string!
 YAF.Core.Classification.StoredInClearAttribute.StoredInClearAttribute(string! reason) -> void
 YAF.Core.Classification.YafTaxonomy
+YAF.Core.Guard
 YAF.Core.Ids.ITypedId
 YAF.Core.Ids.ITypedId.Value.get -> System.Guid
 YAF.Core.Ids.ITypedId<TSelf>
@@ -146,6 +147,9 @@ override YAF.Core.Results.Error.ToString() -> string!
 override YAF.Core.Results.ErrorDescriptor.Equals(object? obj) -> bool
 override YAF.Core.Results.ErrorDescriptor.GetHashCode() -> int
 override YAF.Core.Results.ErrorDescriptor.ToString() -> string!
+static YAF.Core.Guard.NotDefault<T>(T value, string? paramName = null) -> void
+static YAF.Core.Guard.NotNull(object? value, string? paramName = null) -> void
+static YAF.Core.Guard.NotNullOrWhiteSpace(string? value, string? paramName = null) -> void
 static YAF.Core.Results.Error.Conflict(string! messageTemplate) -> YAF.Core.Results.ErrorDescriptor!
 static YAF.Core.Results.Error.Failure(string! messageTemplate) -> YAF.Core.Results.ErrorDescriptor!
 static YAF.Core.Results.Error.Forbidden(string! messageTemplate) -> YAF.Core.Results.ErrorDescriptor!
