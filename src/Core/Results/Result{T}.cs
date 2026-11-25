@@ -12,6 +12,13 @@ namespace YAF.Core.Results;
 /// value for a success, or <see cref="Result.Success{T}(T)"/> when <typeparamref name="T"/> is an interface type, from which C# allows no
 /// user-defined conversion. Return an <see cref="Error"/>, an <see cref="ErrorDescriptor"/> or an array or list of errors for a failure.
 /// There is no conversion back to <typeparamref name="T"/>: read <see cref="Value"/> after checking <see cref="IsSuccess"/>.
+/// <para>
+/// The struct is a union of its value and its errors (<see cref="IUnionMembers"/>), so a <see langword="switch"/> with a
+/// <typeparamref name="T"/> arm and an <see cref="IReadOnlyList{T}"/> of <see cref="Error"/> arm is exhaustive and does not box.
+/// A <c>default</c> result takes the error arm. The union also brings implicit conversions from an interface
+/// <typeparamref name="T"/> and from an <see cref="IReadOnlyList{T}"/> of <see cref="Error"/>; for
+/// <c>Result&lt;IReadOnlyList&lt;Error&gt;&gt;</c> a conversion from that list is ambiguous: use <see cref="Success(T)"/> or <see cref="Failure(IEnumerable{Error})"/>.
+/// </para>
 /// </remarks>
 /// <example>
 /// <code language="csharp">
@@ -23,9 +30,17 @@ namespace YAF.Core.Results;
 ///     return seat.Id;
 /// }
 /// </code>
+/// <code language="csharp">
+/// var message = reservation switch
+/// {
+///     SeatId seat => $"Reserved {seat}.",
+///     IReadOnlyList&lt;Error&gt; errors => $"Failed with {errors[0].Code}.",
+/// };
+/// </code>
 /// </example>
 /// <typeparam name="T">The type of the value of a success.</typeparam>
-public readonly struct Result<T> : IResult
+[Union]
+public readonly struct Result<T> : IResult, Result<T>.IUnionMembers
 {
     private readonly T _value;
     private readonly ReadOnlyCollection<Error>? _errors;
@@ -43,6 +58,41 @@ public readonly struct Result<T> : IResult
         _value = default!;
         _errors = errors;
         _isSuccess = false;
+    }
+
+    /// <summary>
+    /// The members through which the compiler treats <see cref="Result{T}"/> as a union of its value and its errors. Callers use them
+    /// through patterns and conversions; implement nothing.
+    /// </summary>
+    public interface IUnionMembers
+    {
+        /// <summary>Gets the case of the result: the value of a success, or the errors of a failure. A <c>default</c> result gives the errors of <see cref="CoreErrors.Uninitialised"/>.</summary>
+        object? Value { get; }
+
+        /// <summary>Gets a value indicating whether the result has a case. Always <see langword="true"/>: a <c>default</c> result is the error case.</summary>
+        bool HasValue { get; }
+
+        /// <summary>Creates a success with a value.</summary>
+        /// <param name="value">The value.</param>
+        /// <returns>The successful result.</returns>
+        static abstract Result<T> Create(T value);
+
+        /// <summary>Creates a failure with the errors in the given order.</summary>
+        /// <param name="errors">The errors, at least one. They are copied.</param>
+        /// <returns>The failed result.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="errors"/> is <see langword="null"/>.</exception>
+        /// <exception cref="ArgumentException"><paramref name="errors"/> is empty or contains <see langword="null"/>.</exception>
+        static abstract Result<T> Create(IReadOnlyList<Error> errors);
+
+        /// <summary>Gets the value of a success without boxing it.</summary>
+        /// <param name="value">The value of a success; otherwise the default of <typeparamref name="T"/>.</param>
+        /// <returns><see langword="true"/> when the result is a success.</returns>
+        bool TryGetValue(out T value);
+
+        /// <summary>Gets the errors of a failure.</summary>
+        /// <param name="errors">The errors of a failure, at least one; otherwise an empty list.</param>
+        /// <returns><see langword="true"/> when the result is a failure, also a <c>default</c> one.</returns>
+        bool TryGetValue(out IReadOnlyList<Error> errors);
     }
 
     /// <inheritdoc/>
@@ -365,6 +415,32 @@ public readonly struct Result<T> : IResult
     {
         ArgumentNullException.ThrowIfNull(fallback);
         return _isSuccess ? new ValueTask<Result<T>>(this) : ToSuccessAsync(fallback(FailureErrors));
+    }
+
+    /// <inheritdoc/>
+    object? IUnionMembers.Value => _isSuccess ? _value : FailureErrors;
+
+    /// <inheritdoc/>
+    bool IUnionMembers.HasValue => true;
+
+    /// <inheritdoc/>
+    static Result<T> IUnionMembers.Create(T value) => new(value);
+
+    /// <inheritdoc/>
+    static Result<T> IUnionMembers.Create(IReadOnlyList<Error> errors) => new(ResultErrors.Copy(errors));
+
+    /// <inheritdoc/>
+    bool IUnionMembers.TryGetValue(out T value)
+    {
+        value = _value;
+        return _isSuccess;
+    }
+
+    /// <inheritdoc/>
+    bool IUnionMembers.TryGetValue(out IReadOnlyList<Error> errors)
+    {
+        errors = Errors;
+        return !_isSuccess;
     }
 
     private static async Task<Result<TValue>> ToSuccessAsync<TValue>(Task<TValue> pending) => new(await pending.ConfigureAwait(false));

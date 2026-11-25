@@ -105,6 +105,8 @@ dotnet_diagnostic.CA1815.severity = none
 [src/Core/Results/Result\{T\}.cs]
 # CA1000: 03 §1 prescribes static Success/Failure on Result<T> alongside Result.Success(value). Owner's decision on #116, 2026-11-24.
 dotnet_diagnostic.CA1000.severity = none
+# CA1034: 03 §1 (amended, Q3) requires the C# 15 union member provider to be the public nested interface Result<T>.IUnionMembers. Owner's decision on #121, 2026-11-25.
+dotnet_diagnostic.CA1034.severity = none
 # CA1002: 03 §1 prescribes the implicit conversion from List<Error>. Owner's decision on #116, 2026-11-24.
 dotnet_diagnostic.CA1002.severity = none
 # CA2225: Success/Failure are the named alternates of the implicit conversions 03 §1 prescribes; From* methods would duplicate them. Owner's decision on #116, 2026-11-24.
