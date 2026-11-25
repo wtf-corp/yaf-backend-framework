@@ -41,6 +41,11 @@ YAF.Domain.Mementos.ITenantOwnedMemento.TenantId.set -> void
 YAF.Domain.Mementos.IVersionedMemento
 YAF.Domain.Mementos.IVersionedMemento.Version.get -> System.Guid
 YAF.Domain.Mementos.IVersionedMemento.Version.set -> void
+YAF.Domain.Rules.IBusinessRule
+YAF.Domain.Rules.IBusinessRule.Error.get -> YAF.Core.Results.ErrorDescriptor!
+YAF.Domain.Rules.IBusinessRule.IsSatisfied() -> bool
+YAF.Domain.Rules.IPolicy<TInput, TDecision>
+YAF.Domain.Rules.IPolicy<TInput, TDecision>.Decide(TInput input) -> TDecision
 abstract YAF.Domain.Events.DomainEvent.<Clone>$() -> YAF.Domain.Events.DomainEvent!
 override YAF.Domain.Events.DomainEvent.Equals(object? obj) -> bool
 override YAF.Domain.Events.DomainEvent.GetHashCode() -> int
