@@ -26,11 +26,11 @@ A diagnostic marks code to change. Fix the code as described below; do not silen
 
 ## YAF3001
 
-**Error created outside an error catalogue.** Error. Message: "'{0}' is created outside the initialiser of a static field of an IErrorCatalog type".
+**Error created outside an error catalogue.** Error. Message: "'{0}' is created outside the initialiser of a static field of type Error or ErrorDescriptor of an IErrorCatalog type".
 
-**What it reports.** `new Error(…)`, `new ErrorDescriptor(…)` or a call of one of the nine factories of <xref:YAF.Core.Results.Error> (`Error.Validation`, `Error.NotFound`, …) anywhere other than the initialiser of a static field of a type that implements <xref:YAF.Core.Results.IErrorCatalog>. Errors created by an `ErrorDescriptor` through `ToError`, `With` or `At`, and generated code, are not reported.
+**What it reports.** `new Error(…)`, `new ErrorDescriptor(…)` or a call of one of the nine factories of <xref:YAF.Core.Results.Error> (`Error.Validation`, `Error.NotFound`, …) anywhere other than the initialiser of a static field of type `Error` or `ErrorDescriptor` of a type that implements <xref:YAF.Core.Results.IErrorCatalog>. Errors created by an `ErrorDescriptor` through `ToError`, `With` or `At`, and generated code, are not reported.
 
-**Example.** `return Error.Conflict("Session has no free seats.");` inside a method is reported. A static field of the catalogue initialised by the same factory is not:
+**Example.** `return Error.Conflict("Session has no free seats.");` inside a method is reported. A static field of the catalogue initialised by a factory is not:
 
 [!code-csharp[](../../tests/Core.Tests/Results/ErrorFactoryTests.cs#catalogue)]
 
@@ -40,7 +40,7 @@ A diagnostic marks code to change. Fix the code as described below; do not silen
 
 **Two errors have the same code.** Error. Message: "The code '{0}' of error '{1}' is also the code of '{2}'".
 
-**What it reports.** Two or more catalogue fields, declared with the factories of `Error`, that have the same code in one compilation: a default code, a code given by <xref:YAF.Core.Results.ErrorCodeAttribute>, or one of each. Each of the fields is reported. Clients match on codes, so each code is declared once.
+**What it reports.** Two or more catalogue fields that have the same code in one compilation. A field declared with a factory of `Error` has a default code or a code given by <xref:YAF.Core.Results.ErrorCodeAttribute>. A field initialised by `new ErrorDescriptor(…)`, or by the target-typed `new(…)`, has its constant `code` argument as its code, which needs no `YafServiceCode`; a field whose `code` argument is not a constant is not checked. Codes of both kinds are compared with each other. Each of the fields is reported. Clients match on codes, so each code is declared once.
 
 **Example.** A field `NotFound` of `Session.Errors` with the attribute `[ErrorCode("catalog.session.missing")]` and a field `Missing` of the same catalogue, whose default code with `YafServiceCode` `catalog` is also `catalog.session.missing`, are both reported. Removing the attribute, or pinning a different code, clears the diagnostic.
 
@@ -52,7 +52,7 @@ An analyzer sees one compilation only. The same code declared in two assemblies 
 
 **Message placeholder without an argument.** Warning. Message: "The placeholder '{0}' of the message template of '{1}' has no argument", with the placeholder in braces, for example '{Capacity}'.
 
-**What it reports.** A call `descriptor.With((name, value), …)` that passes no argument for a `{Name}` placeholder of the descriptor's message template. A placeholder without an argument stays in the message as it is. Names are compared case-sensitively. The analyzer checks a call only when the descriptor is a field declared in the same compilation, its template is a constant and every argument name is a constant; other calls are not reported.
+**What it reports.** A call `descriptor.With((name, value), …)` that passes no argument for a `{Name}` placeholder of the descriptor's message template. A placeholder without an argument stays in the message as it is. Names are compared case-sensitively. The analyzer checks a call only when the descriptor is a field declared in the same compilation, its template is a constant and every argument name is a constant; other calls are not reported. The template of a field initialised by `new ErrorDescriptor(…)` is the argument for the parameter `MessageTemplate`, so named arguments in any order are read as well.
 
 **Example.** For a descriptor with the template "Session has no free seats (capacity {Capacity})." the call `Full.With(("Seats", 40))` is reported, and so is `Full.With(("capacity", 40))`. Passing `("Capacity", 40)` fills the placeholder:
 
@@ -68,8 +68,8 @@ An analyzer sees one compilation only. The same code declared in two assemblies 
 - "needs the MSBuild property YafServiceCode to match [a-z0-9_]+, but it is '…'";
 - "is '…', which is not lower-case [a-z0-9_.], starts or ends with a dot, or is longer than 100 characters".
 
-**What it reports.** A factory call that initialises a catalogue field and needs a default code while the project's `YafServiceCode` is missing or is not one segment of `[a-z0-9_]`. Also such a field whose default code or `[ErrorCode]` code breaks the rules for codes: lower-case `[a-z0-9_.]`, not starting or ending with a dot, at most 100 characters.
+**What it reports.** A factory call that initialises a catalogue field and needs a default code while the project's `YafServiceCode` is missing or is not one segment of `[a-z0-9_]`. Also such a field whose default code or `[ErrorCode]` code breaks the rules for codes: lower-case `[a-z0-9_.]`, not starting or ending with a dot, at most 100 characters. Also a `new ErrorDescriptor(…)`, or a target-typed `new(…)`, that initialises a catalogue field with a constant `code` argument that breaks those rules. Such a code is used as it is and needs no `YafServiceCode`; a `code` argument that is not a constant is not checked.
 
-**Example.** In a project without `YafServiceCode`, `Error.NotFound("Session was not found.")` on a catalogue field with no `[ErrorCode]` is reported; with `<YafServiceCode>catalog</YafServiceCode>` its code is `catalog.session.not_found`. The same field with `[ErrorCode("Catalog.Session.Missing")]` is reported in any project, because of its capitals.
+**Example.** In a project without `YafServiceCode`, `Error.NotFound("Session was not found.")` on a catalogue field with no `[ErrorCode]` is reported; with `<YafServiceCode>catalog</YafServiceCode>` its code is `catalog.session.not_found`. The same field with `[ErrorCode("Catalog.Session.Missing")]` is reported in any project, because of its capitals, and so is a field initialised by `new ErrorDescriptor("Catalog.Session.Missing", ErrorKind.NotFound, "Session was not found.")`.
 
-**How to fix it.** Set `<YafServiceCode>` in the project file to one lower-case segment, for example `catalog` (see [Results and errors](results-and-errors.md#configuration)). Correct an `[ErrorCode]` code to the rules above. A default code that breaks them, for example one longer than 100 characters, is fixed with a shorter field or type name, or with an `[ErrorCode]` code.
+**How to fix it.** Set `<YafServiceCode>` in the project file to one lower-case segment, for example `catalog` (see [Results and errors](results-and-errors.md#configuration)). Correct an `[ErrorCode]` code, or the `code` argument of `new ErrorDescriptor(…)`, to the rules above. A default code that breaks them, for example one longer than 100 characters, is fixed with a shorter field or type name, or with an `[ErrorCode]` code.
