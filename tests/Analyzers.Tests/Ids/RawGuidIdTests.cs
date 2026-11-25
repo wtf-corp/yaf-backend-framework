@@ -8,14 +8,14 @@ namespace Analyzers.Tests.Ids;
 public sealed class RawGuidIdTests
 {
     [Fact]
-    public async Task PublicMethodGuidSessionId_ReportsYAF1001()
+    public async Task PublicMethodGuidSessionId_ReportsYAF2009()
     {
         var source = Snippet("public class", "public void Book(Guid sessionId) { }");
 
         using var result = await RunAsync(source);
 
         var diagnostic = result.Diagnostics.Should().ContainSingle().Which;
-        diagnostic.Id.Should().Be("YAF1001");
+        diagnostic.Id.Should().Be("YAF2009");
         diagnostic.Severity.Should().Be(DiagnosticSeverity.Warning);
         diagnostic.GetMessage(CultureInfo.InvariantCulture).Should()
             .Be("The parameter 'sessionId' of 'Probe.Sessions.Book(System.Guid)' is a raw Guid; use a typed id");
@@ -23,26 +23,26 @@ public sealed class RawGuidIdTests
     }
 
     [Fact]
-    public async Task ProtectedConstructorNullableGuidNamedId_ReportsYAF1001()
+    public async Task ProtectedConstructorNullableGuidNamedId_ReportsYAF2009()
     {
         var source = Snippet("public class", "protected Sessions(Guid? id) { }");
 
         using var result = await RunAsync(source);
 
         var diagnostic = result.Diagnostics.Should().ContainSingle().Which;
-        diagnostic.Id.Should().Be("YAF1001");
+        diagnostic.Id.Should().Be("YAF2009");
         Text(diagnostic).Should().Be("id");
     }
 
     [Fact]
-    public async Task PublicIndexerGuidSessionId_ReportsYAF1001Once()
+    public async Task PublicIndexerGuidSessionId_ReportsYAF2009Once()
     {
         var source = Snippet("public class", "public int this[Guid sessionId] => 0;");
 
         using var result = await RunAsync(source);
 
         var diagnostic = result.Diagnostics.Should().ContainSingle().Which;
-        diagnostic.Id.Should().Be("YAF1001");
+        diagnostic.Id.Should().Be("YAF2009");
         Text(diagnostic).Should().Be("sessionId");
     }
 
