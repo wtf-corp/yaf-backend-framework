@@ -7,7 +7,8 @@ namespace YAF.Analyzers.ErrorCodes;
 
 /// <summary>
 /// Reports <c>YAF3001</c> on <c>new Error(…)</c>, <c>new ErrorDescriptor(…)</c> or a factory call of <c>Error</c> anywhere other than the
-/// initialiser of a static field of an <c>IErrorCatalog</c> type (03 §2). Creation inside <c>Error</c> and <c>ErrorDescriptor</c>
+/// initialiser of a static field of type <c>Error</c> or <c>ErrorDescriptor</c> of an <c>IErrorCatalog</c> type (03 §2), whatever
+/// conversion leads from the creation to the field. Creation inside <c>Error</c> and <c>ErrorDescriptor</c>
 /// themselves (<c>ToError</c>, <c>With</c>, <c>At</c>) and generated code are not reported.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
@@ -18,12 +19,12 @@ internal sealed class CatalogueAnalyzer : DiagnosticAnalyzer
     public static readonly DiagnosticDescriptor OutsideCatalogue = new(
         "YAF3001",
         "Error created outside an error catalogue",
-        "'{0}' is created outside the initialiser of a static field of an IErrorCatalog type",
+        "'{0}' is created outside the initialiser of a static field of type Error or ErrorDescriptor of an IErrorCatalog type",
         "YAF.Errors",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,
-        description: "Declare each error once, as a static readonly ErrorDescriptor field of an IErrorCatalog type initialised by a factory "
-            + "of Error, and create the error from it with ToError, With or At.");
+        description: "Declare each error once, as a static readonly field of type ErrorDescriptor or Error of an IErrorCatalog type "
+            + "initialised by a factory of Error, and create the error from it with ToError, With or At.");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [OutsideCatalogue];
 
@@ -86,6 +87,9 @@ internal sealed class CatalogueAnalyzer : DiagnosticAnalyzer
 
         return parent is IFieldInitializerOperation initializer
         && initializer.InitializedFields.All(static field =>
-            field.IsStatic && field.ContainingType.AllInterfaces.Any(static type => type.ToDisplayString() == ErrorCodeNaming.CatalogueTypeName));
+            field.IsStatic
+            && field.Type.WithNullableAnnotation(NullableAnnotation.None).ToDisplayString()
+                is ErrorCodeNaming.ErrorTypeName or DescriptorTypeName
+            && field.ContainingType.AllInterfaces.Any(static type => type.ToDisplayString() == ErrorCodeNaming.CatalogueTypeName));
     }
 }
