@@ -10,6 +10,6 @@ namespace YAF.Core.Ids;
 /// </remarks>
 public interface ITypedId
 {
-    /// <summary>Gets the wrapped value, a version 7 UUID assigned when the id was created.</summary>
+    /// <summary>Gets the wrapped value. Ids created by the generated <c>New()</c> use a version 7 UUID.</summary>
     Guid Value { get; }
 }

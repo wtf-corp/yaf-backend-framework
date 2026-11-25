@@ -22,7 +22,7 @@ internal static class TypedIdSource
             {
                 private {{name}}(global::System.Guid value) => Value = value;
 
-                /// <summary>Gets the wrapped value, a version 7 UUID assigned when the id was created.</summary>
+                /// <summary>Gets the wrapped value. Ids created by <see cref="New"/> use a version 7 UUID.</summary>
                 public global::System.Guid Value { get; }
 
                 /// <summary>Creates a new id from a version 7 UUID.</summary>
