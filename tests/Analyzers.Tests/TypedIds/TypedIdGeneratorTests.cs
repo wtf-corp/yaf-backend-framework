@@ -29,6 +29,8 @@ public sealed class TypedIdGeneratorTests
 
             public static bool TryParse(string? text) => SessionId.TryParse(text, null, out _);
 
+            public static object[] TryParseWithId(string? text) => [SessionId.TryParse(text, null, out var id), id];
+
             public static string ToJson(object id) => JsonSerializer.Serialize((SessionId)id);
 
             public static object FromJson(string json) => JsonSerializer.Deserialize<SessionId>(json);
@@ -100,6 +102,17 @@ public sealed class TypedIdGeneratorTests
         var parsed = Call(result, "TryParse", "not-a-guid");
 
         parsed.Should().Be(false);
+    }
+
+    [Fact]
+    public async Task TryParse_Guid_ReturnsTrueAndId()
+    {
+        using var result = await RunAsync();
+
+        var parsed = (object[])Call(result, "TryParseWithId", s_value.ToString("D"));
+
+        parsed[0].Should().Be(true);
+        parsed[1].Should().Be(Call(result, "From", s_value));
     }
 
     [Fact]
