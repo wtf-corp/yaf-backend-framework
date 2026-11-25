@@ -51,6 +51,17 @@ public sealed class ErrorCodeDiagnosticTests
         ShouldReportYaf3004At(result, "Error.Validation(\"Title.\")");
     }
 
+    [Fact]
+    public async Task CodeOf100Characters_ReportsNothing()
+    {
+        var code = "catalog." + new string('x', 92);
+        var source = Catalogue($"[ErrorCode(\"{code}\")] public static readonly ErrorDescriptor TitleRequired = Error.Validation(\"Title.\");");
+
+        using var result = await RunAsync(source, s_catalog);
+
+        result.Diagnostics.Should().BeEmpty();
+    }
+
     [Theory]
     [InlineData(".catalog.session.title")]
     [InlineData("catalog.session.title.")]
