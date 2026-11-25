@@ -13,23 +13,23 @@ namespace YAF.Core.Classification;
 public static class YafTaxonomy
 {
     /// <summary>The name of the taxonomy: <c>YAF</c>.</summary>
-    public const string TaxonomyName = "YAF";
+    public const string Name = "YAF";
 
     /// <summary>Ids, codes, statuses and published content. Carried by <see cref="PublicDataAttribute"/>.</summary>
-    public static readonly DataClassification Public = new(TaxonomyName, nameof(Public));
+    public static readonly DataClassification Public = new(Name, nameof(Public));
 
     /// <summary>Business data that is not about a person. Carried by <see cref="InternalDataAttribute"/>.</summary>
-    public static readonly DataClassification Internal = new(TaxonomyName, nameof(Internal));
+    public static readonly DataClassification Internal = new(Name, nameof(Internal));
 
     /// <summary>Data that identifies or describes a person. Carried by <see cref="PersonalDataAttribute"/>.</summary>
-    public static readonly DataClassification Personal = new(TaxonomyName, nameof(Personal));
+    public static readonly DataClassification Personal = new(Name, nameof(Personal));
 
     /// <summary>
     /// Special categories of personal data, financial account data, precise location and a person's credentials.
     /// Carried by <see cref="SensitivePersonalDataAttribute"/>.
     /// </summary>
-    public static readonly DataClassification SensitivePersonal = new(TaxonomyName, nameof(SensitivePersonal));
+    public static readonly DataClassification SensitivePersonal = new(Name, nameof(SensitivePersonal));
 
     /// <summary>Data that grants access: passwords, tokens, keys, connection strings, presigned URLs. Carried by <see cref="SecretDataAttribute"/>.</summary>
-    public static readonly DataClassification Secret = new(TaxonomyName, nameof(Secret));
+    public static readonly DataClassification Secret = new(Name, nameof(Secret));
 }

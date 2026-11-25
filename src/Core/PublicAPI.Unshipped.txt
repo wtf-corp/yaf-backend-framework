@@ -139,7 +139,7 @@ YAF.Core.Results.Result<T>.Then<TOut>(System.Func<T, YAF.Core.Results.Result<TOu
 YAF.Core.Results.Result<T>.ThenAsync<TOut>(System.Func<T, System.Threading.Tasks.Task<YAF.Core.Results.Result<TOut>>!>! continuation) -> System.Threading.Tasks.Task<YAF.Core.Results.Result<TOut>>!
 YAF.Core.Results.Result<T>.ThenAsync<TOut>(System.Func<T, System.Threading.Tasks.ValueTask<YAF.Core.Results.Result<TOut>>>! continuation) -> System.Threading.Tasks.ValueTask<YAF.Core.Results.Result<TOut>>
 YAF.Core.Results.Result<T>.Value.get -> T
-const YAF.Core.Classification.YafTaxonomy.TaxonomyName = "YAF" -> string!
+const YAF.Core.Classification.YafTaxonomy.Name = "YAF" -> string!
 override YAF.Core.Results.Error.Equals(object? obj) -> bool
 override YAF.Core.Results.Error.GetHashCode() -> int
 override YAF.Core.Results.Error.ToString() -> string!

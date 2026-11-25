@@ -60,8 +60,8 @@ public sealed class ClassificationAttributeTests
             [YafTaxonomy.Public, YafTaxonomy.Internal, YafTaxonomy.Personal, YafTaxonomy.SensitivePersonal, YafTaxonomy.Secret];
 
         values.Should().OnlyHaveUniqueItems();
-        values.Should().AllSatisfy(value => value.TaxonomyName.Should().Be(YafTaxonomy.TaxonomyName));
-        YafTaxonomy.TaxonomyName.Should().Be("YAF");
+        values.Should().AllSatisfy(value => value.TaxonomyName.Should().Be(YafTaxonomy.Name));
+        YafTaxonomy.Name.Should().Be("YAF");
     }
 
     [Fact]
