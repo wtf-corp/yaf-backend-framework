@@ -5,7 +5,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace YAF.Analyzers.Ids;
 
 /// <summary>
-/// Reports <c>YAF1001</c> on each parameter of type <see cref="Guid"/> or <c>Guid?</c> named <c>id</c> or <c>*Id</c> of a method,
+/// Reports <c>YAF2009</c> on each parameter of type <see cref="Guid"/> or <c>Guid?</c> named <c>id</c> or <c>*Id</c> of a method,
 /// constructor or indexer that is public or protected in a public type (02 §3; plan 0006, Q4). Only in a compilation that references
 /// YAF.Core. Generated code and the <c>From(Guid)</c> of a typed id are not reported.
 /// </summary>
@@ -15,7 +15,7 @@ internal sealed class RawGuidIdAnalyzer : DiagnosticAnalyzer
     private const string TypedIdTypeName = "YAF.Core.Ids.ITypedId`1";
 
     public static readonly DiagnosticDescriptor RawGuidId = new(
-        "YAF1001",
+        "YAF2009",
         "Raw Guid id parameter",
         "The parameter '{0}' of '{1}' is a raw Guid; use a typed id",
         "YAF.Ids",

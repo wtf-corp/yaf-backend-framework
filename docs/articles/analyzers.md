@@ -2,19 +2,19 @@
 
 `YAF.Core` ships Roslyn analyzers next to its source generators. They run in every project that references `YAF.Core` and report, at compile time, code that the building blocks of YAF cannot accept: a raw `Guid` where a typed id belongs, and an error that is not declared once, in a catalogue, with a valid and unique code.
 
-Each diagnostic has the id `YAF`, the number of the specification file of its area and a three-digit sequence: `YAF1001` belongs to the domain, `YAF3001` to results and errors. A diagnostic of severity Error fails the build. A Warning fails it too where warnings are treated as errors, as in YAF itself.
+Each diagnostic has the id `YAF`, the number of the specification file of its area and a three-digit sequence: `YAF2009` belongs to the domain, `YAF3001` to results and errors. A diagnostic of severity Error fails the build. A Warning fails it too where warnings are treated as errors, as in YAF itself.
 
 A diagnostic marks code to change. Fix the code as described below; do not silence the diagnostic.
 
 | Id | Category | Severity | Title |
 |---|---|---|---|
-| [`YAF1001`](#yaf1001) | `YAF.Ids` | Warning | Raw Guid id parameter |
+| [`YAF2009`](#yaf2009) | `YAF.Ids` | Warning | Raw Guid id parameter |
 | [`YAF3001`](#yaf3001) | `YAF.Errors` | Error | Error created outside an error catalogue |
 | [`YAF3002`](#yaf3002) | `YAF.Errors` | Error | Two errors have the same code |
 | [`YAF3003`](#yaf3003) | `YAF.Errors` | Warning | Message placeholder without an argument |
 | [`YAF3004`](#yaf3004) | `YAF.Errors` | Error | Error code cannot be computed or is invalid |
 
-## YAF1001
+## YAF2009
 
 **Raw Guid id parameter.** Warning. Message: "The parameter '{0}' of '{1}' is a raw Guid; use a typed id".
 
