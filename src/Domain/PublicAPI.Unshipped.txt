@@ -1,4 +1,14 @@
 #nullable enable
+YAF.Domain.Events.DomainEvent
+YAF.Domain.Events.DomainEvent.DomainEvent() -> void
+YAF.Domain.Events.DomainEvent.DomainEvent(YAF.Domain.Events.DomainEvent! original) -> void
+YAF.Domain.Events.DomainEvent.EventId.get -> System.Guid
+YAF.Domain.Events.DomainEvent.EventId.init -> void
+YAF.Domain.Events.DomainEvent.OccurredAt.get -> System.DateTimeOffset
+YAF.Domain.Events.DomainEvent.OccurredAt.init -> void
+YAF.Domain.Events.IDomainEvent
+YAF.Domain.Events.IDomainEvent.EventId.get -> System.Guid
+YAF.Domain.Events.IDomainEvent.OccurredAt.get -> System.DateTimeOffset
 YAF.Domain.Mementos.CorruptStateException
 YAF.Domain.Mementos.CorruptStateException.CorruptStateException() -> void
 YAF.Domain.Mementos.CorruptStateException.CorruptStateException(string! message) -> void
@@ -31,3 +41,12 @@ YAF.Domain.Mementos.ITenantOwnedMemento.TenantId.set -> void
 YAF.Domain.Mementos.IVersionedMemento
 YAF.Domain.Mementos.IVersionedMemento.Version.get -> System.Guid
 YAF.Domain.Mementos.IVersionedMemento.Version.set -> void
+abstract YAF.Domain.Events.DomainEvent.<Clone>$() -> YAF.Domain.Events.DomainEvent!
+override YAF.Domain.Events.DomainEvent.Equals(object? obj) -> bool
+override YAF.Domain.Events.DomainEvent.GetHashCode() -> int
+override YAF.Domain.Events.DomainEvent.ToString() -> string!
+static YAF.Domain.Events.DomainEvent.operator !=(YAF.Domain.Events.DomainEvent? left, YAF.Domain.Events.DomainEvent? right) -> bool
+static YAF.Domain.Events.DomainEvent.operator ==(YAF.Domain.Events.DomainEvent? left, YAF.Domain.Events.DomainEvent? right) -> bool
+virtual YAF.Domain.Events.DomainEvent.EqualityContract.get -> System.Type!
+virtual YAF.Domain.Events.DomainEvent.Equals(YAF.Domain.Events.DomainEvent? other) -> bool
+virtual YAF.Domain.Events.DomainEvent.PrintMembers(System.Text.StringBuilder! builder) -> bool
