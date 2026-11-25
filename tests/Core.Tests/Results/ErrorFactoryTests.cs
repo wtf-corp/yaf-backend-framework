@@ -18,6 +18,7 @@ public sealed class ErrorFactoryTests
         Error.Failure,
     };
 
+    #region missing-generator
     [Fact]
     public void NotFound_WithoutGenerator_Throws()
     {
@@ -26,6 +27,7 @@ public sealed class ErrorFactoryTests
         act.Should().Throw<InvalidOperationException>()
             .Which.Message.Should().Contain("YAF.Core").And.Contain("YafServiceCode");
     }
+    #endregion
 
     [Theory]
     [MemberData(nameof(Factories))]
@@ -45,6 +47,7 @@ public sealed class ErrorFactoryTests
             .WithInnerException<InvalidOperationException>();
     }
 
+    #region catalogue
     private static class SampleCatalogue
     {
         internal abstract class Errors : IErrorCatalog
@@ -52,4 +55,5 @@ public sealed class ErrorFactoryTests
             public static readonly ErrorDescriptor Missing = Error.NotFound("Sample was not found.");
         }
     }
+    #endregion
 }

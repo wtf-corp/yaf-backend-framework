@@ -159,11 +159,13 @@ public sealed class ResultUnionTests
         allocated.Should().Be(0);
     }
 
+    #region exhaustive-switch
     private static string Describe(Result<int> result) => result switch
     {
         int value => $"value {value}",
         IReadOnlyList<Error> errors => $"error {errors[0].Code}",
     };
+    #endregion
 
     private static int Classify(Result<int> result) => result switch
     {
