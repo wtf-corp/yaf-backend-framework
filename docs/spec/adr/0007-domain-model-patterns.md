@@ -85,7 +85,7 @@ Contract: `spec/02-domain.md`.
 | Mechanism | What it checks |
 |---|---|
 | Architecture rules in `YAF.Testing.Architecture` | Domain references only `YAF.Domain`/`YAF.Core`; no public constructors or setters on aggregates; collections read-only; events immutable and not referencing aggregate types |
-| Analyzer `YAF1001` | Raw `Guid` id parameters on public domain or application members |
+| Analyzer `YAF2009` | Raw `Guid` id parameters on public domain or application members |
 | Analyzers `YAF2001`, `YAF2002` | Memento members classified; retention on personal-data types |
 | Analyzer `YAF2008` | `[StoredInClear]` on sensitive or secret data, or without a reason |
 | Analyzer `YAF3001` | Errors declared only in catalogues |
@@ -95,6 +95,8 @@ Contract: `spec/02-domain.md`.
 | Concurrency test | Two commands changing different children of one aggregate cannot both commit |
 | State machine test helper | Every state reachable; every non-final state has an exit |
 | Banned API list | Clock and `Guid.NewGuid()` in domain code |
+
+> **Amended 2026-11-25**, by the owner's decisions of 2026-11-25 (`specs/0008-m1-maintenance/plan.md`, decision log): the analyzer id is renamed from `YAF1001` to `YAF2009`, following the numbering of `spec/01-repository-and-packages.md` §2.1. The decision of this ADR is unchanged.
 
 ## Guidance for agents
 
