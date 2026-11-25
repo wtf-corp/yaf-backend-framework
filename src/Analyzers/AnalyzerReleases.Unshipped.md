@@ -4,6 +4,7 @@
 
 Rule ID | Category | Severity | Notes
 --------|----------|----------|-------
+YAF1001 | YAF.Ids | Warning | RawGuidIdAnalyzer
 YAF3001 | YAF.Errors | Error | CatalogueAnalyzer
 YAF3002 | YAF.Errors | Error | DuplicateCodeAnalyzer
 YAF3003 | YAF.Errors | Warning | TemplateArgumentAnalyzer
