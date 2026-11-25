@@ -16,6 +16,9 @@ internal sealed class TemplateArgumentAnalyzer : DiagnosticAnalyzer
 {
     private const string DescriptorTypeName = "YAF.Core.Results.ErrorDescriptor";
 
+    // The parameter of the ErrorDescriptor constructor that takes the template; arguments are matched by it, never by position.
+    private const string TemplateParameterName = "MessageTemplate";
+
     private static readonly SymbolDisplayFormat s_fieldFormat = new(
         typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypes,
         memberOptions: SymbolDisplayMemberOptions.IncludeContainingType);
@@ -54,8 +57,9 @@ internal sealed class TemplateArgumentAnalyzer : DiagnosticAnalyzer
             IInvocationOperation { TargetMethod: { IsStatic: true } method, Arguments: { Length: 1 } arguments }
                 when method.ContainingType.ToDisplayString() == ErrorCodeNaming.ErrorTypeName
                 && ErrorCodeNaming.FactoryNames.Contains(method.Name) => arguments[0].Value.ConstantValue,
-            IObjectCreationOperation { Arguments: { Length: 3 } arguments } creation
-                when creation.Type?.ToDisplayString() == DescriptorTypeName => arguments[2].Value.ConstantValue,
+            IObjectCreationOperation { Arguments: var arguments } creation
+                when creation.Type?.ToDisplayString() == DescriptorTypeName
+                => arguments.FirstOrDefault(argument => argument.Parameter?.Name == TemplateParameterName)?.Value.ConstantValue ?? default,
             _ => default,
         };
 
