@@ -43,6 +43,11 @@ YAF.Core.Ids.ITypedId<TSelf>
 YAF.Core.Ids.ITypedId<TSelf>.From(System.Guid value) -> TSelf
 YAF.Core.Ids.TypedIdAttribute
 YAF.Core.Ids.TypedIdAttribute.TypedIdAttribute() -> void
+YAF.Core.Optional<T>
+YAF.Core.Optional<T>.Equals(YAF.Core.Optional<T> other) -> bool
+YAF.Core.Optional<T>.HasValue.get -> bool
+YAF.Core.Optional<T>.Optional() -> void
+YAF.Core.Optional<T>.Value.get -> T
 YAF.Core.Results.CoreErrors
 YAF.Core.Results.Error
 YAF.Core.Results.Error.<Clone>$() -> YAF.Core.Results.Error!
@@ -141,6 +146,8 @@ YAF.Core.Results.Result<T>.ThenAsync<TOut>(System.Func<T, System.Threading.Tasks
 YAF.Core.Results.Result<T>.ThenAsync<TOut>(System.Func<T, System.Threading.Tasks.ValueTask<YAF.Core.Results.Result<TOut>>>! continuation) -> System.Threading.Tasks.ValueTask<YAF.Core.Results.Result<TOut>>
 YAF.Core.Results.Result<T>.Value.get -> T
 const YAF.Core.Classification.YafTaxonomy.Name = "YAF" -> string!
+override YAF.Core.Optional<T>.Equals(object? obj) -> bool
+override YAF.Core.Optional<T>.GetHashCode() -> int
 override YAF.Core.Results.Error.Equals(object? obj) -> bool
 override YAF.Core.Results.Error.GetHashCode() -> int
 override YAF.Core.Results.Error.ToString() -> string!
@@ -150,6 +157,9 @@ override YAF.Core.Results.ErrorDescriptor.ToString() -> string!
 static YAF.Core.Guard.NotDefault<T>(T value, string? paramName = null) -> void
 static YAF.Core.Guard.NotNull(object? value, string? paramName = null) -> void
 static YAF.Core.Guard.NotNullOrWhiteSpace(string? value, string? paramName = null) -> void
+static YAF.Core.Optional<T>.implicit operator YAF.Core.Optional<T>(T value) -> YAF.Core.Optional<T>
+static YAF.Core.Optional<T>.operator !=(YAF.Core.Optional<T> left, YAF.Core.Optional<T> right) -> bool
+static YAF.Core.Optional<T>.operator ==(YAF.Core.Optional<T> left, YAF.Core.Optional<T> right) -> bool
 static YAF.Core.Results.Error.Conflict(string! messageTemplate) -> YAF.Core.Results.ErrorDescriptor!
 static YAF.Core.Results.Error.Failure(string! messageTemplate) -> YAF.Core.Results.ErrorDescriptor!
 static YAF.Core.Results.Error.Forbidden(string! messageTemplate) -> YAF.Core.Results.ErrorDescriptor!
