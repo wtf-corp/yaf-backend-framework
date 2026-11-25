@@ -38,7 +38,7 @@ First match wins.
 
 ## Rules
 
-1. **REQUIRED** Ids are source-generated typed ids, UUIDv7, assigned by the domain at creation (`SessionId.New()`). No "empty until saved" id; no raw `Guid` named `*Id` on public members (YAF1001).
+1. **REQUIRED** Ids are source-generated typed ids, UUIDv7, assigned by the domain at creation (`SessionId.New()`). No "empty until saved" id; no raw `Guid` named `*Id` on public members (YAF2009).
 2. **REQUIRED** Aggregate constructors are `private` or `internal`. Creation goes through `static Result<T> Create(...)` or an `AggregateBuilder<T>` whose `Build()` returns `Result<T>`.
 3. **REQUIRED** No public setters. Collections are exposed as `IReadOnlyCollection<T>` / `IReadOnlyList<T>` (architecture test).
 4. **REQUIRED** State changes only through behaviour methods named in the ubiquitous language. A behaviour that can fail returns `Result` / `Result<T>`; it never throws for a business outcome.
@@ -104,7 +104,7 @@ A full aggregate with child, memento, errors, state machine, rule, specification
 
 ## Verify
 
-- `dotnet build YAF.slnx` (zero warnings; analyzers YAF1001, YAF2001, YAF2002, YAF3001 are errors).
+- `dotnet build YAF.slnx` (zero warnings; analyzers YAF2009, YAF2001, YAF2002, YAF3001 are errors).
 - `dotnet test --project <service>/tests/Domain.Tests`.
 - Memento round-trip test exists for every aggregate you touched.
 - State machine test: every state reachable, every non-final state has an exit.
