@@ -3,6 +3,7 @@
     <Project Path="src/Analyzers/Analyzers.csproj" />
     <Project Path="src/Core/Core.csproj" />
     <Project Path="src/Domain/Domain.csproj" />
+    <Project Path="src/Testing/Testing.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Analyzers.Tests/Analyzers.Tests.csproj" />
@@ -11,5 +12,6 @@
     <Project Path="tests/Benchmarks/Cases/Benchmarks.Cases.csproj" />
     <Project Path="tests/Core.Tests/Core.Tests.csproj" />
     <Project Path="tests/Domain.Tests/Domain.Tests.csproj" />
+    <Project Path="tests/Testing.Tests/Testing.Tests.csproj" />
   </Folder>
 </Solution>
