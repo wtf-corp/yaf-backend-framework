@@ -80,6 +80,36 @@ public sealed class CatalogueAnalyzerTests
     }
 
     [Fact]
+    public async Task CatalogueFieldOfTypeResult_ReportsYAF3001()
+    {
+        var source = Snippet("""
+            public sealed class Errors : IErrorCatalog
+            {
+                public static readonly Result Full = new Error("catalog.session.full", ErrorKind.Conflict, "Full.");
+            }
+            """);
+
+        using var result = await RunAsync(source);
+
+        ShouldReportYaf3001At(result, "new Error(\"catalog.session.full\", ErrorKind.Conflict, \"Full.\")");
+    }
+
+    [Fact]
+    public async Task CatalogueFieldOfTypeObject_ReportsYAF3001()
+    {
+        var source = Snippet("""
+            public sealed class Errors : IErrorCatalog
+            {
+                public static readonly object Full = Error.Conflict("Full.");
+            }
+            """);
+
+        using var result = await RunAsync(source);
+
+        ShouldReportYaf3001At(result, "Error.Conflict(\"Full.\")");
+    }
+
+    [Fact]
     public async Task CatalogueStaticField_ReportsNothing()
     {
         var source = Snippet("""
@@ -90,6 +120,7 @@ public sealed class CatalogueAnalyzerTests
                     public static readonly ErrorDescriptor Full = Error.Conflict("Session is full.");
                     public static readonly ErrorDescriptor Closed = new("catalog.session.closed", ErrorKind.Conflict, "Closed.");
                     public static readonly Error Gone = new Error("catalog.session.gone", ErrorKind.NotFound, "Gone.");
+                    public static readonly Error? Moved = new Error("catalog.session.moved", ErrorKind.NotFound, "Moved.");
                 }
             }
             """);
