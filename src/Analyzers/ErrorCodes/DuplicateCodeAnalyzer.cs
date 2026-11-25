@@ -10,7 +10,8 @@ namespace YAF.Analyzers.ErrorCodes;
 /// <summary>
 /// Reports <c>YAF3002</c> on each error field of an error catalogue whose code another field of the same compilation also has, naming the
 /// other fields (03 §2). The codes are those of the generator (<see cref="ErrorCodeNaming.Code"/>); a field whose default code cannot be
-/// computed is left to <c>YAF3004</c>.
+/// computed is left to <c>YAF3004</c>. A field initialised by <c>new ErrorDescriptor(…)</c> counts with its constant code
+/// (<see cref="ErrorCodeNaming.ConstructorField"/>); one whose code is not a constant is not checked (plan 0008, T4).
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 internal sealed class DuplicateCodeAnalyzer : DiagnosticAnalyzer
@@ -40,6 +41,8 @@ internal sealed class DuplicateCodeAnalyzer : DiagnosticAnalyzer
             var serviceCode = ErrorCodeNaming.ServiceCode(start.Options.AnalyzerConfigOptionsProvider.GlobalOptions);
             var fields = new ConcurrentBag<(string Code, IFieldSymbol Field)>();
             start.RegisterSyntaxNodeAction(node => Collect(node, serviceCode, fields), SyntaxKind.InvocationExpression);
+            start.RegisterSyntaxNodeAction(
+                node => CollectCreation(node, fields), SyntaxKind.ObjectCreationExpression, SyntaxKind.ImplicitObjectCreationExpression);
             start.RegisterCompilationEndAction(end => Report(end, fields));
         });
     }
@@ -52,6 +55,15 @@ internal sealed class DuplicateCodeAnalyzer : DiagnosticAnalyzer
             && ErrorCodeNaming.Code(field, serviceCode) is { } code)
         {
             fields.Add((code, field));
+        }
+    }
+
+    private static void CollectCreation(SyntaxNodeAnalysisContext context, ConcurrentBag<(string Code, IFieldSymbol Field)> fields)
+    {
+        if (ErrorCodeNaming.ConstructorField((BaseObjectCreationExpressionSyntax)context.Node, context.SemanticModel, context.CancellationToken)
+            is { } declared)
+        {
+            fields.Add((declared.Code, declared.Field));
         }
     }
 

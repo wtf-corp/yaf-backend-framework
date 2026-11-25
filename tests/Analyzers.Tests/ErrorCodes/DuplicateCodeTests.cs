@@ -92,6 +92,70 @@ public sealed class DuplicateCodeTests
         result.Diagnostics.Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task ConstructorCodeEqualsDefaultCode_ReportsYAF3002OnBoth()
+    {
+        var source = """
+            using YAF.Core.Results;
+            namespace Probe;
+            public static class Session
+            {
+                public sealed class Errors : IErrorCatalog
+                {
+                    public static readonly ErrorDescriptor Full = Error.Conflict("Session is full.");
+                    public static readonly ErrorDescriptor NoSeats = new("catalog.session.full", ErrorKind.Conflict, "No seats left.");
+                }
+            }
+            """;
+
+        using var result = await RunAsync(source);
+
+        ShouldReportYaf3002(result, "Full", "Session.Errors.NoSeats", "NoSeats", "Session.Errors.Full");
+    }
+
+    [Fact]
+    public async Task TwoConstructorFieldsSameCode_ReportsYAF3002OnBoth()
+    {
+        var source = """
+            using YAF.Core.Results;
+            namespace Probe;
+            public static class Session
+            {
+                public sealed class Errors : IErrorCatalog
+                {
+                    public static readonly ErrorDescriptor Full = new ErrorDescriptor("catalog.session.full", ErrorKind.Conflict, "Full.");
+                    public static readonly ErrorDescriptor NoSeats = new("catalog.session.full", ErrorKind.Conflict, "No seats left.");
+                }
+            }
+            """;
+
+        using var result = await RunAsync(source);
+
+        ShouldReportYaf3002(result, "Full", "Session.Errors.NoSeats", "NoSeats", "Session.Errors.Full");
+    }
+
+    [Fact]
+    public async Task ConstructorFieldsDistinctCodes_ReportsNothing()
+    {
+        var source = """
+            using YAF.Core.Results;
+            namespace Probe;
+            public static class Session
+            {
+                public sealed class Errors : IErrorCatalog
+                {
+                    public static readonly ErrorDescriptor Full = Error.Conflict("Session is full.");
+                    public static readonly ErrorDescriptor Closed = new("catalog.session.closed", ErrorKind.Conflict, "Closed.");
+                    public static readonly ErrorDescriptor Gone = new ErrorDescriptor("catalog.session.gone", ErrorKind.NotFound, "Gone.");
+                }
+            }
+            """;
+
+        using var result = await RunAsync(source);
+
+        result.Diagnostics.Should().BeEmpty();
+    }
+
     private static Task<HarnessResult> RunAsync(string source) =>
         GeneratorHarness.RunAsync(source, [new ErrorCodeGenerator()], [new DuplicateCodeAnalyzer()], s_catalog);
 
