@@ -1,4 +1,41 @@
 #nullable enable
+YAF.Core.Classification.FieldIdAttribute
+YAF.Core.Classification.FieldIdAttribute.FieldIdAttribute(string! id) -> void
+YAF.Core.Classification.FieldIdAttribute.Id.get -> string!
+YAF.Core.Classification.InternalDataAttribute
+YAF.Core.Classification.InternalDataAttribute.InternalDataAttribute() -> void
+YAF.Core.Classification.PersonalDataAttribute
+YAF.Core.Classification.PersonalDataAttribute.Category.get -> YAF.Core.Classification.PersonalDataCategory
+YAF.Core.Classification.PersonalDataAttribute.PersonalDataAttribute(YAF.Core.Classification.PersonalDataCategory category) -> void
+YAF.Core.Classification.PersonalDataAttribute.PropagateRectification.get -> bool
+YAF.Core.Classification.PersonalDataAttribute.PropagateRectification.set -> void
+YAF.Core.Classification.PersonalDataAttribute.ProvidedBySubject.get -> bool
+YAF.Core.Classification.PersonalDataAttribute.ProvidedBySubject.set -> void
+YAF.Core.Classification.PersonalDataAttribute.Purpose.get -> string?
+YAF.Core.Classification.PersonalDataAttribute.Purpose.set -> void
+YAF.Core.Classification.PersonalDataCategory
+YAF.Core.Classification.PersonalDataCategory.Behavioural = 6 -> YAF.Core.Classification.PersonalDataCategory
+YAF.Core.Classification.PersonalDataCategory.Biometric = 5 -> YAF.Core.Classification.PersonalDataCategory
+YAF.Core.Classification.PersonalDataCategory.Contact = 1 -> YAF.Core.Classification.PersonalDataCategory
+YAF.Core.Classification.PersonalDataCategory.Credentials = 7 -> YAF.Core.Classification.PersonalDataCategory
+YAF.Core.Classification.PersonalDataCategory.Financial = 3 -> YAF.Core.Classification.PersonalDataCategory
+YAF.Core.Classification.PersonalDataCategory.Health = 4 -> YAF.Core.Classification.PersonalDataCategory
+YAF.Core.Classification.PersonalDataCategory.Identity = 0 -> YAF.Core.Classification.PersonalDataCategory
+YAF.Core.Classification.PersonalDataCategory.Location = 2 -> YAF.Core.Classification.PersonalDataCategory
+YAF.Core.Classification.PersonalDataCategory.Other = 8 -> YAF.Core.Classification.PersonalDataCategory
+YAF.Core.Classification.PublicDataAttribute
+YAF.Core.Classification.PublicDataAttribute.PublicDataAttribute() -> void
+YAF.Core.Classification.SearchableAttribute
+YAF.Core.Classification.SearchableAttribute.SearchableAttribute() -> void
+YAF.Core.Classification.SecretDataAttribute
+YAF.Core.Classification.SecretDataAttribute.SecretDataAttribute() -> void
+YAF.Core.Classification.SensitivePersonalDataAttribute
+YAF.Core.Classification.SensitivePersonalDataAttribute.Category.get -> YAF.Core.Classification.PersonalDataCategory
+YAF.Core.Classification.SensitivePersonalDataAttribute.SensitivePersonalDataAttribute(YAF.Core.Classification.PersonalDataCategory category) -> void
+YAF.Core.Classification.StoredInClearAttribute
+YAF.Core.Classification.StoredInClearAttribute.Reason.get -> string!
+YAF.Core.Classification.StoredInClearAttribute.StoredInClearAttribute(string! reason) -> void
+YAF.Core.Classification.YafTaxonomy
 YAF.Core.Ids.ITypedId
 YAF.Core.Ids.ITypedId.Value.get -> System.Guid
 YAF.Core.Ids.ITypedId<TSelf>
@@ -102,6 +139,7 @@ YAF.Core.Results.Result<T>.Then<TOut>(System.Func<T, YAF.Core.Results.Result<TOu
 YAF.Core.Results.Result<T>.ThenAsync<TOut>(System.Func<T, System.Threading.Tasks.Task<YAF.Core.Results.Result<TOut>>!>! continuation) -> System.Threading.Tasks.Task<YAF.Core.Results.Result<TOut>>!
 YAF.Core.Results.Result<T>.ThenAsync<TOut>(System.Func<T, System.Threading.Tasks.ValueTask<YAF.Core.Results.Result<TOut>>>! continuation) -> System.Threading.Tasks.ValueTask<YAF.Core.Results.Result<TOut>>
 YAF.Core.Results.Result<T>.Value.get -> T
+const YAF.Core.Classification.YafTaxonomy.Name = "YAF" -> string!
 override YAF.Core.Results.Error.Equals(object? obj) -> bool
 override YAF.Core.Results.Error.GetHashCode() -> int
 override YAF.Core.Results.Error.ToString() -> string!
@@ -138,4 +176,9 @@ static YAF.Core.Results.Result<T>.implicit operator YAF.Core.Results.Result<T>(T
 static YAF.Core.Results.Result<T>.implicit operator YAF.Core.Results.Result<T>(YAF.Core.Results.Error! error) -> YAF.Core.Results.Result<T>
 static YAF.Core.Results.Result<T>.implicit operator YAF.Core.Results.Result<T>(YAF.Core.Results.Error![]! errors) -> YAF.Core.Results.Result<T>
 static YAF.Core.Results.Result<T>.implicit operator YAF.Core.Results.Result<T>(YAF.Core.Results.ErrorDescriptor! descriptor) -> YAF.Core.Results.Result<T>
+static readonly YAF.Core.Classification.YafTaxonomy.Internal -> Microsoft.Extensions.Compliance.Classification.DataClassification
+static readonly YAF.Core.Classification.YafTaxonomy.Personal -> Microsoft.Extensions.Compliance.Classification.DataClassification
+static readonly YAF.Core.Classification.YafTaxonomy.Public -> Microsoft.Extensions.Compliance.Classification.DataClassification
+static readonly YAF.Core.Classification.YafTaxonomy.Secret -> Microsoft.Extensions.Compliance.Classification.DataClassification
+static readonly YAF.Core.Classification.YafTaxonomy.SensitivePersonal -> Microsoft.Extensions.Compliance.Classification.DataClassification
 static readonly YAF.Core.Results.CoreErrors.Uninitialised -> YAF.Core.Results.ErrorDescriptor!
