@@ -53,6 +53,32 @@ public sealed class TemplateArgumentTests
         result.Diagnostics.Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task ConstructorNamedArgumentsOutOfOrder_ReportsYAF3003()
+    {
+        const string source = """
+            using YAF.Core.Results;
+            namespace Probe;
+            public sealed class Errors : IErrorCatalog
+            {
+                public static readonly ErrorDescriptor Full =
+                    new ErrorDescriptor(MessageTemplate: "Session is full (capacity {Capacity}).", Kind: ErrorKind.Conflict, Code: "catalog.session.full");
+            }
+            public static class Handler
+            {
+                public static Error Handle() => Errors.Full.With(("Seats", 40));
+            }
+            """;
+
+        using var result = await RunAsync(source);
+
+        var diagnostic = result.Diagnostics.Should().ContainSingle().Which;
+        diagnostic.Id.Should().Be("YAF3003");
+        diagnostic.GetMessage(CultureInfo.InvariantCulture).Should()
+            .Be("The placeholder '{Capacity}' of the message template of 'Errors.Full' has no argument");
+        Text(diagnostic).Should().Be("""Errors.Full.With(("Seats", 40))""");
+    }
+
     private static string Snippet(string call) => $$"""
         using YAF.Core.Results;
         namespace Probe;
