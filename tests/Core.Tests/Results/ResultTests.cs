@@ -116,6 +116,15 @@ public sealed class ResultTests
     }
 
     [Fact]
+    public void ImplicitConversion_NonGenericFromError_IsFailure()
+    {
+        Result result = s_full.ToError();
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstError.Code.Should().Be(s_full.Code);
+    }
+
+    [Fact]
     public void ImplicitConversion_FromErrorDescriptor_IsFailure()
     {
         Result result = s_full;
@@ -156,6 +165,17 @@ public sealed class ResultTests
         result.Errors.Select(e => e.Code).Should().Equal(s_closed.Code, s_full.Code);
     }
 
+    [Fact]
+    public void ImplicitConversion_GenericFromErrorList_IsFailure()
+    {
+        List<Error> errors = [s_closed.ToError(), s_full.ToError()];
+
+        Result<int> result = errors;
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Select(e => e.Code).Should().Equal(s_closed.Code, s_full.Code);
+    }
+
     #region propagate-errors
     [Fact]
     public void ImplicitConversion_FromOtherResultErrors_PropagatesFailure()
@@ -174,6 +194,23 @@ public sealed class ResultTests
         var result = Result.Failure(new[] { s_closed.ToError(), s_full.ToError() }.AsEnumerable());
 
         result.Errors.Select(e => e.Code).Should().Equal(s_closed.Code, s_full.Code);
+    }
+
+    [Fact]
+    public void Failure_GenericFromEnumerable_KeepsOrder()
+    {
+        var result = Result<int>.Failure(new[] { s_closed.ToError(), s_full.ToError() }.AsEnumerable());
+
+        result.Errors.Select(e => e.Code).Should().Equal(s_closed.Code, s_full.Code);
+    }
+
+    [Fact]
+    public void Failure_NonGenericFromError_IsFailure()
+    {
+        var result = Result.Failure(s_full.ToError());
+
+        result.IsFailure.Should().BeTrue();
+        result.FirstError.Code.Should().Be(s_full.Code);
     }
 
     [Fact]
