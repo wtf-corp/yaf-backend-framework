@@ -32,18 +32,24 @@ Test support is split so that a domain or application test project does not pull
 
 The helpers of `YAF.Testing` throw their own `YafAssertionException`, so they do not depend on a test framework or an assertion library; the abstract suites and fixtures of `YAF.Testing.Integration` are xUnit v3 types, which ties a project that uses them to xUnit v3.
 
+> **Amended 2026-11-25**, by the owner's decisions of 2026-11-25 (`specs/0009-domain/plan.md`, decision log Q2): `YAF.Testing` depends on `YAF.Domain` (and so Core) until M3, and on `YAF.Application` from M3 on, when the first ports it fakes exist.
+
 ### 3.1 `YAF.Testing` (pure helpers)
 
 | Area | Types |
 |---|---|
 | Fakes | `FakeExecutionContext` (builders for a user actor, and for a system actor with an initiator), `FakeUnitOfWork` (runs the delegate, records commit/rollback and the save/dispatch rounds), `RecordingIntegrationEventPublisher`, `RecordingJobScheduler`, `InMemoryRepository<TAggregate,TId>`, `FakeObjectStore`, `FakeKeyProvider`, `FakeFieldProtector`, `FakeMarkupSanitizer` |
 | Time | `TestClock` over `FakeTimeProvider` |
-| Domain helpers | `MementoAssert.RoundTrips<T>()` (snapshot → generated data class → restore → snapshot is equal, for every member of the memento), `DomainEventAssert.Raised<T>(aggregate)`, `ResultAssert` (`ShouldSucceed`, `ShouldFailWith(descriptor)`) — assert on **codes**, never messages |
+| Domain helpers | `MementoAssert.RoundTrips<T>()` (snapshot → generated data class → restore → snapshot is equal, for every member of the memento), `MementoAssert.RoundTrips(entity, mementoFactory)` (the same over a memento the factory creates), `DomainEventAssert.Raised<T>(aggregate)`, `AggregateAssert.InvariantsHold(aggregate)`, `StateMachineAssert.IsWellFormed(machine, initial, finals)` (`02-domain.md` §4 and §10), `ResultAssert` (`ShouldSucceed`, `ShouldFailWith(descriptor)`) — assert on **codes**, never messages |
 | Logs | `LogAssert.ContainsNo(value)` over `FakeLogCollector` |
-| Approvals | `Approvals.Verify(actualText, [CallerFilePath])`: compares with `<name>.approved.txt` next to the test, writes `<name>.received.txt` and fails listing added/removed lines; no third-party dependency. Used for `errors.approved.txt` (which also proves codes are unique across all catalogues of a service), `fields.approved.txt` (the stable field ids of protected members), contracts and inventories |
+| Approvals | `Approvals.Verify(actualText, name, [CallerFilePath])`: compares with `<name>.approved.txt` next to the test, writes `<name>.received.txt` and fails listing added/removed lines; no third-party dependency. Used for `errors.approved.txt` (which also proves codes are unique across all catalogues of a service), `fields.approved.txt` (the stable field ids of protected members), contracts and inventories |
 | Architecture | `YafArchitectureRules.For(assemblies)` → ready-made rule set (§4) |
 | Controls | `[Control("C-AC-1")]`, `[Control("S1")]` trait attribute, read by the compliance tool |
 | Builders | `TestIds` (deterministic UUIDv7 sequences), synthetic personal data generators that are obviously fake (`attendee-0001@example.test`) |
+
+A test project that calls `Approvals.Verify` sets `DeterministicSourcePaths` to `false`: in a CI build the compiler maps the repository root to `/_/` in `[CallerFilePath]`, and the helper fails with a message that says so when the directory of the calling file does not exist.
+
+> **Amended 2026-11-25**, by the owner's decisions of 2026-11-25 (`specs/0009-domain/plan.md`, decision log Q1, Q2 and Q5; deviation 7, confirmed by the owner on 2026-11-25): `Approvals.Verify` takes the name of the approved file, which has no other source, and the note on `DeterministicSourcePaths` is added. The domain helpers list `AggregateAssert` and `StateMachineAssert`, which `02-domain.md` names, and the overload of `MementoAssert.RoundTrips` with a memento factory; `RoundTrips<T>()` over the generated data class comes with the `[MementoData]` generator in M3. Each fake comes with the milestone of its port; `YafArchitectureRules`, `TestIds` and the generators come with M3, `[Control]` with M4, `LogAssert` with M5 (`18-build-plan.md` §2).
 
 ### 3.2 `YAF.Testing.Integration`
 
