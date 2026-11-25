@@ -1,0 +1,419 @@
+# 0009 — Domain (M2): plan
+
+**Spec** `specs/0000-framework/` (here `docs/spec/`), milestone M2 of `18-build-plan.md` §2: `02` (domain building blocks, as amended on 2026-11-24 and 2026-11-25) and `15` (testing), with `01` §2–5 (packages, build settings, conventions), `03` §1–2 (results and error catalogues), `11` §2 and §4 (classification, retention markers), `17` §5 (articles), ADR-0003, ADR-0007, ADR-0018. Exit criterion: acceptance of `02` §12; a domain test project references `YAF.Testing` and nothing from ASP.NET Core or EF Core. No `spec.md`: this is a milestone of the initial build (`specs/AGENTS.md` rule 2) · **Status** Draft
+
+## Approach
+
+M2 adds two packages under `src/`: `YAF.Domain`, which holds everything `02` §4–§10 declares, and `YAF.Testing`, which holds the pure test helpers a domain test needs. `YAF.Core` and the analyzers do not change. The work is 31 tickets in two lanes that can run side by side: the domain lane (T3–T18), one ticket per building block and in the order in which they build on each other, and the testing lane (T19–T25). Four tickets close the milestone (T26–T29: the round-trip acceptance test, the architecture rules, two articles), and two bring the specification and the domain skill in step with what was decided here (T30, T31).
+
+What shapes the plan, each checked by a probe on SDK 11.0.100 ([research](./research.md)):
+
+- **Analyzer exceptions are planned, not discovered.** M1 met eight rules of `AnalysisMode All` in the middle of tickets. A skeleton of every public type of this plan was built with the repository's settings (research §2). Seven findings come from names and shapes that `02` prescribes: CA1716 (`IBusinessRule.Error`), CA1030 and CA1033 (`AggregateRoot<…>.Raise`, the explicit `IAggregateRoot.DequeueDomainEvents`), CA1000 and CA1724 (`Enumeration<TSelf>`), CA1000 and CA1030 (`StateMachine<…>.Define`, `Fire`). T2 adds the four scoped `.editorconfig` sections with their reasons in one small tier-high ticket, before the files exist, so that the tickets that write the code stay tier medium (Q6). Everything else the probe found is avoided in code.
+- **`YAF.Domain` uses the analyzers and the error code generator of `YAF.Core`.** Inside the repository it references the project, not the package, so its project file names the analyzer project and imports `src/Core/buildTransitive/YAF.Core.props` itself, with `YafServiceCode` `core` (research §6). The test projects do the same with `YafServiceCode` `tests`, so their fixtures use `[TypedId]` and error catalogues as an application does.
+- **Child mementos and round trips are generic over the base class.** `MementoCollections.Sync` and `MementoAssert.RoundTrips` take `Entity<TId, TEntity, TMemento>` as a parameter type, because C# infers no type argument from a constraint; with it the call of `02` §5 compiles as written (research §5).
+- **The JSON converter of smart enumerations is a public factory.** `System.Text.Json` does not read `[JsonConverter]` from a base type (research §4), so `Enumeration<TSelf>` cannot attach it for its subtypes. `EnumerationJsonConverterFactory` is registered in the serializer options (M3 does that for HTTP) or named on the concrete type (deviation 6).
+- **`Approvals.Verify` needs real source paths.** In CI the compiler maps `[CallerFilePath]` to `/_/…` (research §7). A test project that calls the helper sets `DeterministicSourcePaths` to `false`, and the helper says so when it cannot find the calling file's directory.
+- **Error codes of `YAF.Domain`** are declared in two top-level catalogues, `DomainErrors` and `ValueObjectErrors`, with the factories of `Error` and an explicit `[ErrorCode("core.…")]`. A nested public catalogue per value object would need CA1034 exceptions that `02` does not ask for.
+
+**What M2 does not build**, each with the milestone it belongs to (open questions Q1–Q5; the plan is written on the recommended answers):
+
+- The `[MementoData]` generator and its tests (`02` §5, §12 item 3): M3, where `18` §2 lists it with `YAF.Persistence.EfCore`. With it go `MementoAssert.RoundTrips<T>()` over the generated data class and the `[MementoData]` attribute.
+- The analyzers `YAF2001`–`YAF2008`: M6 (`YAF2008`) and M10 (the others), as `18` §2 says. `YAF2009` is done (plan 0006 T21, plan 0008 T7). M2 adds no analyzer and no generator.
+- The fakes of `15` §3.1. Each one fakes a port of `YAF.Application` or of a later package, so each comes with its port. Until M3 creates `YAF.Application`, `YAF.Testing` references `YAF.Domain`.
+- The privacy markers `[NoDataSubject]`, `[Retention]` and `[OnErasure]` with their enumerations (`02` §11): with the milestones that read them (M6, M10, M12).
+- `LogAssert`, `YafArchitectureRules`, `[Control]`, `TestIds` and the synthetic data generators (`15` §3.1): row M2 of `18` §2 does not list them; proposed for M5, M3, M4 and M3.
+- `AggregateVersion.Matches` (`05` §3), the security event for `CorruptStateException` (`02` §5), the sample and the templates: M3, M4, M3 and M13.
+
+Namespaces follow folders (`01` §2). `02` names two: `YAF.Domain.Mementos` and `YAF.Domain.ValueObjects`. The others are this plan's: `YAF.Domain` (entity, aggregate root, builder, originator, version, value object base, enumeration), `YAF.Domain.Events`, `YAF.Domain.Rules`, `YAF.Domain.Specifications`, `YAF.Domain.StateMachines`. `YAF.Testing` keeps its helpers in the root namespace.
+
+Files read to decide: `AGENTS.md` (with the path map), `docs/spec/agents/AGENTS.root.md`, `docs/spec/agents/AGENTS.nested.md` (`src/`, `tests/`, `docs/`, `specs/`), `specs/AGENTS.md`, `docs/spec/factory/.claude/agents/planner.md`, the skills `yaf-writing-plans` (with its template), `yaf-commits-and-pull-requests`, `yaf-domain-modeling` (with `references/examples.md`), `yaf-testing`, `yaf-public-api-change`, `yaf-privacy-and-data-classification` (the retention example), `01`, `02`, `03` §2, `05` §1–3, `11` §1–5, `15`, `17` §5, `18`, ADR-0003, ADR-0007, ADR-0018, plans `specs/0006-core/plan.md` (all) and `specs/0008-m1-maintenance/plan.md` (all), `specs/0006-core/research.md` §5–6, `docs/spec/factory/.github/factory/policy.json`, `plan.mjs`, `delta.mjs`, `classify.mjs`, issues #147 and #223 and the bodies of the other open issues, and on `main` at 1add91a: `.editorconfig`, `Directory.Build.props`, `src/Directory.Build.props`, `Directory.Packages.props`, `YAF.slnx`, `BannedSymbols.txt`, `global.json`, `.gitignore`, `.github/CODEOWNERS`, `.github/workflows/ci.yml` (steps), `src/Core/Core.csproj`, `src/Core/buildTransitive/YAF.Core.props`, `src/Core/Guard.cs`, `src/Core/Classification/PersonalDataAttribute.cs`, `src/Core/Results/Result.cs` and `Result{T}.cs` (members), `src/Core/PublicAPI.Unshipped.txt`, `src/Analyzers/Ids/RawGuidIdAnalyzer.cs`, `tests/Core.Tests/Core.Tests.csproj`, `tests/Analyzers.Tests/Analyzers.Tests.csproj`, `tests/Architecture.Tests/` (both files), `docs/articles/` (the include syntax), `docs/AGENTS.md`.
+
+### Alternatives rejected
+
+| Alternative | Why not |
+|---|---|
+| One `.editorconfig` change inside each ticket that needs it, as in M1 | Four feature tickets become tier high and each waits for the owner. One guard ticket up front keeps the guard change small and lets the code merge by itself (`yaf-writing-plans`, slicing: split a sensitive path from ordinary code) |
+| Renaming what the rules object to (`IBusinessRule.Failure`, `AggregateRoot.Enqueue`, `StateMachine.Apply`, `SmartEnum<T>`) | `02` prescribes the names; every one would be a deviation of a public contract |
+| A protected `DequeueDomainEvents` on the aggregate root to satisfy CA1033 | It gives the aggregate a way to drop its own events; `02` §4 makes the method reachable through `IAggregateRoot` only |
+| `InternalsVisibleTo("YAF.Testing")` in `YAF.Domain` so that the helpers reach `CheckInvariants` and the event list | `01` §2: `InternalsVisibleTo` names only the package's own test project. `IAggregateRoot` exposes the two members instead |
+| `[JsonConverter]` on `Enumeration<TSelf>` | Not read for derived types (research §4) |
+| A generator that writes the converter attribute on each smart enumeration | A second generator, `partial` on every enumeration, and tier-high work in `src/Analyzers` for what one public factory does |
+| `Currency` as an `Enumeration<Currency>` | `All` is found from public static fields; 165 public fields with XML docs for a lookup table |
+| `Currency.Create(code, minorUnits)` without a table | The store keeps the code only (`05` §1: single-value value object), so the minor units must come from the code |
+| Value objects as `readonly record struct` | `default` would be an instance that skipped `Create` (a `Money` without a currency, an empty `EmailAddress`); the marker base `ValueObject` is a class |
+| A nested public `Errors` catalogue in each value object | CA1034 on five types, with no line of `02` to justify the exception |
+| Building the fakes now against ports declared early | It would pull the contracts of `04` into M2, before their own plan |
+| `tests/Domain.Tests` without `YAF.Testing`, with AwesomeAssertions only | The exit criterion asks for a domain test project that references `YAF.Testing`; T26 adds the reference once the helpers exist |
+| An architecture rule that loads `Domain.Tests` from `tests/Architecture.Tests` | A reference from one test executable to another; T26 checks the assembly's own references instead, and T27 checks `YAF.Domain` and `YAF.Testing` |
+| Region markers added by the docs tickets, as plan 0006 T26 did | The docs tickets would change compiled test files. The tickets that write the tests add the regions (see "What the tickets contain") |
+| One ticket per helper of `YAF.Testing` named in `15` §3.1, whatever it needs | Most need M3 or later (Q2, Q5) |
+
+## Affected packages
+
+| Layer | Package / area | Change |
+|---|---|---|
+| Core | none | none |
+| Domain | `YAF.Domain` (new, `src/Domain/`) | Memento base contracts, entity and aggregate root bases, builder, domain events, business rules and policies, smart enumerations, value objects (`Currency`, `Money`, `Percentage`, `DateRange`, `Period`, `EmailAddress`), specifications, state machines. T1, T3–T18 |
+| Application | none | none (M3) |
+| Infrastructure | none | none |
+| Persistence | none | none |
+| Http | none | none |
+| Adapters | none | none |
+| Testing (`Testing`, `Testing.Integration`) | `YAF.Testing` (new, `src/Testing/`) | `YafAssertionException`, `ResultAssert`, `Approvals`, `TestClock`, `MementoAssert`, `DomainEventAssert`, `AggregateAssert`, `StateMachineAssert`. T19–T25. `YAF.Testing.Integration`: none (M3). New test projects `tests/Domain.Tests` and `tests/Testing.Tests` are not packages |
+| Analyzers | none | none. The exceptions of T2 are configuration, not analyzer code |
+| Sample | none | none (the sample starts in M3) |
+| Templates | none | none (M13) |
+| Docs | `docs/articles/` | `domain.md` (T28), `testing.md` (T29). `docs/spec/`: `02`, `15`, `18` (T30) and the skill `yaf-domain-modeling` (T31) |
+| Build and guards (not a layer) | `.editorconfig`, `Directory.Packages.props`, `YAF.slnx`, `tests/Architecture.Tests/` | T2; T25; T1 and T19; T27 |
+
+## Public API, schema and error-code delta
+
+**Added**, package `YAF.Domain`. Constraints and members are those of `02` unless a line says otherwise; members that `02` does not name are marked "(added)" and explained in the decision log.
+
+- `YAF.Domain`:
+  - `interface IOriginator<TSelf, TMemento>`: `static abstract TSelf Restore(TMemento memento)`.
+  - `interface IAggregateRoot`: `IReadOnlyList<IDomainEvent> DomainEvents { get; }` (added), `IReadOnlyList<IDomainEvent> DequeueDomainEvents()`, `Result CheckInvariants()` (added).
+  - `readonly record struct AggregateVersion`: `Guid Value { get; }`, `static AggregateVersion From(Guid value)`; `default` is the version of an aggregate that was never saved.
+  - `abstract class Entity<TId, TSelf, TMemento>` where `TId : struct, ITypedId<TId>`, `TSelf : Entity<TId, TSelf, TMemento>, IOriginator<TSelf, TMemento>`, `TMemento : IEntityMemento`: `protected Entity(TId id)`, `TId Id { get; }`, `void Snapshot(TMemento memento)`, `protected abstract void SnapshotCore(TMemento memento)`, `protected abstract void RestoreCore(TMemento memento)`, `protected void RestoreFrom(TMemento memento)`, `protected virtual Result CheckInvariants()`, `protected static Result Check(params IBusinessRule[] rules)`, `protected static Result CheckAll(params IBusinessRule[] rules)`.
+  - `abstract class AggregateRoot<TId, TSelf, TMemento> : Entity<TId, TSelf, TMemento>, IAggregateRoot` where `TSelf : AggregateRoot<TId, TSelf, TMemento>, IOriginator<TSelf, TMemento>` and `TMemento : IEntityMemento, IVersionedMemento`: `protected AggregateRoot(TId id)`, `AggregateVersion Version { get; }`, `IReadOnlyList<IDomainEvent> DomainEvents { get; }`, `protected void Raise(IDomainEvent domainEvent)`, and the explicit `IAggregateRoot.DequeueDomainEvents()` and `IAggregateRoot.CheckInvariants()`.
+  - `abstract class AggregateBuilder<TAggregate>` where `TAggregate : IAggregateRoot`: `protected AggregateBuilder()`, `Result<TAggregate> Build()`, `protected abstract TAggregate Create()`, `protected abstract void OnCreated(TAggregate aggregate)` (added).
+  - `abstract record ValueObject`.
+  - `abstract record Enumeration<TSelf>` where `TSelf : Enumeration<TSelf>`: `protected Enumeration(string code, string name)`, `string Code { get; }`, `string Name { get; }`, `static IReadOnlyList<TSelf> All { get; }`, `static Result<TSelf> FromCode(string code)`.
+  - `sealed class EnumerationJsonConverterFactory : JsonConverterFactory` (added): the public constructor, `CanConvert(Type typeToConvert)`, `CreateConverter(Type typeToConvert, JsonSerializerOptions options)`.
+  - `sealed class DomainErrors : IErrorCatalog`: `static readonly ErrorDescriptor UnknownEnumerationCode`.
+- `YAF.Domain.Mementos`:
+  - `IEntityMemento` (`Guid Id { get; set; }`), `IVersionedMemento` (`Guid Version { get; set; }`), `ITenantOwnedMemento` (`Guid TenantId { get; set; }`), `IStampedMemento` (`DateTimeOffset CreatedAt`, `Guid CreatedBy`, `DateTimeOffset ModifiedAt`, `Guid ModifiedBy`, each `{ get; set; }`), `ISoftDeletableMemento` (`DateTimeOffset? DeletedAt`, `Guid? DeletedBy`, each `{ get; set; }`), `IDataSubjectOwnedMemento` (`Guid DataSubjectId { get; set; }`), `IAggregateMemento : IEntityMemento, IVersionedMemento, ITenantOwnedMemento, IStampedMemento`, `IOwnedEntityMemento : IEntityMemento, IStampedMemento`.
+  - `sealed class CorruptStateException : Exception` with the constructors `()`, `(string message)`, `(string message, Exception innerException)`.
+  - `static class MementoCollections`: `static void Sync<TId, TEntity, TMemento>(IList<TMemento> mementos, IEnumerable<Entity<TId, TEntity, TMemento>> entities, Func<TMemento> create)` with the constraints of `Entity<…>`.
+- `YAF.Domain.Events`: `interface IDomainEvent` (`Guid EventId { get; }`, `DateTimeOffset OccurredAt { get; }`); `abstract record DomainEvent : IDomainEvent` (`Guid EventId { get; init; }`, a version 7 UUID by default; `DateTimeOffset OccurredAt { get; init; }`).
+- `YAF.Domain.Rules`: `interface IBusinessRule` (`ErrorDescriptor Error { get; }`, `bool IsSatisfied()`); `interface IPolicy<in TInput, out TDecision>` (`TDecision Decide(TInput input)`).
+- `YAF.Domain.Specifications`: `abstract class Specification<T>`: `protected Specification()`, `abstract Expression<Func<T, bool>> ToExpression()`, `bool IsSatisfiedBy(T candidate)`, `Specification<T> And(Specification<T> other)`, `Specification<T> Or(Specification<T> other)`, `Specification<T> Not()`.
+- `YAF.Domain.StateMachines`:
+  - `sealed class StateMachine<TState, TTrigger>` where `TState : notnull`, `TTrigger : notnull`: `static StateMachine<TState, TTrigger> Define(Func<StateMachineBuilder<TState, TTrigger>, StateMachine<TState, TTrigger>> definition)`, `Result<TState> Fire(TState current, TTrigger trigger)`, `IReadOnlyList<TTrigger> PermittedTriggers(TState current)`, `IReadOnlyList<TState> States { get; }` (added), `string ToMermaid()`.
+  - `sealed class StateMachineBuilder<TState, TTrigger>` (added; `02` §10 shows it only as the lambda parameter `b`): `From(TState state)`, `On(TTrigger trigger)`, `To(TState state)`, each returning the builder, and `StateMachine<TState, TTrigger> Otherwise(ErrorDescriptor error)`. No public constructor.
+- `YAF.Domain.ValueObjects`, each a `sealed record` that derives from `ValueObject`:
+  - `Currency`: `string Code { get; }`, `int MinorUnits { get; }`, `static Result<Currency> FromCode(string code)`, `static IReadOnlyList<Currency> All { get; }` (added). No public constructor.
+  - `Money(decimal Amount, Currency Currency)` (positional, as `02` §6.1 writes it; both properties get-only): `Result<Money> Add(Money other)`, `Result<Money> Subtract(Money other)`, `Money Multiply(decimal factor)`, `Money Round(MidpointRounding mode)`, `IReadOnlyList<Money> Allocate(int parts)`, `IReadOnlyList<Money> Allocate(params ReadOnlySpan<int> ratios)`.
+  - `Percentage`: `decimal Value { get; }`, `static Result<Percentage> Create(decimal value)`, `Money Of(Money money)`, `decimal Of(decimal amount)`.
+  - `DateRange`: `DateOnly Start { get; }`, `DateOnly End { get; }`, `static Result<DateRange> Create(DateOnly start, DateOnly end)`, `bool Contains(DateOnly date)`, `bool Overlaps(DateRange other)`, `DateRange? Intersect(DateRange other)`.
+  - `Period`: `DateTimeOffset Start { get; }`, `DateTimeOffset End { get; }`, `static Result<Period> Create(DateTimeOffset start, DateTimeOffset end)`, `bool Contains(DateTimeOffset instant)`, `bool Overlaps(Period other)`, `Period? Intersect(Period other)`.
+  - `EmailAddress`, classified `[PersonalData(PersonalDataCategory.Contact)]`: `string Value { get; }`, `static Result<EmailAddress> Create(string value)`, and an overridden `ToString()` that does not contain the address (added).
+  - `sealed class ValueObjectErrors : IErrorCatalog`: `static readonly ErrorDescriptor` fields `UnknownCurrency`, `CurrencyMismatch`, `PercentageOutOfRange`, `DateRangeEndBeforeStart`, `PeriodEndBeforeStart`, `InvalidEmailAddress`.
+- Every record also gets the members the compiler writes for it (equality, `ToString`, `GetHashCode`, `EqualityContract`, the copy constructor, `Deconstruct` for `Money`); they appear in `PublicAPI.Unshipped.txt` and are covered by the prefixes below.
+
+**Added**, package `YAF.Testing`, namespace `YAF.Testing`:
+
+- `sealed class YafAssertionException : Exception` with the constructors `()`, `(string message)`, `(string message, Exception innerException)`.
+- `static class ResultAssert`: `static void ShouldSucceed(this Result result)`, `static T ShouldSucceed<T>(this Result<T> result)`, `static void ShouldFailWith(this Result result, ErrorDescriptor expected)`, `static void ShouldFailWith<T>(this Result<T> result, ErrorDescriptor expected)`.
+- `static class Approvals`: `static void Verify(string actualText, string name, [CallerFilePath] string callerFilePath = "")`.
+- `sealed class TestClock`: `TestClock()`, `TestClock(DateTimeOffset start)`, `TimeProvider TimeProvider { get; }`, `DateTimeOffset Now { get; }`, `void Advance(TimeSpan by)`, `void SetNow(DateTimeOffset now)`.
+- `static class MementoAssert`: `static void RoundTrips<TId, TEntity, TMemento>(Entity<TId, TEntity, TMemento> entity, Func<TMemento> mementoFactory)` with the constraints of `Entity<…>`.
+- `static class DomainEventAssert`: `static TEvent Raised<TEvent>(IAggregateRoot aggregate) where TEvent : IDomainEvent`.
+- `static class AggregateAssert`: `static void InvariantsHold(IAggregateRoot aggregate)`.
+- `static class StateMachineAssert`: `static void IsWellFormed<TState, TTrigger>(StateMachine<TState, TTrigger> machine, TState initial, IReadOnlyCollection<TState> finals)`.
+
+**Error codes**, all `ErrorKind.Validation`, declared with `[ErrorCode]`:
+
+| Field | Code | Message template |
+|---|---|---|
+| `DomainErrors.UnknownEnumerationCode` | `core.enumeration.unknown_code` | `'{Code}' is not a code of {Enumeration}.` |
+| `ValueObjectErrors.UnknownCurrency` | `core.currency.unknown` | `'{Code}' is not an ISO 4217 currency code.` |
+| `ValueObjectErrors.CurrencyMismatch` | `core.money.currency_mismatch` | `Amounts in {Left} and {Right} cannot be combined.` |
+| `ValueObjectErrors.PercentageOutOfRange` | `core.percentage.out_of_range` | `A percentage is between 0 and 100.` |
+| `ValueObjectErrors.DateRangeEndBeforeStart` | `core.date_range.end_before_start` | `A date range cannot end before it starts.` |
+| `ValueObjectErrors.PeriodEndBeforeStart` | `core.period.end_before_start` | `A period cannot end before it starts.` |
+| `ValueObjectErrors.InvalidEmailAddress` | `core.email_address.invalid` | `The email address is not valid.` |
+
+No approved file lists error codes yet: `errors.approved.txt` comes with the approval test and `IErrorCatalogProvider` in M3 (plan 0006, Q1). Each code is asserted by the test of its ticket.
+
+**Changed** none. **Removed** none.
+
+Breaking: no (both packages are new; nothing is released).
+New dependency: yes. `Microsoft.Extensions.TimeProvider.Testing` 11.0.1 in `YAF.Testing` only, for `TestClock`. `15` §3 and ADR-0018 name it, and ADR-0003's row for `YAF.Testing` allows it (research §8). It flags the plan; the owner agrees to it by approving the plan. `YAF.Domain` has no package dependency.
+
+The prefixes below cover every line shape the public API analyzer writes for these types (research §12; plan 0006, research §5).
+
+```factory:delta
+{
+  "publicApi": [
+    "YAF.Domain.*", "static YAF.Domain.*", "static readonly YAF.Domain.*", "abstract YAF.Domain.*", "virtual YAF.Domain.*",
+    "override YAF.Domain.*", "override sealed YAF.Domain.*",
+    "~YAF.Domain.*", "~static YAF.Domain.*", "~abstract YAF.Domain.*", "~virtual YAF.Domain.*", "~override YAF.Domain.*",
+    "YAF.Testing.*", "static YAF.Testing.*", "override YAF.Testing.*"
+  ],
+  "schema": [],
+  "errorCodes": [
+    "core.enumeration.unknown_code", "core.currency.unknown", "core.money.currency_mismatch", "core.percentage.out_of_range",
+    "core.date_range.end_before_start", "core.period.end_before_start", "core.email_address.invalid"
+  ],
+  "contracts": [],
+  "configuration": [],
+  "telemetry": [],
+  "dependencies": ["Microsoft.Extensions.TimeProvider.Testing"]
+}
+```
+
+## Schema and migration plan
+
+none
+
+## What the tickets contain
+
+File names of generic types follow M1 (`Result{T}.cs`): `Entity{TId,TSelf,TMemento}.cs`, `AggregateRoot{TId,TSelf,TMemento}.cs`, `IOriginator{TSelf,TMemento}.cs`, `AggregateBuilder{TAggregate}.cs`, `Enumeration{TSelf}.cs`, `IPolicy{TInput,TDecision}.cs`, `Specification{T}.cs`, `StateMachine{TState,TTrigger}.cs`, `StateMachineBuilder{TState,TTrigger}.cs`. T2's sections name four of them, so these names are fixed.
+
+Test fixtures are a small order model in `tests/Domain.Tests/Fixtures/`: the aggregate `Order` with the child entity `OrderLine`, the ids `OrderId`, `OrderLineId` and `CustomerId` (`[TypedId]`), the enum `OrderStatus`, the smart enumeration `Channel`. Fixture types are `internal`, so CA1062 does not ask for null checks in them (research §2). A `#region` named below is what T28 and T29 include; the ticket that writes the test adds the region, and the docs tickets change no compiled file.
+
+- **T1.** `src/Domain/Domain.csproj`: a reference to `../Core/Core.csproj`; the analyzer project as `OutputItemType="Analyzer"`, `ReferenceOutputAssembly="false"`, `PrivateAssets="all"`; an import of `../Core/buildTransitive/YAF.Core.props`; `YafServiceCode` `core` (research §6). No `IsAotCompatible` (`02` §2). `PublicAPI.Shipped.txt` and `PublicAPI.Unshipped.txt`, each `#nullable enable`. `tests/Domain.Tests` (as `tests/Core.Tests`, plus the analyzer reference, the import and `YafServiceCode` `tests`) with `DomainAssemblyTests`, which loads `YAF.Domain` by name. `YAF.slnx` lists both. `YAF.Domain` has no public type yet.
+- **T2.** Four sections in `.editorconfig`, each with its reason and a pointer to `02` and to this plan, commas in the file names escaped (research §3):
+  - `[src/Domain/Rules/IBusinessRule.cs]`: CA1716, because `02` §8 names the member `Error`.
+  - `[src/Domain/AggregateRoot\{TId\,TSelf\,TMemento\}.cs]`: CA1030, because `02` §4 names the method `Raise` and it queues a domain event, not a .NET event; CA1033, because `02` §4 implements `IAggregateRoot.DequeueDomainEvents` explicitly so that domain code cannot empty the queue.
+  - `[src/Domain/Enumeration\{TSelf\}.cs]`: CA1000, because `02` §6.2 prescribes `SessionFormat.All` and `SessionFormat.FromCode`; CA1724, because `02` §6.2 names the type `Enumeration`.
+  - `[src/Domain/StateMachines/StateMachine\{TState\,TTrigger\}.cs]`: CA1000, because `02` §10 prescribes `StateMachine<TState, TTrigger>.Define`; CA1030, because `02` §10 names the method `Fire`.
+  
+  The sections name files that T5, T7, T10 and T17 create. No other rule and no other file. The owner applies `guard-change` on the pull request.
+- **T3.** The eight memento base contracts of `02` §5 with the member types of the delta, and `CorruptStateException`. The identifiers are raw `Guid` values, as the table of `02` §5 writes them. The XML docs say who fills each member (`02` §5, column "Filled by") and that a message of `CorruptStateException` carries type names and ids, never values (`11` §3).
+- **T4.** `IDomainEvent` and `DomainEvent`. `EventId` defaults to `Guid.CreateVersion7()`. `OccurredAt` stays `default` until the aggregate tracker of M3 stamps it. Region `domain-event` (a fixture event `OrderPlaced(OrderId OrderId)`).
+- **T5.** `IBusinessRule` and `IPolicy<in TInput, out TDecision>`. Fixtures: the rule `QuantityPositive` and a policy with a default implementation. Regions `business-rule`, `policy`.
+- **T6.** `IOriginator<TSelf, TMemento>` and `Entity<TId, TSelf, TMemento>`:
+  - The constructor calls `Guard.NotDefault(id)` (`02` §3).
+  - `Snapshot` writes `memento.Id`, then `SnapshotCore`. `RestoreFrom` throws `CorruptStateException` when `memento.Id` differs from the entity's id, then calls `RestoreCore`. Two `private protected virtual` hooks let the aggregate root add its version to both; they are not public API.
+  - `Check` returns the error of the first rule that is not satisfied (`rule.Error.ToError()`), `CheckAll` the errors of all of them, in order; both return success for no rule.
+  - Fixtures `OrderLineId` and `OrderLine` with its nested `IMemento : IOwnedEntityMemento`. Regions `typed-id` (the id's declaration), `child-entity` (the fixture), `check-then-mutate` (a test that shows `Check(…).Then(…)`).
+- **T7.** `IAggregateRoot`, `AggregateVersion` and `AggregateRoot<TId, TSelf, TMemento>`. `Snapshot` also writes `memento.Version` and `RestoreFrom` reads it (`05` §3: "the version in the snapshot must equal the tracked original"). `DomainEvents` is a read-only view; `Raise` appends; `DequeueDomainEvents` returns the queued events in order and empties the queue. Fixture `Order` (`OrderId`, a title, lines, the behaviour `AddLine` that checks a rule and raises `OrderLineAdded`); its memento interface classifies its `string` member, as `02` §11 asks of every memento. Regions `aggregate`, `behaviour`.
+- **T8.** `MementoCollections.Sync`: for each entity, the memento with the same `Id` is reused and snapshotted into; a memento is created with `create` for an entity that has none; mementos whose id no entity has are removed. The order of the mementos that stay is kept, new ones are appended. `Order.SnapshotCore` uses it. Region `sync-children`.
+- **T9.** `AggregateBuilder<TAggregate>`: `Build` calls `Create`, then `CheckInvariants` through `IAggregateRoot`; on failure it returns the errors and does not call `OnCreated`; on success it calls `OnCreated` (where the builder queues the "created" event through a method of its aggregate) and returns the aggregate. Fixture `OrderBuilder`. Region `builder`.
+- **T10.** `Enumeration<TSelf>`, `EnumerationJsonConverterFactory`, `DomainErrors`:
+  - `All` lists the public static fields of type `TSelf` declared on `TSelf`, in declaration order (ordered by metadata token), read once.
+  - `FromCode` compares ordinally and fails with `UnknownEnumerationCode`, filled with `Code` and `Enumeration` (the type's name).
+  - The factory converts any type that derives from `Enumeration<TSelf>`: it writes `Code` and reads through `FromCode`; an unknown code is a `JsonException` whose message does not repeat the value.
+  - Fixture `Channel`. Regions `smart-enumeration`, `enumeration-json`.
+- **T11.** `ValueObject`, `Currency`, `ValueObjectErrors` with `UnknownCurrency`. The table holds every code of ISO 4217 list one that has a numeric minor unit (165 codes in the list published 2026-09-17, research §9), as one compact constant with the publication date in a comment; the ticket fetches the list again and uses what it finds. `FromCode` is ordinal and case-sensitive.
+- **T12.** `Money` and `CurrencyMismatch`:
+  - Any amount is valid; a `null` currency is an `ArgumentNullException`.
+  - `Add` and `Subtract` fail with `CurrencyMismatch` (filled with `Left` and `Right`, the two codes) when the currencies differ.
+  - `Multiply` does not round. `Round(mode)` rounds to the currency's minor units; no member rounds without a mode.
+  - `Allocate(parts)` is `Allocate` with `parts` ratios of 1. `Allocate(ratios)` works in minor units: each share is the amount times its ratio over the sum of ratios, truncated toward zero to a minor unit; what is left is handed out one minor unit at a time, in order, and a rest finer than a minor unit goes to the first share. The shares always add up to the amount. `parts` below 1, no ratio, a negative ratio or a sum of 0 is an `ArgumentException` (a programmer error).
+  - Region `money-allocate`.
+- **T13.** `Percentage` and `PercentageOutOfRange`. `Create` accepts 0 to 100 inclusive. `Of(Money)` and `Of(decimal)` do not round.
+- **T14.** `DateRange` and `Period` with their two errors. `DateRange` includes both ends and `Create` accepts `End >= Start`. `Period` includes its start and excludes its end (`02` §6.1); `Create` accepts `End >= Start`, and an empty period contains nothing and overlaps nothing. `Intersect` returns `null` when the two do not overlap.
+- **T15.** `EmailAddress` and `InvalidEmailAddress`. `Create` accepts exactly one `@`, a local part of 1 to 64 octets, a domain of 1 to 255 octets and at most 254 octets in all (UTF-8; research §10), and no white space or control character. The domain is lower-cased (ASCII letters by hand, CA1308). The type carries `[PersonalData(PersonalDataCategory.Contact)]`. `ToString()` returns `***`, so that an interpolated or logged instance does not reveal the address; `Value` is the address.
+- **T16.** `Specification<T>`: `IsSatisfiedBy` compiles `ToExpression()` on first use and keeps the delegate. `And`, `Or` and `Not` return specifications whose expression has one parameter (the right-hand side is rebound with an `ExpressionVisitor`), so that the store translation of M3 sees an ordinary lambda. The combinators are `internal sealed` classes. The tests use a fixture interface with a typed id, an enum, a smart enumeration and a `Money` member (`02` §12: "over typed members"). Region `specification`.
+- **T17.** `StateMachine<TState, TTrigger>` (without `ToMermaid`) and `StateMachineBuilder<TState, TTrigger>`:
+  - `From`, `On`, `To` must come in that order; a call out of order, a second target for the same state and trigger, or `Otherwise` after an unfinished `From` throws `InvalidOperationException` naming the state. A definition is a static field, so the error shows when the type is first used.
+  - `Fire` returns the target state, or the `Otherwise` error filled with `From` and `Trigger`.
+  - `PermittedTriggers` lists the triggers defined for a state, in definition order. `States` lists every state the definition names, in order of first appearance.
+  - Region `state-machine`.
+- **T18.** `ToMermaid()`: `stateDiagram-v2`, then one line `    <from> --> <to>: <trigger>` per transition in definition order, with `\n` line ends (research §11). Region `mermaid`.
+- **T19.** `src/Testing/Testing.csproj` with a reference to `../Domain/Domain.csproj` (Q2) and the analyzer wiring of T1; `PublicAPI.*.txt`; `tests/Testing.Tests` with `TestingAssemblyTests`, which loads `YAF.Testing` by name; `YAF.slnx`. No public type yet.
+- **T20.** `YafAssertionException` and `ResultAssert`. `ShouldSucceed` fails listing the error codes. `ShouldFailWith` passes when the result is a failure and one of its errors has the descriptor's code; its message lists the codes found. Messages contain codes, never error messages or arguments. Region `result-assert`.
+- **T21.** `Approvals.Verify`:
+  - It compares `actualText` with `<name>.approved.txt` in the directory of the calling file, line by line, with line ends normalised.
+  - When they differ, or the approved file is missing, it writes `<name>.received.txt` there and throws `YafAssertionException` listing added lines with `+` and removed lines with `-`. When they are equal it deletes a stale received file.
+  - When the directory of the calling file does not exist it throws `YafAssertionException` naming `DeterministicSourcePaths` (research §7).
+  - `tests/Testing.Tests/Testing.Tests.csproj` sets `DeterministicSourcePaths` to `false`. One test verifies against a committed `tests/Testing.Tests/Approvals/sample.approved.txt`, which proves the path in CI; the others pass a `callerFilePath` in a temporary directory. `*.received.*` is already ignored by `.gitignore`. Region `approvals`.
+- **T22.** `MementoAssert.RoundTrips`: snapshot into a memento from the factory, `TEntity.Restore`, snapshot into a second memento, then compare the two, for every property of the memento interface and of the interfaces it inherits. Values are compared with `Equals`; a property of type `IList<TChild>` whose items are `IEntityMemento` is compared item by item, matched by `Id`, with the same rule. It fails with the path of the first member that differs (`Lines[<id>].Quantity`), with no value in the message. Its own fixtures in `tests/Testing.Tests/Fixtures/` include an aggregate whose `RestoreCore` forgets a member and one that loses a child. The parameterless `RoundTrips<T>()` of `02` §5 comes with the generator in M3. Region `memento-round-trip`.
+- **T23.** `DomainEventAssert.Raised<TEvent>` returns the first queued event of that type or fails listing the types that were raised; it does not dequeue. `AggregateAssert.InvariantsHold` fails listing the codes `CheckInvariants` returned. Region `aggregate-assert`.
+- **T24.** `StateMachineAssert.IsWellFormed(machine, initial, finals)`: every state is reachable from `initial` (every value of the enum when `TState` is an enum, otherwise `machine.States`), and every state that is not in `finals` has a transition to another state. It walks the machine through `PermittedTriggers` and `Fire` and fails naming the unreachable states and the states without an exit. Region `state-machine-assert`.
+- **T25.** `TestClock` over `FakeTimeProvider`; the default constructor starts at `2026-01-01T00:00:00Z`. `Directory.Packages.props` gets `Microsoft.Extensions.TimeProvider.Testing` 11.0.1 with a comment naming `15` §3 and ADR-0018, and the ticket records the package's licence from its nuspec in the pull request. `FakeTimeProvider` appears in no public signature. Region `test-clock`.
+- **T26.** `tests/Domain.Tests` references `YAF.Testing`. The fixture `Order` gets a memento member of every allowed type (`02` §5, §12 item 2): `CustomerId` (the typed id of another aggregate), `OrderStatus` (enum), `Channel` (smart enumeration), `Percentage` and `EmailAddress?` (single-value), `Money` and `Period?` (multi-value), `DateTimeOffset?`, a nullable typed id, and the child collection. Tests: the round trip with every member set, the round trip with the nullable members `null`, child add, keep and remove onto a memento that was used before, `AggregateAssert.InvariantsHold` after a behaviour, and `ReferenceTests`, which reads the test assembly's own references. Existing tests are not rewritten. Region `round-trip-test`.
+- **T27.** `tests/Architecture.Tests`: `YAF.Domain` references only `System.*` and `YAF.Core` (`02` §12 item 1, ADR-0003); `YAF.Testing` references only `System.*`, `YAF.Core`, `YAF.Domain` and `Microsoft.Extensions.TimeProvider.Testing`, by the names the built assembly lists, which excludes ASP.NET Core, EF Core, Testcontainers and every test framework (`15` §8 item 3); no public type of either sits in an `Internal` namespace. The project references both packages.
+- **T28.** `docs/articles/domain.md` (`17` §5 "domain"): typed ids (plan 0006 left them to this article), entities and aggregate roots, mementos and child collections, builders, value objects and the shipped ones, smart enumerations with the JSON factory, domain events, rules and policies, specifications, state machines with a Mermaid diagram, then "Rules", "Configuration" (none) and "Testing it". Code only through the regions above.
+- **T29.** `docs/articles/testing.md` (`17` §5 "testing"): what `YAF.Testing` holds in M2, with the note on `DeterministicSourcePaths`, and that the fakes and `YAF.Testing.Integration` follow with their milestones. Ends with "Rules", "Configuration", "Testing it".
+- **T30.** See "What T30 writes".
+- **T31.** The skill `yaf-domain-modeling`: rule 5 loses `Apply(...)` and says "check first with `Check`, then mutate" (Q3); `references/examples.md` calls `StateMachineAssert.IsWellFormed(Session.Lifecycle, SessionStatus.Draft, [SessionStatus.Cancelled, SessionStatus.Completed])` as `02` §10 writes it. Then `node .github/scripts/sync-references.mjs`.
+
+## What T30 writes
+
+T30 is the specification pull request that `18` §1 item 3 asks for. It is written after the owner has answered Q1–Q6 by approving this plan, and it writes those answers; the list below assumes the recommendations. Each changed place carries a note `> **Amended <date>**, by the owner's decisions of <date> (`specs/0009-domain/plan.md`, decision log): …`.
+
+- **`18` §2.** Row M2: delivers `YAF.Testing` with "memento, result, aggregate and state machine assertions, test clock, approval helper"; exit "Acceptance of `02` §12 items 1 and 2; …". A note below the table: item 3 of `02` §12 and `MementoAssert.RoundTrips<T>()` go with the `[MementoData]` generator in M3; item 4 is met by `YAF2009` in M1 and by M6 and M10 for the other analyzers; each fake of `15` §3.1 comes with the milestone of its port, and `YAF.Testing` references `YAF.Application` from M3 on (Q1, Q2). A second note places `YafArchitectureRules` and the builders in M3, `[Control]` in M4, `LogAssert` in M5 (Q5), and the markers of `02` §11 in M6, M10 and M12 (Q4).
+- **`02`.** §12 item 2: "through `Check` and `Apply`" becomes "through `Check`, `CheckAll` and `Then`" (Q3). §4: `IAggregateRoot` lists `DomainEvents` and `CheckInvariants`; `AggregateBuilder<TAggregate>` lists `OnCreated`. §6.2: the JSON converter is `EnumerationJsonConverterFactory`, registered in the serializer options or named on the type. §10: `States`. §11: the `[Retention]` example reads as in `11` §4 (`After = RetentionAnchor.Member, Member = …`).
+- **`15` §3.** `YAF.Testing` depends on `YAF.Domain` until M3. §3.1: `Approvals.Verify(actualText, name, [CallerFilePath])` and the note on `DeterministicSourcePaths`; the domain helpers list `AggregateAssert.InvariantsHold` and `StateMachineAssert.IsWellFormed`, which `02` names; `MementoAssert.RoundTrips(entity, mementoFactory)` next to `RoundTrips<T>()`.
+
+Left for the plans that build them, and listed in T30's pull request as open: ArchUnitNET in `YAF.Testing` (`15` §3) against ADR-0003's row "nothing beyond `YAF.Application`'s row"; `[Control]` as a "trait attribute" (`15` §3.1) against "no test framework" (`15` §3); an `IBusinessRule.Error` of type `ErrorDescriptor` cannot carry arguments for a template with placeholders (`02` §8).
+
+## Test strategy
+
+There are no ids `R…`; the acceptance items of `02` §12 and `15` §8 are the targets. Every row is a unit test unless it says otherwise. Tests assert error codes, never messages.
+
+| Scenario | Requirements | Ticket | Level | Test project / check | Notes |
+|---|---|---|---|---|---|
+| `YAF.Domain` builds with zero warnings and full XML docs; it has no package dependency and references only `YAF.Core` | `02` §12 item 1; `02` §1; ADR-0003 | every ticket; T1; T27 | build; architecture | V2; P3; `tests/Architecture.Tests` | `YAF.Core`'s part was M1 |
+| `YAF.Domain` makes no AOT or trimming claim | `02` §2 | T1 | unit | `Domain.Tests` | `DomainAssemblyTests` |
+| Typed id generation and parsing | `02` §12 item 2 | — | — | `Analyzers.Tests`, `Core.Tests` | Done in M1 (plan 0006 T14, T15; plan 0008 T10) |
+| A default id is refused at construction | `02` §3 | T6 | unit | `Domain.Tests` | |
+| `Result` propagation through `Check`: first broken rule, all broken rules, mutation only on success | `02` §12 item 2; `02` §4 rule 4, §8 | T6 | unit | `Domain.Tests` | `Apply`: Q3 |
+| Snapshot writes id and version; restore reads them; a foreign id is corrupt state | `02` §4, §5 | T6, T7 | unit | `Domain.Tests` | |
+| Events are queued by `Raise` and dequeued once | `02` §4 rule 6, §7 | T4, T7 | unit | `Domain.Tests` | |
+| Builder: invariants checked, "created" event only on success | `02` §4.1 | T9 | unit | `Domain.Tests` | |
+| Child mementos matched by id: add, keep, remove | `02` §12 item 2; `02` §5 | T8, T26 | unit | `Domain.Tests` | T26 on a memento that was used before |
+| Memento round trip with members of every allowed type and their nullable forms | `02` §12 item 2; `02` §5 | T26 | unit | `Domain.Tests` | with `MementoAssert` |
+| `Enumeration` lookup by code, `All`, JSON by code | `02` §12 item 2; `02` §6.2 | T10 | unit | `Domain.Tests` | |
+| Every shipped value object; `Money.Allocate` remainders (100.00 in 3, 0.05 by 70 and 30, a currency without minor units, a negative amount) | `02` §12 item 2; `02` §6.1 | T11–T15 | unit | `Domain.Tests` | |
+| `EmailAddress` is classified and does not print its value | `02` §6.1; `11` §2 | T15 | unit | `Domain.Tests` | |
+| Specification composition over typed members; one compilation | `02` §12 item 2; `02` §9 | T16 | unit | `Domain.Tests` | |
+| State machine: transitions, the `Otherwise` error, permitted triggers; reachability; `ToMermaid` | `02` §12 item 2; `02` §10 | T17, T18, T24 | unit | `Domain.Tests`; `Testing.Tests` | reachability is `StateMachineAssert` |
+| Generator tests for `[MementoData]` | `02` §12 item 3 | — | — | — | M3 (Q1) |
+| Analyzer tests for the analyzers `02` names | `02` §12 item 4 | — | — | `Analyzers.Tests` | `YAF2009` done in M1; `YAF2008` M6; `YAF2001`–`YAF2003` M10 (Q1) |
+| `dotnet test --solution YAF.slnx` passes; the default run needs no Docker | `15` §8 item 1 | every ticket | — | V2 | M2 adds no Docker test |
+| Each helper shipped in M2 has tests of its own, including a failing case | `15` §8 item 2 | T20–T25 | unit | `Testing.Tests` | the other helpers of `15` §3 come with their milestones (Q2, Q5) |
+| The helpers throw `YafAssertionException`; `YAF.Testing` references no test framework, ASP.NET Core, EF Core or Testcontainers | `15` §3, §8 item 3 | T19, T20, T27 | unit; architecture | `Testing.Tests`; `tests/Architecture.Tests` | the sample's and templates' projects: M3, M13 |
+| A domain test project references `YAF.Testing` and nothing from ASP.NET Core or EF Core | `18` §2, exit of M2; `15` §4 rule 9 | T26 | unit | `Domain.Tests` | `ReferenceTests` |
+| The control matrix lists a test per control | `15` §8 item 4 | — | — | — | M12, M14 |
+| Coverage gate of 85 % on `YAF.Domain` | `15` §7 | — | — | — | Coverage in CI comes later (plan 0005, deviation 2); tickets cover every branch they add |
+| Articles | `17` §5; `yaf-public-api-change` rule 4 | T28, T29 | docs | Verify greps | docs build in M14 (deviation 8) |
+
+**The failing test first.** Every code ticket starts from a test that does not compile because its type is missing, and names it in the table. T2, T30 and T31 change no code; their check is a `grep` that fails before the change.
+
+## Risks and rollback
+
+| Risk | Likelihood | Mitigation | Rollback |
+|---|---|---|---|
+| A real implementation sets off a rule the skeleton did not (CA1062, CA1305, CA1308, CA2201 and the like) | High | Fixed in code. A further exception is a plan update and the owner's `guard-change`, never a ticket's own choice | — |
+| A file is named differently from T2's section, so its exception does not apply | Low | The names are fixed in "What the tickets contain"; the build of T5, T7, T10 and T17 fails with the rule's id if the section does not match | Correct the file name |
+| The owner answers a question differently from the recommendation | Medium | Each question names the tickets it changes; a plan update pull request applies the answer before those tickets start | — |
+| `IAggregateRoot` needs a further member in M3, so that the unit of work can copy the new version back (`05` §3, `IAggregateStateSync`) | Certain | An addition before `1.0.0`; M3's plan declares it. The base class is the only implementer | — |
+| EF Core cannot map a record class with a private constructor as a complex type or through a converter (`05` §1) | Medium | M3 researches the mapping before it plans its converters; the value objects can gain what the mapper needs without changing their public members | A `fix` ticket in M3 |
+| The ISO 4217 table goes out of date | Certain, slowly | The table records its publication date; an update is a small `fix` ticket. An app cannot add a code | — |
+| `Enumeration<TSelf>.All` uses reflection over the subtype | Certain | `YAF.Domain` makes no AOT or trimming claim (`02` §2); the fields are read once and the list is immutable | — |
+| `EmailAddress.ToString()` returning `***` surprises a caller who expects the address | Low | XML docs and the article say to use `Value`; the choice follows "fail closed" for personal data | Change `ToString` before `1.0.0` |
+| Five tickets (T2, T25, T27, T30, T31) and the plan itself wait for the owner | Certain | T2 and T30 can start at once; the domain lane needs T2 only from T5 on | — |
+| The domain lane is 16 tickets that share `src/Domain/PublicAPI.Unshipped.txt` | Certain | They run one after another; the testing lane runs beside them | — |
+| `YAF.Testing` is packed and published as a prerelease without its fakes | Certain once M14 releases | The article says what M2 holds; nothing is released before M14 | — |
+
+## Verification commands
+
+Git Bash, repository root, on the ticket's branch. `BASE` is `origin/main`.
+
+V1, every ticket: `git diff --name-only $BASE...HEAD` lists only the ticket's `touches`. `node docs/spec/factory/.github/factory/size.mjs $BASE HEAD` stays at the estimate or below and within 400. `node .github/scripts/sync-references.mjs --check` and `node .github/scripts/validate-instructions.mjs` exit 0. T31 runs `node .github/scripts/sync-references.mjs` first and commits what it regenerates.
+
+V2, every code and test ticket, expected 0 warnings, 0 errors, all tests passing:
+
+    dotnet restore YAF.slnx && dotnet build YAF.slnx -c Release --no-restore && dotnet test --solution YAF.slnx -c Release --no-build
+
+P3, the package probe (T1 for `Domain`, T19 for `Testing`). Before the ticket it exits 1; after, 0. `NAME` is `Domain` or `Testing`:
+
+    out=$(mktemp -d); win=$(cygpath -m "$out" 2>/dev/null || echo "$out")
+    dotnet pack src/$NAME -c Release -o "$win/feed" > "$out/pack.log" 2>&1 && unzip -l "$out/feed/YAF.$NAME.0.0.0.nupkg" > "$out/list.txt"; r=$?
+    grep -q "lib/net11.0/YAF.$NAME.dll" "$out/list.txt" || r=1
+    grep -q "analyzers/" "$out/list.txt" && r=1
+    rm -rf "$out"; exit $r
+
+The package holds the library and no analyzer: consumers get the analyzers through the dependency on `YAF.Core`.
+
+The whole milestone, on `main` after the last ticket: V2; P3 exits 0 for both packages; `dotnet pack YAF.slnx -c Release` produces `YAF.Core`, `YAF.Domain` and `YAF.Testing` and nothing else; the latest `ci.yml` run on `main` is green; every row of `02` §12 and `15` §8 is covered above or carried to a named milestone.
+
+## Research
+
+[`research.md`](./research.md): the probe of the public types under `AnalysisMode All`, `.editorconfig` sections for file names with several type parameters, `[JsonConverter]` and base types, type inference for `Sync` and `RoundTrips`, the analyzers and error codes through a project reference, `[CallerFilePath]` under a CI build, `Microsoft.Extensions.TimeProvider.Testing`, ISO 4217, RFC 5321, Mermaid, and the public API line shapes of records.
+
+## Open questions for the owner
+
+The plan is written on the recommended answer of each. Approving the plan pull request accepts the recommendations; a different answer becomes a plan update before the tickets it names start.
+
+- **Q1. The exit criterion and later milestones.** `18` §2 makes "acceptance of `02` §12" the exit of M2, but puts the `[MementoData]` generator (item 3) in M3 and the analyzers `YAF2001`–`YAF2008` (item 4) in M6 and M10.
+  - (a) M2's exit is items 1 and 2 of `02` §12; item 3 moves to M3 with the generator, together with `MementoAssert.RoundTrips<T>()` over the generated class; item 4 is met by `YAF2009` (M1) and completed by M6 and M10. **Recommended**: it follows the rows of `18` §2, as Q1 of plan 0006 did for M1.
+  - (b) Build the generator in M2. It needs the data-model base classes of `YAF.Persistence.EfCore` (`05` §1) and adds about five tier-high tickets in `src/Analyzers`.
+  - Changes: nothing under (a); new tickets under (b).
+- **Q2. No fakes in M2.** Row M2 lists "fakes". Every fake of `15` §3.1 implements a port that `YAF.Application` or a later package declares (`FakeExecutionContext`, `FakeUnitOfWork`, `InMemoryRepository<,>`: M3; `FakeKeyProvider`, `FakeFieldProtector`: M6; `RecordingIntegrationEventPublisher`, `FakeObjectStore`: M7; `RecordingJobScheduler`: M8; `FakeMarkupSanitizer`: with `[Markup]`).
+  - (a) Each fake comes with the milestone of its port; `YAF.Testing` references `YAF.Domain` now and `YAF.Application` from M3 on. **Recommended.**
+  - (b) Declare the ports in M2. That plans `04` before its milestone.
+  - Changes: T19 under (b), and new tickets.
+- **Q3. `Apply`.** `02` §12 item 2 asks for tests of "`Result` propagation through `Check` and `Apply`", and the domain skill says "or use `Apply(...)`". `02` §4 declares no `Apply` and says "There is no rollback helper".
+  - (a) No `Apply`. A behaviour is `Check(…).Then(…)`; `02` §12 and the skill are corrected (T30, T31). **Recommended**: the member has no definition anywhere, and a helper that mutates and then checks is what `02` §4 rule 4 rules out.
+  - (b) `protected Result Apply(Action mutation, params IBusinessRule[] rules)` on `Entity<…>`: checks the rules, runs the mutation, returns `CheckInvariants()`.
+  - Changes: T6, the delta and T31 under (b).
+- **Q4. The privacy markers of `02` §11.** `01` §2.1 places "privacy markers" in `YAF.Domain`, and `02` §11 names `[NoDataSubject]`, `[Retention]` and `[OnErasure]`. Nothing in M2 reads them. `02` §11 and `11` §4 write `[Retention]` differently (`After = RetentionAnchor.Closed` against `After = RetentionAnchor.Member, Member = …`), and no section lists the values of `RetentionAnchor`.
+  - (a) Not in M2. Each marker ships in `YAF.Domain` with the milestone that reads it: `[NoDataSubject]` with key selection in M6, `[Retention]` and its enumerations with retention in M10, `[OnErasure]` with the erasers in M10 or M12. Plan 0006 decided the same for M1 ("come with the milestones that use them"). `IDataSubjectOwnedMemento` and `ISoftDeletableMemento` are in M2. **Recommended.**
+  - (b) Ship them in M2 in the shape of `11` §4. The owner then names the values of `RetentionAnchor`.
+  - Changes: one new ticket in the domain lane and the delta under (b).
+- **Q5. The rows of `15` §3.1 that row M2 does not list.** Row M2 names "memento and result assertions, fakes, test clock, approval helper". `15` §3.1 also has `LogAssert`, `YafArchitectureRules`, `[Control]`, `TestIds` and the synthetic data generators.
+  - (a) Not in M2: `YafArchitectureRules`, `TestIds` and the generators with M3 (the first service and its tests), `[Control]` with M4 (the first control tests), `LogAssert` with M5 (logging and redaction). Two of them also need a decision first: ArchUnitNET in `YAF.Testing` against ADR-0003's row, and a "trait attribute" against "no test framework". **Recommended.**
+  - (b) Build `TestIds` and `LogAssert` in M2; they need no later component. `LogAssert` adds the dependency `Microsoft.Extensions.Diagnostics.Testing`.
+  - Changes: two new tickets in the testing lane and the delta under (b).
+- **Q6. Four scoped analyzer exceptions.** T2 adds CA1716 for `IBusinessRule.cs`, CA1030 and CA1033 for the aggregate root's file, CA1000 and CA1724 for the enumeration's file, CA1000 and CA1030 for the state machine's file. Each rule fires on a name or shape that `02` prescribes (research §2).
+  - (a) Accept them in one tier-high ticket, with the owner's `guard-change`, before the code. **Recommended**: the same choice as option A on #114, #116, #121 and #124 in M1.
+  - (b) Change the contracts so that no rule fires. Each is a deviation from `02`.
+  - Changes: T2, T5, T7, T10, T17 and the delta under (b).
+
+## Decision log
+
+| Date | Decision | Reason | By |
+|---|---|---|---|
+| 2026-11-25 | Folder `0009-domain` | Next free number | Planner |
+| 2026-11-25 | Namespaces `YAF.Domain`, `.Events`, `.Rules`, `.Specifications`, `.StateMachines` next to the two `02` names; `YAF.Testing` flat | Namespaces follow folders (`01` §2); the spec names no others. M15 reviews every public name (`18` §2) | Planner |
+| 2026-11-25 | `YAF.Domain` and the two test projects reference the analyzer project and import `YAF.Core.props` in their own project files; `YafServiceCode` is `core` in `YAF.Domain` and `tests` in the test projects | A project reference carries neither (research §6). `core` is the service code of the framework's own errors (`04`: `core.authorization.undeclared`); both match `[a-z0-9_]+`, the rule #147 F2 recommends | Planner |
+| 2026-11-25 | Error catalogues `DomainErrors` and `ValueObjectErrors` are top-level classes with explicit `[ErrorCode]` | A public nested catalogue sets off CA1034; a top-level catalogue has no declaring type path, so the default code would lack the type's name | Planner |
+| 2026-11-25 | The memento base contracts use `Guid` for every identifier and `DateTimeOffset` for stamps; `CreatedBy` and `ModifiedBy` are not nullable, `DeletedAt` and `DeletedBy` are | `02` §5 writes `Guid Id`, `Guid Version`, `Guid TenantId`, `Guid DataSubjectId` and gives no type for the stamps; `05` §2 refuses a save without an execution context, so a stamp always has a user | Planner |
+| 2026-11-25 | `AggregateRoot<…>` constrains `TMemento` to `IEntityMemento, IVersionedMemento`, not to `IAggregateMemento` | That is what the base reads and writes. An aggregate that is not tenant-owned stays possible; tightening later would break, loosening would not | Planner |
+| 2026-11-25 | `Snapshot` of an aggregate root writes `Version`; `RestoreFrom` reads it | `05` §3: "the version in the snapshot must equal the tracked original". `02` §5 lists persistence as the one that fills a new version on save | Planner |
+| 2026-11-25 | `IAggregateRoot` also declares `DomainEvents` and `CheckInvariants()` | `AggregateBuilder<TAggregate>.Build`, `AggregateAssert.InvariantsHold` and `DomainEventAssert.Raised` hold an `IAggregateRoot` and must not use `InternalsVisibleTo` (`01` §2). `02`: "member lists are the minimum" | Planner |
+| 2026-11-25 | `AggregateBuilder<TAggregate>` has the abstract hook `OnCreated(TAggregate)` | `02` §4.1: `Build` "raises the 'created' event" after `CheckInvariants`, but `Raise` is protected on the aggregate. The builder calls a method of its aggregate from the hook. Not named `RaiseCreated`: CA1030 | Planner |
+| 2026-11-25 | `MementoCollections.Sync` and `MementoAssert.RoundTrips` take `Entity<TId, TEntity, TMemento>` | Type inference (research §5) | Planner |
+| 2026-11-25 | `RestoreFrom` throws `CorruptStateException` when the memento's id is not the entity's; a default id in stored state is refused by `Guard.NotDefault` in the constructor (`ArgumentException`). The security event comes with M4 | `02` §5 names the exception; the constructor runs in the aggregate's own `Restore`, before the base sees the memento | Planner |
+| 2026-11-25 | Value objects are `sealed record` classes that derive from `ValueObject`; those whose creation can fail have no public constructor | `02` §6 allows a class or a struct; a struct's `default` would skip `Create`. `02` §6.1's `DateRange(DateOnly Start, DateOnly End)` is read as its members | Planner |
+| 2026-11-25 | `Currency` is a lookup over ISO 4217 list one (codes with a numeric minor unit) with `FromCode` and `All`; it is not an `Enumeration<Currency>` and takes no custom code | Alternatives; research §9 | Planner |
+| 2026-11-25 | `Money.Allocate` returns a list and throws for invalid ratios; `Multiply` and `Percentage.Of` do not round; `Round(MidpointRounding)` is the one rounding member | `02` §6.1: "rounding mode is explicit", "splits without losing a minor unit". Invalid ratios are a programmer error, not a business outcome (`02` §2, `Guard`) | Planner |
+| 2026-11-25 | `EmailAddress.ToString()` returns `***` | Hard rule 2 (privacy by design, fail closed): a record's default `ToString` would print personal data into any log or exception message | Planner |
+| 2026-11-25 | `StateMachine<TState, TTrigger>` constrains both parameters to `notnull`; the builder is one public class with order checks at run time; `States` is added | `02` §5 allows an enum or a smart enumeration as a status; three staged builder types would triple the public surface; `StateMachineAssert` needs the states of a machine whose state type is not an enum | Planner |
+| 2026-11-25 | `ToMermaid()` writes transitions only, no `[*]` | The definition knows neither initial nor final states (research §11) | Planner |
+| 2026-11-25 | `EnumerationJsonConverterFactory` is public and not attached to `Enumeration<TSelf>` | Research §4 (deviation 6) | Planner |
+| 2026-11-25 | `Approvals.Verify` takes the name of the approved file as its second parameter; test projects that call it set `DeterministicSourcePaths` to `false` | `15` §3.1 compares with `<name>.approved.txt` but shows no parameter for the name; research §7 | Planner |
+| 2026-11-25 | `TestClock` exposes `TimeProvider`, `Now`, `Advance` and `SetNow`, and no type of the testing package | `15` §3.1 gives the name only; domain code takes time as a value (`02` §9), so `Now` is what a domain test uses | Planner |
+| 2026-11-25 | `StateMachineAssert.IsWellFormed(machine, initial, finals)` as `02` §10 writes it; the skill's `final:` form is corrected by T31 | `02` is normative | Planner |
+| 2026-11-25 | The analyzer exceptions are one ticket before the code (T2) | Slicing rule: the tier-high part as small as it can be (Q6) | Planner |
+| 2026-11-25 | The regions the articles include are added by the tickets that write the tests | The docs tickets then touch `docs/articles/` only and stay tier low | Planner |
+| 2026-11-25 | The specification and the skill are two tickets (T30, T31) | A skill change is not a specification pull request (plan 0007, decision log) | Planner |
+| 2026-11-25 | Open issues: none names `02` or `15`. #147 F2 (valid `YafServiceCode`) is respected by the two service codes above; #147 F1 and F3 and #223 concern `03`, `18` §4, the results skill, `analyzers.md` and plan 0006, and stay with their issues | Read on 2026-11-25 | Planner |
+| 2026-11-25 | **Q1–Q6**: proposed as recommended above. The owner's answers are recorded here when the plan is approved | `18` §1 item 9: a decision that changes scope or a public contract is the owner's | Open |
+
+## Deviations from the specification
+
+1. **Items 3 and 4 of `02` §12 are not fully met in M2** (Q1). `18` §2 makes `02` §12 the exit criterion and at the same time gives the `[MementoData]` generator to M3 and the analyzers `YAF2001`–`YAF2008` to M6 and M10. `MementoAssert.RoundTrips<T>()` over the generated class (`02` §5, `15` §3.1) moves with the generator; M2 ships the overload with a memento factory.
+2. **`YAF.Testing` ships without fakes and references `YAF.Domain`, not `YAF.Application`** (`15` §3, `01` §2.1, row M2 of `18` §2), until M3 (Q2).
+3. **No `Apply`** (`02` §12 item 2; Q3).
+4. **The markers `[NoDataSubject]`, `[Retention]` and `[OnErasure]` of `02` §11 are not in M2** (Q4).
+5. **`LogAssert`, `YafArchitectureRules`, `[Control]`, `TestIds` and the synthetic data generators of `15` §3.1 are not in M2** (Q5). The architecture tests that `02` §4 promises for its rules come with `YafArchitectureRules`.
+6. **The JSON converter of a smart enumeration is not attached by `Enumeration<TSelf>`** (`02` §6.2: "gives … a JSON converter by code"). It is `EnumerationJsonConverterFactory`, registered in the serializer options or named on the type. Why: research §4.
+7. **`Approvals.Verify` has a `name` parameter** that `15` §3.1 does not show. Why: the approved file's name has no other source.
+8. **The articles are checked by greps, not by the docs build** (ADR-0025). Why: `docs/docfx.json` comes with M14, as in plan 0006 (deviation 5).
+
+T30 makes deviations 1–7 in the specification, as `18` §1 item 3 asks.
+
+## Tickets
+
+T1, T2 and T30 can start at once. Then two lanes, at most two implementers at a time: the domain lane T3 → T4 → … → T18 (tier medium; every ticket changes `src/Domain/PublicAPI.Unshipped.txt`, so one after another; T5, T7, T10 and T17 also wait for T2) and the testing lane T19 → T20 → … → T25 (every ticket changes `src/Testing/PublicAPI.Unshipped.txt`; T22, T23 and T24 wait for the domain types they assert on; the test clock is last, so that its new dependency holds up no other helper). `YAF.slnx` is changed by T1 and then T19. Tier high, waiting for the owner: T2 (`.editorconfig`), T25 (`Directory.Packages.props`, a new dependency), T27 (`tests/Architecture.Tests`), T30 (`docs/spec/`, code-owned) and T31 (a skill under `docs/spec/`).
+
+| Key | Title | Type | Area | Requirements | Depends on | Touches | Tier | Size | Failing test first | Verify |
+|---|---|---|---|---|---|---|---|---|---|---|
+| T1 | build: add the domain package and its test project | chore | build | `01` §2, §4; `02` §1, §2 (no AOT claim); research §6 | — | `src/Domain/Domain.csproj`, `src/Domain/PublicAPI.Shipped.txt`, `src/Domain/PublicAPI.Unshipped.txt`, `tests/Domain.Tests/`, `YAF.slnx` | low | 80 | `DomainAssemblyTests.Metadata_AotAndTrimming_AreNotDeclared` — V2 fails: `tests/Domain.Tests` does not exist. P3 with `NAME=Domain` exits 1 | V2 → 0 warnings; P3 exits 0; V1 |
+| T2 | chore: scope the analyzer exceptions the domain contracts need | chore | build | `02` §4, §6.2, §8, §10 (the prescribed names); `01` §4 (documented suppression list); research §2, §3; Q6 | — | `.editorconfig` | high | 25 | `grep -c "^\[src/Domain/" .editorconfig` prints 0 | `grep -c "^\[src/Domain/" .editorconfig` prints 4; each section has a comment line naming `02`; `git diff $BASE -- .editorconfig` shows added lines only; V2; V1 |
+| T3 | feat(domain): add the memento base contracts | feat | domain | `02` §5 (base contracts, `CorruptStateException`) | T1 | `src/Domain/Mementos/`, `src/Domain/PublicAPI.Unshipped.txt`, `tests/Domain.Tests/Mementos/` | medium | 170 | `MementoContractTests.AggregateMemento_Inherits_IdVersionTenantAndStamps` — fails: `IAggregateMemento` does not exist. Also `OwnedEntityMemento_HasNoTenantAndNoVersion`, `CorruptStateException_KeepsMessageAndInner` | `dotnet test --project tests/Domain.Tests -c Release` → passes; V2; V1 |
+| T4 | feat(domain): add domain events | feat | domain | `02` §7 | T3 | `src/Domain/Events/`, `src/Domain/PublicAPI.Unshipped.txt`, `tests/Domain.Tests/Events/`, `tests/Domain.Tests/Fixtures/` | medium | 100 | `DomainEventTests.New_EventId_IsVersion7` — fails: `DomainEvent` does not exist. Also `With_OccurredAt_KeepsTypeAndEventId` | `dotnet test --project tests/Domain.Tests -c Release` → passes; V2; V1 |
+| T5 | feat(domain): add business rules and policies | feat | domain | `02` §8 (`IBusinessRule`, `IPolicy<TInput, TDecision>`) | T2, T4 | `src/Domain/Rules/`, `src/Domain/PublicAPI.Unshipped.txt`, `tests/Domain.Tests/Rules/`, `tests/Domain.Tests/Fixtures/` | medium | 110 | `BusinessRuleTests.IsSatisfied_BrokenRule_ExposesItsDescriptor` — fails: `IBusinessRule` does not exist. Also `PolicyTests.Decide_DefaultPolicy_ReturnsDecision`, `Policy_IsContravariantInInputAndCovariantInDecision` | `dotnet test --project tests/Domain.Tests -c Release` → passes; V2 (no CA1716); V1 |
+| T6 | feat(domain): add the entity base with snapshot and restore | feat | domain | `02` §3 (default id), §4 (`Entity<…>`, `IOriginator<…>`, rules 3–4), §8 (`Check`, `CheckAll`); `02` §12 item 2 (`Check`) | T5 | `src/Domain/Entity*.cs`, `src/Domain/IOriginator*.cs`, `src/Domain/PublicAPI.Unshipped.txt`, `tests/Domain.Tests/Entities/`, `tests/Domain.Tests/Fixtures/` | medium | 320 | `EntityTests.Snapshot_WritesIdThenState` — fails: `Entity<…>` does not exist. Also `Constructor_DefaultId_Throws`, `RestoreFrom_ForeignId_ThrowsCorruptState`, `Check_FirstBrokenRule_ReturnsItsError`, `CheckAll_TwoBrokenRules_ReturnsBothInOrder`, `Check_ThenMutation_RunsOnlyOnSuccess` | `dotnet test --project tests/Domain.Tests -c Release` → passes; V2; V1 |
+| T7 | feat(domain): add the aggregate root with its version and event queue | feat | domain | `02` §4 (`AggregateRoot<…>`, `IAggregateRoot`, rules 6–7), §7; `05` §3 (version in the snapshot) | T2, T6 | `src/Domain/AggregateRoot*.cs`, `src/Domain/IAggregateRoot.cs`, `src/Domain/AggregateVersion.cs`, `src/Domain/PublicAPI.Unshipped.txt`, `tests/Domain.Tests/Aggregates/`, `tests/Domain.Tests/Fixtures/` | medium | 300 | `AggregateRootTests.Raise_QueuesEventInOrder` — fails: `AggregateRoot<…>` does not exist. Also `DequeueDomainEvents_ReturnsThenEmptiesQueue`, `Snapshot_WritesVersion`, `Restore_ReadsVersion`, `CheckInvariants_ThroughInterface_ReturnsBrokenRule` | `dotnet test --project tests/Domain.Tests -c Release` → passes; V2 (no CA1030, no CA1033); V1 |
+| T8 | feat(domain): sync child mementos by id | feat | domain | `02` §5 (`MementoCollections.Sync`, matched by id); `02` §12 item 2 (child add, keep, remove) | T7 | `src/Domain/Mementos/MementoCollections.cs`, `src/Domain/PublicAPI.Unshipped.txt`, `tests/Domain.Tests/Mementos/`, `tests/Domain.Tests/Fixtures/` | medium | 180 | `MementoCollectionsTests.Sync_KeptChild_ReusesItsMemento` — fails: `MementoCollections` does not exist. Also `Sync_NewChild_CreatesMemento`, `Sync_RemovedChild_RemovesMemento`, `Sync_ReorderedChildren_MatchesById` | `dotnet test --project tests/Domain.Tests -c Release` → passes; V2; V1 |
+| T9 | feat(domain): add the aggregate builder | feat | domain | `02` §4.1 | T8 | `src/Domain/AggregateBuilder*.cs`, `src/Domain/PublicAPI.Unshipped.txt`, `tests/Domain.Tests/Aggregates/`, `tests/Domain.Tests/Fixtures/` | medium | 140 | `AggregateBuilderTests.Build_InvariantsHold_ReturnsAggregateWithCreatedEvent` — fails: `AggregateBuilder<TAggregate>` does not exist. Also `Build_InvariantBroken_FailsAndRaisesNothing` | `dotnet test --project tests/Domain.Tests -c Release` → passes; V2; V1 |
+| T10 | feat(domain): add smart enumerations | feat | domain | `02` §6.2; `02` §12 item 2 (`Enumeration` lookup); research §4 | T2, T9 | `src/Domain/Enumeration*.cs`, `src/Domain/DomainErrors.cs`, `src/Domain/PublicAPI.Unshipped.txt`, `tests/Domain.Tests/Enumerations/`, `tests/Domain.Tests/Fixtures/` | medium | 280 | `EnumerationTests.FromCode_UnknownCode_FailsWithUnknownEnumerationCode` — fails: `Enumeration<TSelf>` does not exist. Also `All_ListsFieldsInDeclarationOrder`, `FromCode_KnownCode_ReturnsTheInstance`, `Json_RegisteredFactory_RoundTripsByCode`, `Json_AttributeOnType_WritesCode`, `Json_UnknownCode_ThrowsJsonException` | `dotnet test --project tests/Domain.Tests -c Release` → passes; V2 (no CA1000, no CA1724); V1 |
+| T11 | feat(domain): add currencies | feat | domain | `02` §6 (`ValueObject`), §6.1 (`Currency`); research §9 | T10 | `src/Domain/ValueObject.cs`, `src/Domain/ValueObjects/`, `src/Domain/PublicAPI.Unshipped.txt`, `tests/Domain.Tests/ValueObjects/` | medium | 230 | `CurrencyTests.FromCode_Unknown_FailsWithUnknownCurrency` — fails: `Currency` does not exist. Also `FromCode_Eur_HasTwoMinorUnits`, `FromCode_Jpy_HasNone`, `FromCode_Bhd_HasThree`, `FromCode_LowerCase_Fails`, `All_HoldsEveryCodeOnce`, `Equals_SameCode_IsEqual` | `dotnet test --project tests/Domain.Tests -c Release` → passes; V2; V1 |
+| T12 | feat(domain): add money | feat | domain | `02` §6.1 (`Money`); `02` §12 item 2 (`Money.Allocate` remainders) | T11 | `src/Domain/ValueObjects/`, `src/Domain/PublicAPI.Unshipped.txt`, `tests/Domain.Tests/ValueObjects/` | medium | 340 | `MoneyTests.Allocate_HundredInThree_GivesTheRemainderToTheFirst` — fails: `Money` does not exist. Also `Allocate_ByRatios_SumsToTheAmount`, `Allocate_NoMinorUnits_SplitsWholeUnits`, `Allocate_NegativeAmount_SumsToTheAmount`, `Allocate_NoRatio_Throws`, `Add_OtherCurrency_FailsWithCurrencyMismatch`, `Subtract_SameCurrency_Subtracts`, `Round_ToMinorUnits_UsesTheMode` | `dotnet test --project tests/Domain.Tests -c Release` → passes; V2; V1 |
+| T13 | feat(domain): add percentages | feat | domain | `02` §6.1 (`Percentage`) | T12 | `src/Domain/ValueObjects/`, `src/Domain/PublicAPI.Unshipped.txt`, `tests/Domain.Tests/ValueObjects/` | medium | 140 | `PercentageTests.Create_Above100_FailsWithOutOfRange` — fails: `Percentage` does not exist. Also `Create_Negative_Fails`, `Create_Bounds_Succeed`, `Of_Money_KeepsTheCurrency`, `Of_Decimal_Multiplies` | `dotnet test --project tests/Domain.Tests -c Release` → passes; V2; V1 |
+| T14 | feat(domain): add date ranges and periods | feat | domain | `02` §6.1 (`DateRange`, `Period`) | T13 | `src/Domain/ValueObjects/`, `src/Domain/PublicAPI.Unshipped.txt`, `tests/Domain.Tests/ValueObjects/` | medium | 320 | `PeriodTests.Contains_End_IsExcluded` — fails: `Period` does not exist. Also `Create_EndBeforeStart_Fails`, `Overlaps_Touching_IsFalse`, `Intersect_Disjoint_IsNull`, `DateRangeTests.Contains_End_IsIncluded`, `Create_EndBeforeStart_Fails`, `Overlaps_SharedDay_IsTrue`, `Intersect_Overlapping_ReturnsTheSharedDays` | `dotnet test --project tests/Domain.Tests -c Release` → passes; V2; V1 |
+| T15 | feat(domain): add email addresses | feat | domain | `02` §6.1 (`EmailAddress`); `11` §2 (classification on a type); research §10 | T14 | `src/Domain/ValueObjects/`, `src/Domain/PublicAPI.Unshipped.txt`, `tests/Domain.Tests/ValueObjects/` | medium | 190 | `EmailAddressTests.Create_TwoAtSigns_FailsWithInvalidEmailAddress` — fails: `EmailAddress` does not exist. Also `Create_EmptyLocalPart_Fails`, `Create_LocalPartOf65Octets_Fails`, `Create_255Octets_Fails`, `Create_UpperCaseDomain_LowersIt`, `Type_IsClassifiedPersonalContact`, `ToString_DoesNotContainTheAddress` | `dotnet test --project tests/Domain.Tests -c Release` → passes; V2; V1 |
+| T16 | feat(domain): add specifications | feat | domain | `02` §9; `02` §12 item 2 (composition over typed members) | T15 | `src/Domain/Specifications/`, `src/Domain/PublicAPI.Unshipped.txt`, `tests/Domain.Tests/Specifications/`, `tests/Domain.Tests/Fixtures/` | medium | 290 | `SpecificationTests.And_BothMustHold` — fails: `Specification<T>` does not exist. Also `IsSatisfiedBy_TypedMembers_ComparesDomainTypes`, `Or_EitherHolds`, `Not_Inverts`, `And_ComposedExpression_HasOneParameter`, `IsSatisfiedBy_CalledTwice_CompilesOnce` | `dotnet test --project tests/Domain.Tests -c Release` → passes; V2; V1 |
+| T17 | feat(domain): add state machines | feat | domain | `02` §10 (`Define`, `Fire`, `PermittedTriggers`) | T2, T16 | `src/Domain/StateMachines/`, `src/Domain/PublicAPI.Unshipped.txt`, `tests/Domain.Tests/StateMachines/`, `tests/Domain.Tests/Fixtures/` | medium | 340 | `StateMachineTests.Fire_UndefinedTransition_FailsWithTheOtherwiseError` — fails: `StateMachine<TState, TTrigger>` does not exist. Also `Fire_DefinedTransition_ReturnsTheTarget`, `PermittedTriggers_ListsInDefinitionOrder`, `States_ListsEveryNamedState`, `Define_DuplicateTransition_Throws`, `Define_OnWithoutFrom_Throws`, `Fire_SmartEnumerationStates_Works` | `dotnet test --project tests/Domain.Tests -c Release` → passes; V2 (no CA1000, no CA1030); V1 |
+| T18 | feat(domain): render state machines as Mermaid diagrams | feat | domain | `02` §10 (`ToMermaid`); `02` §12 item 2; research §11 | T17 | `src/Domain/StateMachines/`, `src/Domain/PublicAPI.Unshipped.txt`, `tests/Domain.Tests/StateMachines/` | medium | 90 | `StateMachineMermaidTests.ToMermaid_ThreeTransitions_WritesHeaderAndOneLineEach` — fails: `ToMermaid` does not exist. Also `ToMermaid_SelfTransition_IsWritten` | `dotnet test --project tests/Domain.Tests -c Release` → passes; V2; V1 |
+| T19 | build: add the testing package and its test project | chore | build | `01` §2.1 (`YAF.Testing`); `15` §3 (no test framework); Q2 | T1 | `src/Testing/Testing.csproj`, `src/Testing/PublicAPI.Shipped.txt`, `src/Testing/PublicAPI.Unshipped.txt`, `tests/Testing.Tests/`, `YAF.slnx` | low | 80 | `TestingAssemblyTests.References_NoTestFrameworkOrAssertionLibrary` — V2 fails: `tests/Testing.Tests` does not exist. P3 with `NAME=Testing` exits 1 | V2; P3 exits 0; V1 |
+| T20 | feat(testing): add result assertions | feat | testing | `15` §3 (`YafAssertionException`), §3.1 (`ResultAssert`, codes not messages) | T19 | `src/Testing/YafAssertionException.cs`, `src/Testing/ResultAssert.cs`, `src/Testing/PublicAPI.Unshipped.txt`, `tests/Testing.Tests/ResultAssertTests.cs` | medium | 230 | `ResultAssertTests.ShouldFailWith_OtherCode_ThrowsListingTheCodes` — fails: `ResultAssert` does not exist. Also `ShouldFailWith_SameCode_Passes`, `ShouldFailWith_Success_Throws`, `ShouldSucceed_Failure_ThrowsListingTheCodes`, `ShouldSucceed_GenericSuccess_ReturnsTheValue`, `Message_NeverContainsTheErrorMessage` | `dotnet test --project tests/Testing.Tests -c Release` → passes; V2; V1 |
+| T21 | feat(testing): add the approval helper | feat | testing | `15` §3.1 (`Approvals`); ADR-0018 (approval files); research §7 | T20 | `src/Testing/Approvals.cs`, `src/Testing/PublicAPI.Unshipped.txt`, `tests/Testing.Tests/Approvals/`, `tests/Testing.Tests/Testing.Tests.csproj` | medium | 320 | `ApprovalsTests.Verify_DifferentText_WritesReceivedAndListsAddedAndRemovedLines` — fails: `Approvals` does not exist. Also `Verify_EqualText_Passes`, `Verify_NoApprovedFile_WritesReceivedAndFails`, `Verify_EqualText_DeletesAStaleReceivedFile`, `Verify_OtherLineEnds_Passes`, `Verify_MissingCallerDirectory_NamesDeterministicSourcePaths`, `Verify_CommittedApprovedFile_Passes` | `dotnet test --project tests/Testing.Tests -c Release` → passes; `git status --porcelain` lists no `*.received.*`; the `ci.yml` run of the pull request passes (the caller path in CI); V2; V1 |
+| T22 | feat(testing): add memento round-trip assertions | feat | testing | `02` §5 (lossless round trip, `MementoAssert`); `15` §3.1; ADR-0007 (Enforcement); research §5 | T8, T21 | `src/Testing/MementoAssert.cs`, `src/Testing/PublicAPI.Unshipped.txt`, `tests/Testing.Tests/MementoAssertTests.cs`, `tests/Testing.Tests/Fixtures/` | medium | 360 | `MementoAssertTests.RoundTrips_RestoreForgetsAMember_ThrowsNamingTheMember` — fails: `MementoAssert` does not exist. Also `RoundTrips_LosslessAggregate_Passes`, `RoundTrips_ChildLost_ThrowsNamingTheCollection`, `RoundTrips_ChildMemberDiffers_ThrowsWithThePath`, `RoundTrips_InheritedMember_IsCompared`, `Message_NeverContainsAValue` | `dotnet test --project tests/Testing.Tests -c Release` → passes; V2; V1 |
+| T23 | feat(testing): add assertions for raised events and aggregate invariants | feat | testing | `15` §3.1 (`DomainEventAssert.Raised<T>`); `02` §4 rule 4 (`AggregateAssert.InvariantsHold`) | T22 | `src/Testing/DomainEventAssert.cs`, `src/Testing/AggregateAssert.cs`, `src/Testing/PublicAPI.Unshipped.txt`, `tests/Testing.Tests/AggregateAssertTests.cs`, `tests/Testing.Tests/DomainEventAssertTests.cs`, `tests/Testing.Tests/Fixtures/` | medium | 190 | `DomainEventAssertTests.Raised_NoSuchEvent_ThrowsListingTheRaisedTypes` — fails: `DomainEventAssert` does not exist. Also `Raised_QueuedEvent_ReturnsItAndKeepsTheQueue`, `AggregateAssertTests.InvariantsHold_BrokenInvariant_ThrowsListingTheCodes`, `InvariantsHold_ValidAggregate_Passes` | `dotnet test --project tests/Testing.Tests -c Release` → passes; V2; V1 |
+| T24 | feat(testing): assert that a state machine is well formed | feat | testing | `02` §10 (`StateMachineAssert.IsWellFormed`); ADR-0007 (Enforcement); `02` §12 item 2 (reachability) | T17, T23 | `src/Testing/StateMachineAssert.cs`, `src/Testing/PublicAPI.Unshipped.txt`, `tests/Testing.Tests/StateMachineAssertTests.cs` | medium | 210 | `StateMachineAssertTests.IsWellFormed_UnreachableState_ThrowsNamingIt` — fails: `StateMachineAssert` does not exist. Also `IsWellFormed_NonFinalStateWithoutExit_ThrowsNamingIt`, `IsWellFormed_EnumValueNotInTheDefinition_ThrowsNamingIt`, `IsWellFormed_WellFormedMachine_Passes`, `IsWellFormed_SelfLoopOnly_IsNotAnExit` | `dotnet test --project tests/Testing.Tests -c Release` → passes; V2; V1 |
+| T25 | feat(testing): add the test clock | feat | testing | `15` §3.1 (`TestClock` over `FakeTimeProvider`); ADR-0018; ADR-0003 (row `YAF.Testing`); research §8 | T24 | `src/Testing/TestClock.cs`, `src/Testing/Testing.csproj`, `src/Testing/PublicAPI.Unshipped.txt`, `Directory.Packages.props`, `tests/Testing.Tests/TestClockTests.cs` | high | 120 | `TestClockTests.Advance_ByAnHour_MovesNowAndTheProvider` — fails: `TestClock` does not exist. Also `Default_StartsAtTheFixedInstant`, `SetNow_Later_MovesNow`, `TimeProvider_GetUtcNow_EqualsNow` | `dotnet test --project tests/Testing.Tests -c Release` → passes; `grep -c "FakeTimeProvider" src/Testing/PublicAPI.Unshipped.txt` prints 0; V2; V1 |
+| T26 | test(domain): prove the memento round trip for every member type | test | domain | `02` §12 item 2 (round trip, child add, keep, remove, every member type); `02` §5 (member types); `18` §2 (exit of M2); `15` §4 rule 9 | T15, T23 | `tests/Domain.Tests/Domain.Tests.csproj`, `tests/Domain.Tests/Fixtures/`, `tests/Domain.Tests/Mementos/` | low | 300 | `OrderMementoTests.RoundTrips_EveryMemberType` — fails to compile: `tests/Domain.Tests` does not reference `YAF.Testing`. Then, with a member left out of `Order.RestoreCore` locally, it fails naming that member; the break is reverted before the commit. Also `RoundTrips_NullableMembersNull`, `Snapshot_OntoAUsedMemento_AddsKeepsAndRemovesChildren`, `AddLine_ValidLine_KeepsTheInvariants`, `ReferenceTests.DomainTests_ReferenceTestingAndNeitherWebNorOrm` | `dotnet test --project tests/Domain.Tests -c Release` → passes; `git diff $BASE --stat -- src` is empty; V2; V1 |
+| T27 | test: check the allowed references of the domain and testing packages | test | tests | `02` §12 item 1 (no dependency); `15` §8 item 3; ADR-0003 (allow-list, Enforcement); ADR-0018 (Enforcement); `01` §6 item 2 (part) | T18, T25 | `tests/Architecture.Tests/` | high | 100 | `DependencyTests.Domain_ReferencesOnlyCore` — fails: `Architecture.Tests` does not reference `YAF.Domain`. Also `Testing_ReferencesOnlyAllowList`, `Domain_HasNoPublicTypeInInternalNamespace`, `Testing_HasNoPublicTypeInInternalNamespace`. A banned name added locally to an allow-list must fail before the real rule is written | `dotnet test --project tests/Architecture.Tests -c Release` → passes; V2; V1 |
+| T28 | docs: add the domain article | docs | docs | `17` §5 (article "domain"; Rules, Configuration, Testing it; code from compiled tests); `02`; `yaf-public-api-change` rule 4; plan 0006 (typed ids in this article) | T18, T26 | `docs/articles/domain.md` | low | 260 | `test -f docs/articles/domain.md` exits 1 | `f=docs/articles/domain.md; grep -q "^## Rules" $f && grep -q "^## Configuration" $f && grep -q "^## Testing it" $f && test "$(grep -c "code-csharp" $f)" -ge 10 && ! grep -q '^```csharp' $f && grep -q "EnumerationJsonConverterFactory" $f` exits 0; every `#region` the article names exists (`grep -rn "#region" tests/Domain.Tests`); V1 |
+| T29 | docs: add the testing article | docs | docs | `17` §5 (article "testing"); `15` §3.1; research §7 | T25, T26 | `docs/articles/testing.md` | low | 160 | `test -f docs/articles/testing.md` exits 1 | `f=docs/articles/testing.md; grep -q "^## Rules" $f && grep -q "^## Configuration" $f && grep -q "^## Testing it" $f && grep -q "DeterministicSourcePaths" $f && test "$(grep -c "code-csharp" $f)" -ge 6 && ! grep -q '^```csharp' $f` exits 0; V1 |
+| T30 | docs(specs): amend the domain and testing sections after the M2 plan | docs | specs | `18` §1 item 3; the owner's answers to Q1–Q6; "What T30 writes" | — | `docs/spec/spec/02-domain.md`, `docs/spec/spec/15-testing.md`, `docs/spec/spec/18-build-plan.md` | high | 60 | `grep -c "0009-domain" docs/spec/spec/02-domain.md docs/spec/spec/15-testing.md docs/spec/spec/18-build-plan.md` prints 0 for each file | `d=docs/spec/spec; grep -q "0009-domain" $d/02-domain.md && grep -q "0009-domain" $d/15-testing.md && grep -q "0009-domain" $d/18-build-plan.md && grep -q "EnumerationJsonConverterFactory" $d/02-domain.md && grep -q "DeterministicSourcePaths" $d/15-testing.md` exits 0; `node .github/scripts/validate-instructions.mjs` exits 0; V1 |
+| T31 | docs(agents): bring the domain modelling skill in step with the domain package | docs | agents | Q3; `02` §10 (`IsWellFormed`); `yaf-public-api-change` rule 4 (the skill) | T24, T30 | `docs/spec/agents/skills/yaf-domain-modeling/SKILL.md`, `docs/spec/agents/skills/yaf-domain-modeling/references/examples.md` | high | 10 | `grep -c "Apply(" docs/spec/agents/skills/yaf-domain-modeling/SKILL.md` prints 1 | `s=docs/spec/agents/skills/yaf-domain-modeling; ! grep -q "Apply(" $s/SKILL.md && ! grep -q "final:" $s/references/examples.md && grep -q "SessionStatus.Draft, \[" $s/references/examples.md` exits 0; `node .github/scripts/sync-references.mjs --check` exits 0; V1 |
