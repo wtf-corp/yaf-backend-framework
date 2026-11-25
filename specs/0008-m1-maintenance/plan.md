@@ -46,7 +46,7 @@ Files read to decide: `AGENTS.md` (with the path map), `docs/spec/agents/AGENTS.
 | ADR-0030, four Minors of the doc review of #148 | 6 | T1 |
 | `ITypedId.Value` doc | 5 | T11 |
 | `analyzers.md:33` "initialised by the same factory" | 6 | T8 |
-| Open: the articles are in no DocFX build and no `toc.yml` | none | none: `docs/docfx.json` and the site come with M14 (`18` §2; plan 0006 deviation 5). Open question 3 |
+| Open: the articles are in no DocFX build and no `toc.yml` | none | none: `docs/docfx.json` and the site come with M14 (`18` §2; plan 0006 deviation 5). Deferred to M14 by the owner (decision log, 2026-11-25) |
 
 ### Alternatives rejected
 
@@ -148,7 +148,7 @@ There are no requirements `R…`; the sections of `docs/spec/` as amended by T1 
 |---|---|---|---|
 | T1 waits for the code owner, and T2–T5, T7 and T8 wait for it | Certain | T6, T9, T11, T12 and T13 do not depend on T1 and run meanwhile | — |
 | The extended analyzers report in `YAF.Core`'s own build (`CoreErrors.Uninitialised`) | Low | Its code `core.uninitialised` is valid and unique; V2 builds `YAF.Core` with the analyzers on, warnings as errors | Revert the ticket |
-| The editing of accepted ADR-0007 is read as breaking `adr/AGENTS.md` rule 1 | Medium | The owner named ADR-0007 (decision 2); the edit is one id, with a dated note; recorded as deviation 1 and open question 1 | Restore the row and supersede ADR-0007 instead |
+| The editing of accepted ADR-0007 is read as breaking `adr/AGENTS.md` rule 1 | Medium | The owner named ADR-0007 (decision 2); the edit is one id, with a dated note; recorded as deviation 1 and confirmed by the owner on 2026-11-25 (decision log) | Restore the row and supersede ADR-0007 instead |
 | A user-defined conversion to `Error` or `ErrorDescriptor` of a creation still slips through `YAF3001` | Low | T5 checks the field's type, whatever conversion leads to it | — |
 | Eight tier-high tickets wait for the owner | High | Two can run at once (`limits.parallelImplementers`); each is small | — |
 | `analyzers.md` is changed by T7 and T8 | Certain | T8 depends on T7 | — |
@@ -163,7 +163,7 @@ V2, every code and test ticket, expected 0 warnings, 0 errors, all tests passing
 
     dotnet restore YAF.slnx && dotnet build YAF.slnx -c Release --no-restore && dotnet test --solution YAF.slnx -c Release --no-build
 
-The whole plan, on `main` after the last ticket: V2; `grep -rn YAF1001 --exclude-dir=.git --exclude-dir=.claude --exclude-dir=bin --exclude-dir=obj .` prints only lines of `specs/0006-core/`, `specs/0008-m1-maintenance/` and lines of `docs/spec/` that contain "Amended"; the latest `ci.yml` run on `main` is green; every open item of #194 is closed by a ticket above, except the DocFX item (open question 3).
+The whole plan, on `main` after the last ticket: V2; `grep -rn YAF1001 --exclude-dir=.git --exclude-dir=.claude --exclude-dir=bin --exclude-dir=obj .` prints only lines of `specs/0006-core/`, `specs/0008-m1-maintenance/` and lines of `docs/spec/` that contain "Amended"; the latest `ci.yml` run on `main` is green; every open item of #194 is closed by a ticket above, except the DocFX item, which the owner deferred to M14 (decision log).
 
 ## Research
 
@@ -178,28 +178,23 @@ None needed. The behaviour relied on is in this repository: the release tracking
 | 2026-11-25 | Folder `0008-m1-maintenance` | Next free number | Planner |
 | 2026-11-25 | The specification and ADRs are one ticket (T1); the skill is another (T2), after it | Owner's decision 4; a skill change is not a specification pull request (plan 0007, decision log) | Planner |
 | 2026-11-25 | T1 also amends `18` §2 (row M1) and the skill `yaf-domain-modeling` is amended by T2 | Both name `YAF1001`; `18` is the recipe for rebuilding YAF (plan 0007 amended it for the same reason) | Planner |
-| 2026-11-25 | ADR-0007 is edited in place, its Enforcement row only, with a dated note; not superseded | The owner named ADR-0007 for the rename (decision 2); superseding restates the whole record for one id. This departs from `adr/AGENTS.md` rule 1 (deviation 1, open question 1) | Planner, on the owner's decision 2 |
+| 2026-11-25 | ADR-0007 is edited in place, its Enforcement row only, with a dated note; not superseded | The owner named ADR-0007 for the rename (decision 2); superseding restates the whole record for one id. This departs from `adr/AGENTS.md` rule 1 (deviation 1) | Planner, on the owner's decision 2 |
 | 2026-11-25 | T1 adds the field type (`Error` or `ErrorDescriptor`) to `YAF3001`'s sentence in `03` §2 | Owner's decision 5 restricts the analyzer; the specification should say what it checks. T5 waits for T1 | Planner |
 | 2026-11-25 | The code of a `new ErrorDescriptor(…)` catalogue field is its `code` argument, selected by parameter name; only a constant is checked; `[ErrorCode]` on such a field is not read | The constructor is not intercepted, so that argument is the code at run time; a value not known at compile time cannot be checked (the rule of `YAF3003`) | Planner |
 | 2026-11-25 | The rename edits the unshipped release-tracking row in place | Nothing is in `AnalyzerReleases.Shipped.md`; the "Changed" and "Removed" sections are for shipped rules | Planner |
 | 2026-11-25 | The rename is not a breaking change | Nothing is published: no tags, no release job, no package on nuget.org (Approach) | Planner |
-| 2026-11-25 | T11 also rewords the generated `Value` doc in `TypedIdSource.cs`, which makes it tier high | The same sentence on every typed id would otherwise keep the defect #194 reports (open question 2) | Planner |
+| 2026-11-25 | T11 also rewords the generated `Value` doc in `TypedIdSource.cs`, which makes it tier high | The same sentence on every typed id would otherwise keep the defect #194 reports | Planner |
 | 2026-11-25 | `analyzers.md` changes with the rename (T7) and once more for T3–T5 (T8) | The article names the id, so it moves with it; the other changes are batched in one tier-low ticket | Planner |
 | 2026-11-25 | The missing tests show their failure by a local break that is reverted | They cover code that already works; the break proves each test can fail | Planner |
-| 2026-11-25 | The DocFX item of #194 is left to M14 | The owner's decisions do not cover it; `docs/docfx.json` comes with M14 (`18` §2; plan 0006 deviation 5) (open question 3) | Planner |
+| 2026-11-25 | The DocFX item of #194 is left to M14 | The owner's decisions do not cover it; `docs/docfx.json` comes with M14 (`18` §2; plan 0006 deviation 5) | Planner |
 | 2026-11-25 | Plan 0006 and its research keep their mentions of `YAF1001`; ADR-0031 is not edited | Records of what was planned and merged; ADR-0031's rows stay true as summaries | Planner |
+| 2026-11-25 | **Owner's answers to the plan's open questions:** (1) ADR-0007 gets the dated note in place, kept as deviation 1; no superseding ADR. (2) T11 rewords both `src/Core/Ids/ITypedId.cs` and `src/Analyzers/TypedIds/TypedIdSource.cs`, tier high as planned. (3) The DocFX and `toc.yml` item of #194 stays out of plan 0008 and is deferred to M14 | Answers given to the orchestrator in an attended session, recorded on #194 | Human owner, 2026-11-25 |
 
 ## Deviations from the specification
 
-1. **ADR-0007 is edited although it is accepted.** `adr/AGENTS.md` rule 1 and `yaf-writing-adrs` rule 7 allow only the status line of an accepted ADR to change. T1 changes the id in one row of its Enforcement table, with a dated note, because the owner's decision 2 names ADR-0007 for the rename and an explicit human instruction comes first in `AGENTS.md`'s precedence. The decision of ADR-0007 does not change. The owner confirms this by approving T1 or asks for a superseding ADR instead (open question 1).
+1. **ADR-0007 is edited although it is accepted.** `adr/AGENTS.md` rule 1 and `yaf-writing-adrs` rule 7 allow only the status line of an accepted ADR to change. T1 changes the id in one row of its Enforcement table, with a dated note, because the owner's decision 2 names ADR-0007 for the rename and an explicit human instruction comes first in `AGENTS.md`'s precedence. The decision of ADR-0007 does not change. The owner confirmed on 2026-11-25 that the dated note in place stands and that no superseding ADR is written (decision log).
 
 Everything else this plan changes in `docs/spec/` is amended by T1 before the code that needs it; after T1 the tickets follow the specification.
-
-## Open questions for the owner
-
-1. ADR-0007: edit the one row in place with a dated note (planned), or supersede ADR-0007 with a revised copy?
-2. T11 includes the generator's copy of the `Value` doc and is tier high. Keep it, or limit T11 to `ITypedId.cs` (tier medium) and leave the generated doc?
-3. The open DocFX item of #194 (articles in no docs build and no `toc.yml`) has no decision and no ticket here; it is planned for M14. Tick it on #194, or add a ticket?
 
 ## Tickets
 
