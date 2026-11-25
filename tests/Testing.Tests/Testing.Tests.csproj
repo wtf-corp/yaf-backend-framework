@@ -4,6 +4,9 @@
     <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
     <YafServiceCode>tests</YafServiceCode>
+    <!-- Approvals.Verify finds the approved file through [CallerFilePath]. A CI build maps the repository root to /_/ in it unless this is
+         false (15 §3.1; specs/0009-domain/research.md §7). -->
+    <DeterministicSourcePaths>false</DeterministicSourcePaths>
   </PropertyGroup>
 
   <ItemGroup>
