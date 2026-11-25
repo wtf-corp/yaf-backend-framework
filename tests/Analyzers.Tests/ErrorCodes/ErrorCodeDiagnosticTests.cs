@@ -111,6 +111,66 @@ public sealed class ErrorCodeDiagnosticTests
         result.Diagnostics.Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task ConstructorFieldUpperCaseCode_ReportsYAF3004()
+    {
+        var source = Catalogue(
+            "public static readonly ErrorDescriptor Full = new ErrorDescriptor(\"Catalog.Session.Full\", ErrorKind.Conflict, \"Session is full.\");");
+
+        using var result = await RunAsync(source, s_catalog);
+
+        ShouldReportYaf3004At(result, "new ErrorDescriptor(\"Catalog.Session.Full\", ErrorKind.Conflict, \"Session is full.\")");
+    }
+
+    [Fact]
+    public async Task TargetTypedConstructorFieldCodeOver100Characters_ReportsYAF3004()
+    {
+        var code = "catalog." + new string('x', 93);
+        var source = Catalogue($"public static readonly ErrorDescriptor TitleRequired = new(\"{code}\", ErrorKind.Validation, \"Title.\");");
+
+        using var result = await RunAsync(source, s_catalog);
+
+        ShouldReportYaf3004At(result, $"new(\"{code}\", ErrorKind.Validation, \"Title.\")");
+    }
+
+    [Fact]
+    public async Task ConstructorFieldNamedArgumentsOutOfOrder_ReportsYAF3004()
+    {
+        // The template is a valid code, so reading the first argument as the code would report nothing.
+        var creation = "new ErrorDescriptor(MessageTemplate: \"catalog.session.full\", Kind: ErrorKind.Conflict, Code: \"Catalog.Session.Full\")";
+        var source = Catalogue($"public static readonly ErrorDescriptor Full = {creation};");
+
+        using var result = await RunAsync(source, s_catalog);
+
+        ShouldReportYaf3004At(result, creation);
+    }
+
+    [Fact]
+    public async Task ConstructorFieldWithoutServiceCode_ReportsNothing()
+    {
+        var source = Catalogue("""
+            public static readonly ErrorDescriptor Full = new ErrorDescriptor("catalog.session.full", ErrorKind.Conflict, "Session is full.");
+                    public static readonly ErrorDescriptor TitleRequired = new("catalog.session.title_required", ErrorKind.Validation, "Title.");
+            """);
+
+        using var result = await RunAsync(source, buildProperties: null);
+
+        result.Diagnostics.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ConstructorFieldNonConstantCode_ReportsNothing()
+    {
+        var source = Catalogue("""
+            private static readonly string s_code = "Catalog.Session.Full";
+                    public static readonly ErrorDescriptor Full = new(s_code, ErrorKind.Conflict, "Session is full.");
+            """);
+
+        using var result = await RunAsync(source, s_catalog);
+
+        result.Diagnostics.Should().BeEmpty();
+    }
+
     private static string Catalogue(string members) => $$"""
         using YAF.Core.Results;
         namespace Probe;
