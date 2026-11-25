@@ -9,7 +9,9 @@ namespace YAF.Analyzers.ErrorCodes;
 /// <summary>
 /// Reports <c>YAF3004</c> on a factory call of an error catalogue whose code cannot be computed or breaks the rules of 03 §2: a default
 /// code while <c>YafServiceCode</c> is missing or not <c>[a-z0-9_]+</c>, or a computed or <c>[ErrorCode]</c> code that is not
-/// <c>[a-z0-9_.]</c>, starts or ends with a dot, or is longer than 100 characters (plan 0006, Q5).
+/// <c>[a-z0-9_.]</c>, starts or ends with a dot, or is longer than 100 characters (plan 0006, Q5). Also on a <c>new ErrorDescriptor(…)</c>
+/// that initialises a catalogue field with a constant code that breaks those rules; such a code needs no <c>YafServiceCode</c>
+/// (plan 0008, T3).
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 internal sealed class ErrorCodeAnalyzer : DiagnosticAnalyzer
@@ -34,6 +36,8 @@ internal sealed class ErrorCodeAnalyzer : DiagnosticAnalyzer
         {
             var serviceCode = ErrorCodeNaming.ServiceCode(start.Options.AnalyzerConfigOptionsProvider.GlobalOptions);
             start.RegisterSyntaxNodeAction(node => Analyze(node, serviceCode), SyntaxKind.InvocationExpression);
+            start.RegisterSyntaxNodeAction(
+                AnalyzeCreation, SyntaxKind.ObjectCreationExpression, SyntaxKind.ImplicitObjectCreationExpression);
         });
     }
 
@@ -50,6 +54,16 @@ internal sealed class ErrorCodeAnalyzer : DiagnosticAnalyzer
         if (problem is not null)
         {
             context.ReportDiagnostic(Diagnostic.Create(InvalidCode, context.Node.GetLocation(), field.Name, problem));
+        }
+    }
+
+    private static void AnalyzeCreation(SyntaxNodeAnalysisContext context)
+    {
+        if (ErrorCodeNaming.ConstructorField((BaseObjectCreationExpressionSyntax)context.Node, context.SemanticModel, context.CancellationToken)
+                is { } declared
+            && CodeProblem(declared.Code) is { } problem)
+        {
+            context.ReportDiagnostic(Diagnostic.Create(InvalidCode, context.Node.GetLocation(), declared.Field.Name, problem));
         }
     }
 
@@ -71,6 +85,11 @@ internal sealed class ErrorCodeAnalyzer : DiagnosticAnalyzer
             code = serviceCode + "." + ErrorCodeNaming.DefaultPath(field);
         }
 
+        return CodeProblem(code);
+    }
+
+    private static string? CodeProblem(string code)
+    {
         return ErrorCodeNaming.IsValidCode(code)
             ? null
             : $"is '{code}', which is not lower-case [a-z0-9_.], starts or ends with a dot, or is longer than {ErrorCodeNaming.MaxCodeLength} characters";

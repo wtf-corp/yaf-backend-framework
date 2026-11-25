@@ -2,11 +2,13 @@ using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
+using Microsoft.CodeAnalysis.Operations;
 
 namespace YAF.Analyzers.ErrorCodes;
 
 /// <summary>
-/// Finds the factory calls of <c>YAF.Core.Results.Error</c> that declare an error field of an error catalogue, and computes their codes
+/// Finds the factory calls of <c>YAF.Core.Results.Error</c> that declare an error field of an error catalogue, and computes their codes,
+/// and the catalogue fields declared with <c>new ErrorDescriptor(…)</c> and their constant codes
 /// (specs/0000-framework/03-results-and-errors.md §2). Shared by the generator and the diagnostics on error codes.
 /// </summary>
 internal static class ErrorCodeNaming
@@ -14,6 +16,10 @@ internal static class ErrorCodeNaming
     public const string ErrorTypeName = "YAF.Core.Results.Error";
     public const string CatalogueTypeName = "YAF.Core.Results.IErrorCatalog";
     public const string ErrorCodeAttributeName = "YAF.Core.Results.ErrorCodeAttribute";
+    public const string DescriptorTypeName = "YAF.Core.Results.ErrorDescriptor";
+
+    // The parameter of the ErrorDescriptor constructor that takes the code; arguments are matched by it, never by position.
+    private const string CodeParameterName = "Code";
 
     /// <summary>The nine factories, one per member of <c>ErrorKind</c> and named like it.</summary>
     public static readonly string[] FactoryNames =
@@ -42,8 +48,39 @@ internal static class ErrorCodeNaming
     public static IFieldSymbol? CatalogueField(InvocationExpressionSyntax invocation, SemanticModel model, CancellationToken token)
     {
         if (model.GetSymbolInfo(invocation, token).Symbol is not IMethodSymbol { IsStatic: true } method
-            || method.ContainingType.ToDisplayString() != ErrorTypeName
-            || model.GetDeclaredSymbol(invocation.Parent!.Parent!, token) is not IFieldSymbol { IsStatic: true } field
+            || method.ContainingType.ToDisplayString() != ErrorTypeName)
+        {
+            return null;
+        }
+
+        return InitialisedCatalogueField(invocation, model, token);
+    }
+
+    /// <summary>
+    /// The static field of an error catalogue that a <c>new ErrorDescriptor(…)</c> or target-typed <c>new(…)</c> initialises, with its
+    /// code: the value of the argument for the parameter <c>Code</c>. <see langword="null"/> when the creation initialises no such field or
+    /// the code is not a constant string, which is then not checked (03 §2).
+    /// </summary>
+    public static (IFieldSymbol Field, string Code)? ConstructorField(
+        BaseObjectCreationExpressionSyntax creation, SemanticModel model, CancellationToken token)
+    {
+        if (creation.Parent is not EqualsValueClauseSyntax { Parent: VariableDeclaratorSyntax }
+            || model.GetOperation(creation, token) is not IObjectCreationOperation { Arguments: var arguments } operation
+            || operation.Type?.ToDisplayString() != DescriptorTypeName
+            || arguments.FirstOrDefault(static argument => argument.Parameter?.Name == CodeParameterName)?.Value.ConstantValue
+                is not { HasValue: true, Value: string code }
+            || InitialisedCatalogueField(creation, model, token) is not { } field)
+        {
+            return null;
+        }
+
+        return (field, code);
+    }
+
+    // The static field of an error catalogue whose declarator has the expression as its initialiser, or null.
+    private static IFieldSymbol? InitialisedCatalogueField(ExpressionSyntax initialiser, SemanticModel model, CancellationToken token)
+    {
+        if (model.GetDeclaredSymbol(initialiser.Parent!.Parent!, token) is not IFieldSymbol { IsStatic: true } field
             || !field.ContainingType.AllInterfaces.Any(static type => type.ToDisplayString() == CatalogueTypeName))
         {
             return null;
