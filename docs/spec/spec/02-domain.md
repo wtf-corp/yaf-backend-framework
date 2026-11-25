@@ -65,14 +65,24 @@ public interface IOriginator<TSelf, TMemento>
     static abstract TSelf Restore(TMemento memento);     // no validation: stored state is trusted
 }
 
+public interface IAggregateRoot
+{
+    IReadOnlyList<IDomainEvent> DomainEvents { get; }
+    IReadOnlyList<IDomainEvent> DequeueDomainEvents();
+    Result CheckInvariants();
+}
+
 public abstract class AggregateRoot<TId, TSelf, TMemento> : Entity<TId, TSelf, TMemento>, IAggregateRoot
 {
     public AggregateVersion Version { get; }             // concurrency token of the whole aggregate, opaque to the domain
     public IReadOnlyList<IDomainEvent> DomainEvents { get; }
     protected void Raise(IDomainEvent domainEvent);
     IReadOnlyList<IDomainEvent> IAggregateRoot.DequeueDomainEvents();
+    Result IAggregateRoot.CheckInvariants();
 }
 ```
+
+> **Amended 2026-11-25**, by the owner's decisions of 2026-11-25 (`specs/0009-domain/plan.md`, decision log): `IAggregateRoot` declares `DomainEvents` and `CheckInvariants()`, so that the builder (§4.1) and the helpers of `YAF.Testing` reach them without `InternalsVisibleTo`.
 
 Rules (each has an architecture test in `YAF.Testing.Architecture`, see `15-testing.md`):
 
@@ -92,8 +102,11 @@ public abstract class AggregateBuilder<TAggregate> where TAggregate : IAggregate
 {
     public Result<TAggregate> Build();        // creates, applies, CheckInvariants, raises the "created" event
     protected abstract TAggregate Create();
+    protected abstract void OnCreated(TAggregate aggregate);   // raises the "created" event through a method of the aggregate
 }
 ```
+
+> **Amended 2026-11-25**, by the owner's decisions of 2026-11-25 (`specs/0009-domain/plan.md`, decision log): the hook `OnCreated`, because `Raise` is protected on the aggregate.
 
 A builder is used where creation takes more than about four inputs or has optional parts; otherwise a `static Result<T> Create(...)` factory on the aggregate is enough. Builders hold no unmanaged state and are not `IDisposable`.
 
@@ -197,7 +210,9 @@ public sealed record SessionFormat : Enumeration<SessionFormat>
 }
 ```
 
-`Enumeration<TSelf>` gives `Code` (stable, stored and serialized), `Name`, `All`, `FromCode` returning `Result<TSelf>`, and a JSON converter by code. The store converter is not here: `YAF.Persistence.EfCore` has a generic `EnumerationConverter<T>` applied by convention. Use a C# `enum` when the values carry no behaviour or data; both are stored as strings.
+`Enumeration<TSelf>` gives `Code` (stable, stored and serialized), `Name`, `All`, `FromCode` returning `Result<TSelf>`. The JSON converter by code is `EnumerationJsonConverterFactory`, registered in the serializer options or named on the type with `[JsonConverter(typeof(EnumerationJsonConverterFactory))]`. The store converter is not here: `YAF.Persistence.EfCore` has a generic `EnumerationConverter<T>` applied by convention. Use a C# `enum` when the values carry no behaviour or data; both are stored as strings.
+
+> **Amended 2026-11-25**, by the owner's decisions of 2026-11-25 (`specs/0009-domain/plan.md`, decision log; deviation 6, confirmed by the owner on 2026-11-25): `System.Text.Json` does not read `[JsonConverter]` from a base type, so `Enumeration<TSelf>` cannot attach the converter itself.
 
 ## 7. Domain events
 
@@ -273,6 +288,9 @@ public static readonly StateMachine<SessionStatus, SessionTrigger> Lifecycle =
 - The definition is static, immutable and side-effect free. `Lifecycle.Fire(current, trigger)` returns `Result<TState>`; the behaviour assigns the state and raises the event. Guards that need aggregate data are business rules checked in the behaviour, not lambdas inside the definition, so the definition stays printable.
 - `Lifecycle.ToMermaid()` renders the diagram; the docs build embeds it, and a test (`StateMachineAssert.IsWellFormed(Lifecycle, initial, finals)` in `YAF.Testing`) asserts every state is reachable and every non-final state has an exit.
 - `PermittedTriggers(current)` feeds API responses that tell a client what it may do next.
+- `States` lists the states the definition names, so that `StateMachineAssert` can check a machine whose state type is not an enum.
+
+> **Amended 2026-11-25**, by the owner's decisions of 2026-11-25 (`specs/0009-domain/plan.md`, decision log): the member `States`.
 
 ## 11. Privacy-aware domain
 
@@ -280,7 +298,7 @@ public static readonly StateMachine<SessionStatus, SessionTrigger> Lifecycle =
 |---|---|---|
 | Classification | `[PersonalData(category, Purpose = …)]`, `[SensitivePersonalData]`, `[SecretData]` on memento interface members and on request/response/event members | Every `string`, `byte[]` and free-form member of a memento interface MUST be classified (`[PublicData]` or `[InternalData]` count); a value object classified at the type level (`EmailAddress`) brings its classification with it. Analyzer `YAF2001` fails the build otherwise |
 | Data subject | `IDataSubjectOwnedMemento.DataSubjectId` | Any memento with a `[PersonalData]` member MUST say whose data it is, or be marked `[NoDataSubject("reason")]` |
-| Retention | `[Retention("P2Y", After = RetentionAnchor.Closed, Basis = "contract")]` on the memento interface | Required on every type holding personal data (`YAF2002`). The anchor is a timestamp member the aggregate maintains |
+| Retention | `[Retention("P2Y", After = RetentionAnchor.Member, Member = nameof(ClosedAt), Basis = "contract", Action = RetentionAction.Delete)]` on the memento interface | Required on every type holding personal data (`YAF2002`). The anchor is a timestamp member the aggregate maintains |
 | Soft delete | `ISoftDeletableMemento` | Opt-in; a soft-deleted type MUST have a retention policy, which is its purge path |
 | Legal hold | `LegalHold` aggregate in `YAF.Privacy` (stored through `YAF.Privacy.EfCore`) | Suspends purge and erasure for named subjects or records, with a reason and an owner |
 | Erasure | `[OnErasure(ErasureAction.Delete | Anonymise | Shred | Keep, Reason = …)]` per member or type | `Keep` requires a reason naming the legal basis; it appears in the generated inventory |
@@ -291,9 +309,13 @@ public static readonly StateMachine<SessionStatus, SessionTrigger> Lifecycle =
 
 The mechanisms that act on these markers (encryption, per-subject keys, redaction, purge jobs, export and erasure) are specified in `05-persistence.md` §6 and `11-privacy-and-compliance.md`. The domain only declares.
 
+> **Amended 2026-11-25**, by the owner's decisions of 2026-11-25 (`specs/0009-domain/plan.md`, decision log Q4): the `[Retention]` example reads as in `11-privacy-and-compliance.md` §4. The markers `[NoDataSubject]`, `[Retention]` and `[OnErasure]` ship in `YAF.Domain` with their readers in M6, M10 and M12 (`18-build-plan.md` §2); `IDataSubjectOwnedMemento` and `ISoftDeletableMemento` ship in M2.
+
 ## 12. Acceptance criteria
 
 - `YAF.Domain` and `YAF.Core` build with zero warnings, public API fully XML-documented, and have no package dependency other than the one named in §2.
-- Unit tests cover: typed id generation and parsing; `Result` propagation through `Check` and `Apply`; memento round trip including child add, keep and remove and members of every allowed type (typed id, enum, smart enumeration, single- and multi-value value object, nullable forms); every shipped value object including `Money.Allocate` remainders; `Enumeration` lookup; specification composition over typed members; state machine reachability and `ToMermaid`.
+- Unit tests cover: typed id generation and parsing; `Result` propagation through `Check`, `CheckAll` and `Then`; memento round trip including child add, keep and remove and members of every allowed type (typed id, enum, smart enumeration, single- and multi-value value object, nullable forms); every shipped value object including `Money.Allocate` remainders; `Enumeration` lookup; specification composition over typed members; state machine reachability and `ToMermaid`.
 - Generator tests compile snippets in memory and assert the data class emitted for `[MementoData]`: base-contract members, typed members, child collections and factories, and the diagnostic for a class that is not `partial` or names no memento interface.
 - The analyzers named here have tests that compile a violating snippet and assert the diagnostic id.
+
+> **Amended 2026-11-25**, by the owner's decisions of 2026-11-25 (`specs/0009-domain/plan.md`, decision log Q1 and Q3): there is no `Apply`; a behaviour is `Check(…).Then(…)` (§4 rule 4, §8). M2 meets items 1 and 2; item 3 is accepted in M3 with the `[MementoData]` generator, and item 4 by `YAF2009` in M1 and by M6 and M10 for the other analyzers (`18-build-plan.md` §2).
