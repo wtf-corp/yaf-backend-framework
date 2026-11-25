@@ -113,3 +113,9 @@ dotnet_diagnostic.CA1002.severity = none
 dotnet_diagnostic.CA2225.severity = none
 # CA1815: results are not compared; 03 §1 defines no equality (an error list has no meaningful equality). Owner's decision on #116, 2026-11-24.
 dotnet_diagnostic.CA1815.severity = none
+
+[src/Core/Optional.cs]
+# CA1716: 02 §2 names the type Optional (a Visual Basic keyword). Owner's decision on #124, 2026-11-25.
+dotnet_diagnostic.CA1716.severity = none
+# CA2225: 02 §2 prescribes the implicit conversion from T; a FromT method would duplicate it. Owner's decision on #124, 2026-11-25.
+dotnet_diagnostic.CA2225.severity = none
