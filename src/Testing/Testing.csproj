@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Pure test helpers (01 §2.1; 15 §3): no test framework or assertion library, no AOT or trimming claim (01 §4). References YAF.Domain
+       until M3 creates YAF.Application (specs/0009-domain/plan.md, Q2). -->
+  <PropertyGroup>
+    <YafServiceCode>core</YafServiceCode>
+  </PropertyGroup>
+
+  <!-- A project reference carries neither the analyzers nor YAF.Core.props, which an app gets from the YAF.Core package, so both are named
+       here (specs/0009-domain/research.md §6). The analyzers stay out of this package: consumers get them through YAF.Core. -->
+  <ItemGroup>
+    <ProjectReference Include="../Analyzers/Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
+    <ProjectReference Include="../Domain/Domain.csproj" />
+  </ItemGroup>
+
+  <Import Project="../Core/buildTransitive/YAF.Core.props" />
+
+</Project>
