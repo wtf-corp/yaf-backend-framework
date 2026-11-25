@@ -119,3 +119,25 @@ dotnet_diagnostic.CA1815.severity = none
 dotnet_diagnostic.CA1716.severity = none
 # CA2225: 02 §2 prescribes the implicit conversion from T; a FromT method would duplicate it. Owner's decision on #124, 2026-11-25.
 dotnet_diagnostic.CA2225.severity = none
+
+[src/Domain/Rules/IBusinessRule.cs]
+# CA1716: 02 §8 names the member IBusinessRule.Error (a Visual Basic keyword). Owner's decision Q6 on #224 (specs/0009-domain/plan.md), 2026-11-25.
+dotnet_diagnostic.CA1716.severity = none
+
+[src/Domain/AggregateRoot\{TId\,TSelf\,TMemento\}.cs]
+# CA1030: 02 §4 names the method Raise; it queues a domain event, not a .NET event. Owner's decision Q6 on #224 (specs/0009-domain/plan.md), 2026-11-25.
+dotnet_diagnostic.CA1030.severity = none
+# CA1033: 02 §4 implements IAggregateRoot.DequeueDomainEvents explicitly so that domain code cannot empty the queue. Owner's decision Q6 on #224 (specs/0009-domain/plan.md), 2026-11-25.
+dotnet_diagnostic.CA1033.severity = none
+
+[src/Domain/Enumeration\{TSelf\}.cs]
+# CA1000: 02 §6.2 prescribes the static SessionFormat.All and SessionFormat.FromCode of Enumeration<TSelf>. Owner's decision Q6 on #224 (specs/0009-domain/plan.md), 2026-11-25.
+dotnet_diagnostic.CA1000.severity = none
+# CA1724: 02 §6.2 names the type Enumeration (also the last part of System.IO.Enumeration). Owner's decision Q6 on #224 (specs/0009-domain/plan.md), 2026-11-25.
+dotnet_diagnostic.CA1724.severity = none
+
+[src/Domain/StateMachines/StateMachine\{TState\,TTrigger\}.cs]
+# CA1000: 02 §10 prescribes the static StateMachine<TState, TTrigger>.Define. Owner's decision Q6 on #224 (specs/0009-domain/plan.md), 2026-11-25.
+dotnet_diagnostic.CA1000.severity = none
+# CA1030: 02 §10 names the method Fire. Owner's decision Q6 on #224 (specs/0009-domain/plan.md), 2026-11-25.
+dotnet_diagnostic.CA1030.severity = none
