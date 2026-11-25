@@ -1,1 +1,33 @@
 #nullable enable
+YAF.Domain.Mementos.CorruptStateException
+YAF.Domain.Mementos.CorruptStateException.CorruptStateException() -> void
+YAF.Domain.Mementos.CorruptStateException.CorruptStateException(string! message) -> void
+YAF.Domain.Mementos.CorruptStateException.CorruptStateException(string! message, System.Exception! innerException) -> void
+YAF.Domain.Mementos.IAggregateMemento
+YAF.Domain.Mementos.IDataSubjectOwnedMemento
+YAF.Domain.Mementos.IDataSubjectOwnedMemento.DataSubjectId.get -> System.Guid
+YAF.Domain.Mementos.IDataSubjectOwnedMemento.DataSubjectId.set -> void
+YAF.Domain.Mementos.IEntityMemento
+YAF.Domain.Mementos.IEntityMemento.Id.get -> System.Guid
+YAF.Domain.Mementos.IEntityMemento.Id.set -> void
+YAF.Domain.Mementos.IOwnedEntityMemento
+YAF.Domain.Mementos.ISoftDeletableMemento
+YAF.Domain.Mementos.ISoftDeletableMemento.DeletedAt.get -> System.DateTimeOffset?
+YAF.Domain.Mementos.ISoftDeletableMemento.DeletedAt.set -> void
+YAF.Domain.Mementos.ISoftDeletableMemento.DeletedBy.get -> System.Guid?
+YAF.Domain.Mementos.ISoftDeletableMemento.DeletedBy.set -> void
+YAF.Domain.Mementos.IStampedMemento
+YAF.Domain.Mementos.IStampedMemento.CreatedAt.get -> System.DateTimeOffset
+YAF.Domain.Mementos.IStampedMemento.CreatedAt.set -> void
+YAF.Domain.Mementos.IStampedMemento.CreatedBy.get -> System.Guid
+YAF.Domain.Mementos.IStampedMemento.CreatedBy.set -> void
+YAF.Domain.Mementos.IStampedMemento.ModifiedAt.get -> System.DateTimeOffset
+YAF.Domain.Mementos.IStampedMemento.ModifiedAt.set -> void
+YAF.Domain.Mementos.IStampedMemento.ModifiedBy.get -> System.Guid
+YAF.Domain.Mementos.IStampedMemento.ModifiedBy.set -> void
+YAF.Domain.Mementos.ITenantOwnedMemento
+YAF.Domain.Mementos.ITenantOwnedMemento.TenantId.get -> System.Guid
+YAF.Domain.Mementos.ITenantOwnedMemento.TenantId.set -> void
+YAF.Domain.Mementos.IVersionedMemento
+YAF.Domain.Mementos.IVersionedMemento.Version.get -> System.Guid
+YAF.Domain.Mementos.IVersionedMemento.Version.set -> void
