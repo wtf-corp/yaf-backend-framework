@@ -37,12 +37,28 @@ YAF.Core.Classification.StoredInClearAttribute.Reason.get -> string!
 YAF.Core.Classification.StoredInClearAttribute.StoredInClearAttribute(string! reason) -> void
 YAF.Core.Classification.YafTaxonomy
 YAF.Core.Guard
+YAF.Core.Ids.CorrelationId
+YAF.Core.Ids.CorrelationId.CorrelationId() -> void
+YAF.Core.Ids.CorrelationId.Equals(YAF.Core.Ids.CorrelationId other) -> bool
+YAF.Core.Ids.CorrelationId.Value.get -> System.Guid
+YAF.Core.Ids.DataSubjectId
+YAF.Core.Ids.DataSubjectId.DataSubjectId() -> void
+YAF.Core.Ids.DataSubjectId.Equals(YAF.Core.Ids.DataSubjectId other) -> bool
+YAF.Core.Ids.DataSubjectId.Value.get -> System.Guid
 YAF.Core.Ids.ITypedId
 YAF.Core.Ids.ITypedId.Value.get -> System.Guid
 YAF.Core.Ids.ITypedId<TSelf>
 YAF.Core.Ids.ITypedId<TSelf>.From(System.Guid value) -> TSelf
+YAF.Core.Ids.TenantId
+YAF.Core.Ids.TenantId.Equals(YAF.Core.Ids.TenantId other) -> bool
+YAF.Core.Ids.TenantId.TenantId() -> void
+YAF.Core.Ids.TenantId.Value.get -> System.Guid
 YAF.Core.Ids.TypedIdAttribute
 YAF.Core.Ids.TypedIdAttribute.TypedIdAttribute() -> void
+YAF.Core.Ids.UserId
+YAF.Core.Ids.UserId.Equals(YAF.Core.Ids.UserId other) -> bool
+YAF.Core.Ids.UserId.UserId() -> void
+YAF.Core.Ids.UserId.Value.get -> System.Guid
 YAF.Core.Optional<T>
 YAF.Core.Optional<T>.Equals(YAF.Core.Optional<T> other) -> bool
 YAF.Core.Optional<T>.HasValue.get -> bool
@@ -146,6 +162,14 @@ YAF.Core.Results.Result<T>.ThenAsync<TOut>(System.Func<T, System.Threading.Tasks
 YAF.Core.Results.Result<T>.ThenAsync<TOut>(System.Func<T, System.Threading.Tasks.ValueTask<YAF.Core.Results.Result<TOut>>>! continuation) -> System.Threading.Tasks.ValueTask<YAF.Core.Results.Result<TOut>>
 YAF.Core.Results.Result<T>.Value.get -> T
 const YAF.Core.Classification.YafTaxonomy.Name = "YAF" -> string!
+override YAF.Core.Ids.CorrelationId.GetHashCode() -> int
+override YAF.Core.Ids.CorrelationId.ToString() -> string!
+override YAF.Core.Ids.DataSubjectId.GetHashCode() -> int
+override YAF.Core.Ids.DataSubjectId.ToString() -> string!
+override YAF.Core.Ids.TenantId.GetHashCode() -> int
+override YAF.Core.Ids.TenantId.ToString() -> string!
+override YAF.Core.Ids.UserId.GetHashCode() -> int
+override YAF.Core.Ids.UserId.ToString() -> string!
 override YAF.Core.Optional<T>.Equals(object? obj) -> bool
 override YAF.Core.Optional<T>.GetHashCode() -> int
 override YAF.Core.Results.Error.Equals(object? obj) -> bool
@@ -157,6 +181,30 @@ override YAF.Core.Results.ErrorDescriptor.ToString() -> string!
 static YAF.Core.Guard.NotDefault<T>(T value, string? paramName = null) -> void
 static YAF.Core.Guard.NotNull(object? value, string? paramName = null) -> void
 static YAF.Core.Guard.NotNullOrWhiteSpace(string? value, string? paramName = null) -> void
+static YAF.Core.Ids.CorrelationId.From(System.Guid value) -> YAF.Core.Ids.CorrelationId
+static YAF.Core.Ids.CorrelationId.New() -> YAF.Core.Ids.CorrelationId
+static YAF.Core.Ids.CorrelationId.Parse(string! s, System.IFormatProvider? provider) -> YAF.Core.Ids.CorrelationId
+static YAF.Core.Ids.CorrelationId.TryParse(string? s, System.IFormatProvider? provider, out YAF.Core.Ids.CorrelationId result) -> bool
+static YAF.Core.Ids.CorrelationId.operator !=(YAF.Core.Ids.CorrelationId left, YAF.Core.Ids.CorrelationId right) -> bool
+static YAF.Core.Ids.CorrelationId.operator ==(YAF.Core.Ids.CorrelationId left, YAF.Core.Ids.CorrelationId right) -> bool
+static YAF.Core.Ids.DataSubjectId.From(System.Guid value) -> YAF.Core.Ids.DataSubjectId
+static YAF.Core.Ids.DataSubjectId.New() -> YAF.Core.Ids.DataSubjectId
+static YAF.Core.Ids.DataSubjectId.Parse(string! s, System.IFormatProvider? provider) -> YAF.Core.Ids.DataSubjectId
+static YAF.Core.Ids.DataSubjectId.TryParse(string? s, System.IFormatProvider? provider, out YAF.Core.Ids.DataSubjectId result) -> bool
+static YAF.Core.Ids.DataSubjectId.operator !=(YAF.Core.Ids.DataSubjectId left, YAF.Core.Ids.DataSubjectId right) -> bool
+static YAF.Core.Ids.DataSubjectId.operator ==(YAF.Core.Ids.DataSubjectId left, YAF.Core.Ids.DataSubjectId right) -> bool
+static YAF.Core.Ids.TenantId.From(System.Guid value) -> YAF.Core.Ids.TenantId
+static YAF.Core.Ids.TenantId.New() -> YAF.Core.Ids.TenantId
+static YAF.Core.Ids.TenantId.Parse(string! s, System.IFormatProvider? provider) -> YAF.Core.Ids.TenantId
+static YAF.Core.Ids.TenantId.TryParse(string? s, System.IFormatProvider? provider, out YAF.Core.Ids.TenantId result) -> bool
+static YAF.Core.Ids.TenantId.operator !=(YAF.Core.Ids.TenantId left, YAF.Core.Ids.TenantId right) -> bool
+static YAF.Core.Ids.TenantId.operator ==(YAF.Core.Ids.TenantId left, YAF.Core.Ids.TenantId right) -> bool
+static YAF.Core.Ids.UserId.From(System.Guid value) -> YAF.Core.Ids.UserId
+static YAF.Core.Ids.UserId.New() -> YAF.Core.Ids.UserId
+static YAF.Core.Ids.UserId.Parse(string! s, System.IFormatProvider? provider) -> YAF.Core.Ids.UserId
+static YAF.Core.Ids.UserId.TryParse(string? s, System.IFormatProvider? provider, out YAF.Core.Ids.UserId result) -> bool
+static YAF.Core.Ids.UserId.operator !=(YAF.Core.Ids.UserId left, YAF.Core.Ids.UserId right) -> bool
+static YAF.Core.Ids.UserId.operator ==(YAF.Core.Ids.UserId left, YAF.Core.Ids.UserId right) -> bool
 static YAF.Core.Optional<T>.implicit operator YAF.Core.Optional<T>(T value) -> YAF.Core.Optional<T>
 static YAF.Core.Optional<T>.operator !=(YAF.Core.Optional<T> left, YAF.Core.Optional<T> right) -> bool
 static YAF.Core.Optional<T>.operator ==(YAF.Core.Optional<T> left, YAF.Core.Optional<T> right) -> bool
@@ -196,3 +244,7 @@ static readonly YAF.Core.Classification.YafTaxonomy.Public -> Microsoft.Extensio
 static readonly YAF.Core.Classification.YafTaxonomy.Secret -> Microsoft.Extensions.Compliance.Classification.DataClassification
 static readonly YAF.Core.Classification.YafTaxonomy.SensitivePersonal -> Microsoft.Extensions.Compliance.Classification.DataClassification
 static readonly YAF.Core.Results.CoreErrors.Uninitialised -> YAF.Core.Results.ErrorDescriptor!
+~override YAF.Core.Ids.CorrelationId.Equals(object obj) -> bool
+~override YAF.Core.Ids.DataSubjectId.Equals(object obj) -> bool
+~override YAF.Core.Ids.TenantId.Equals(object obj) -> bool
+~override YAF.Core.Ids.UserId.Equals(object obj) -> bool
