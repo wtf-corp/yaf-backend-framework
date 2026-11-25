@@ -22,21 +22,31 @@ public sealed class StorageMarkerTests
     }
 
     [Fact]
-    public void StorageMarkers_OnMember_AreReadTogether()
+    public void Searchable_OnMember_IsRead()
+    {
+        var property = typeof(ISample).GetProperty(nameof(ISample.Email))!;
+
+        property.GetCustomAttribute<SearchableAttribute>().Should().NotBeNull();
+        property.GetCustomAttribute<FieldIdAttribute>()!.Id.Should().Be("sample.email");
+    }
+
+    [Fact]
+    public void StoredInClear_OnMember_IsReadWithReason()
     {
         var property = typeof(ISample).GetProperty(nameof(ISample.Surname))!;
 
-        property.GetCustomAttribute<SearchableAttribute>().Should().NotBeNull();
         property.GetCustomAttribute<StoredInClearAttribute>()!.Reason.Should().Be("sorted list");
-        property.GetCustomAttribute<FieldIdAttribute>()!.Id.Should().Be("sample.surname");
     }
 
     private interface ISample
     {
-        [PersonalData(PersonalDataCategory.Identity)]
+        [PersonalData(PersonalDataCategory.Contact)]
         [Searchable]
+        [FieldId("sample.email")]
+        string Email { get; set; }
+
+        [PersonalData(PersonalDataCategory.Identity)]
         [StoredInClear("sorted list")]
-        [FieldId("sample.surname")]
         string Surname { get; set; }
     }
 }
