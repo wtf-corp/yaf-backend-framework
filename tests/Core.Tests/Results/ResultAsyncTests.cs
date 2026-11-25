@@ -91,6 +91,7 @@ public sealed class ResultAsyncTests
         next.Errors.Should().ContainSingle().Which.Code.Should().Be(s_closed.Code);
     }
 
+    #region then-async
     [Fact]
     public async Task ThenAsync_ValueTaskOnFailure_KeepsErrors()
     {
@@ -100,6 +101,7 @@ public sealed class ResultAsyncTests
 
         next.Errors.Should().ContainSingle().Which.Code.Should().Be(s_full.Code);
     }
+    #endregion
 
     [Fact]
     public void ThenAsync_NullContinuation_Throws()

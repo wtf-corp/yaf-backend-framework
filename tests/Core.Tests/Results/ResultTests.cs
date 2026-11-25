@@ -7,6 +7,7 @@ public sealed class ResultTests
     private static readonly ErrorDescriptor s_full = new("test.session.full", ErrorKind.Conflict, "Session is full.");
     private static readonly ErrorDescriptor s_closed = new("test.session.closed", ErrorKind.Conflict, "Session is closed.");
 
+    #region default-result
     [Fact]
     public void Default_IsFailureWithUninitialised()
     {
@@ -15,6 +16,7 @@ public sealed class ResultTests
         result.IsFailure.Should().BeTrue();
         result.FirstError.Code.Should().Be("core.uninitialised");
     }
+    #endregion
 
     [Fact]
     public void DefaultNonGeneric_IsFailureWithUninitialised()
@@ -91,6 +93,7 @@ public sealed class ResultTests
         act.Should().Throw<InvalidOperationException>();
     }
 
+    #region interface-value
     [Fact]
     public void Success_InterfaceValue_UsesResultSuccess()
     {
@@ -101,6 +104,7 @@ public sealed class ResultTests
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().BeSameAs(titles);
     }
+    #endregion
 
     [Fact]
     public void ImplicitConversion_FromError_IsFailure()
@@ -152,6 +156,7 @@ public sealed class ResultTests
         result.Errors.Select(e => e.Code).Should().Equal(s_closed.Code, s_full.Code);
     }
 
+    #region propagate-errors
     [Fact]
     public void ImplicitConversion_FromOtherResultErrors_PropagatesFailure()
     {
@@ -161,6 +166,7 @@ public sealed class ResultTests
 
         result.FirstError.Code.Should().Be(s_full.Code);
     }
+    #endregion
 
     [Fact]
     public void Failure_FromEnumerable_KeepsOrder()

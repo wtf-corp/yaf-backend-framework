@@ -108,6 +108,7 @@ public sealed class ResultCombinatorTests
         mapped.Errors.Should().ContainSingle().Which.Code.Should().Be(CoreErrors.Uninitialised.Code);
     }
 
+    #region then
     [Fact]
     public void Then_OnSuccess_ReturnsResultOfContinuation()
     {
@@ -117,6 +118,7 @@ public sealed class ResultCombinatorTests
 
         next.Value.Should().Be(84);
     }
+    #endregion
 
     [Fact]
     public void Then_OnSuccessAndFailingContinuation_ReturnsItsErrors()
@@ -240,6 +242,7 @@ public sealed class ResultCombinatorTests
         ensured.Value.Should().Be(42);
     }
 
+    #region ensure
     [Fact]
     public void Ensure_OnSuccessAndPredicateFalse_FailsWithDescriptor()
     {
@@ -249,6 +252,7 @@ public sealed class ResultCombinatorTests
 
         ensured.Errors.Should().ContainSingle().Which.Code.Should().Be(s_full.Code);
     }
+    #endregion
 
     [Fact]
     public void Ensure_OnFailure_KeepsErrorsAndSkipsPredicate()
@@ -349,6 +353,7 @@ public sealed class ResultCombinatorTests
         combined.IsSuccess.Should().BeTrue();
     }
 
+    #region combine
     [Fact]
     public void Combine_TwoFailures_KeepsAllErrorsInOrder()
     {
@@ -359,6 +364,7 @@ public sealed class ResultCombinatorTests
 
         combined.Errors.Select(error => error.Code).Should().Equal(s_full.Code, s_closed.Code, s_closed.Code);
     }
+    #endregion
 
     [Fact]
     public void Combine_WithDefault_ReportsUninitialised()

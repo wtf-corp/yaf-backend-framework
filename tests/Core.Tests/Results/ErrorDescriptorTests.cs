@@ -7,6 +7,7 @@ public sealed class ErrorDescriptorTests
     private static readonly ErrorDescriptor s_full =
         new("test.session.full", ErrorKind.Conflict, "Session has no free seats (capacity {Capacity}).");
 
+    #region fill-arguments
     [Fact]
     public void With_NamedArgument_FillsPlaceholder()
     {
@@ -14,6 +15,7 @@ public sealed class ErrorDescriptorTests
 
         error.Message.Should().Be("Session has no free seats (capacity 40).");
     }
+    #endregion
 
     [Fact]
     public void With_Arguments_KeepsArgumentsAsGiven()
@@ -73,6 +75,7 @@ public sealed class ErrorDescriptorTests
         error.Arguments.Should().BeEmpty();
     }
 
+    #region target
     [Fact]
     public void At_Target_SetsTarget()
     {
@@ -84,4 +87,5 @@ public sealed class ErrorDescriptorTests
         error.Code.Should().Be("test.email.invalid");
         error.Message.Should().Be("Email is invalid.");
     }
+    #endregion
 }
