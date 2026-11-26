@@ -1,4 +1,5 @@
 using YAF.Core.Classification;
+using YAF.Core.Results;
 using YAF.Domain;
 using YAF.Domain.Mementos;
 
@@ -41,7 +42,16 @@ internal sealed class Booking : AggregateRoot<BookingId, Booking, Booking.IMemen
         return booking;
     }
 
-    public void AddLine(BookingLineId lineId, int quantity) => _lines.Add(BookingLine.Create(lineId, quantity));
+    public void AddLine(BookingLineId lineId, int quantity)
+    {
+        _lines.Add(BookingLine.Create(lineId, quantity));
+        Raise(new BookingLineAdded(Id, lineId));
+    }
+
+    public void Confirm() => Raise(new BookingConfirmed(Id));
+
+    protected override Result CheckInvariants() =>
+        CheckAll([new TitleRequired(Title), .. _lines.Select(line => new QuantityPositive(line.Quantity))]);
 
     protected override void SnapshotCore(IMemento memento)
     {
