@@ -13,6 +13,11 @@
     <ProjectReference Include="../Domain/Domain.csproj" />
   </ItemGroup>
 
+  <!-- TestClock wraps FakeTimeProvider (15 §3.1, ADR-0018); the type stays out of every public signature. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+  </ItemGroup>
+
   <Import Project="../Core/buildTransitive/YAF.Core.props" />
 
 </Project>
