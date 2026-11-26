@@ -19,6 +19,8 @@ internal sealed class OrderData : Order.IMemento
 
     public Guid ModifiedBy { get; set; }
 
+    public Guid DataSubjectId { get; set; }
+
     public string Title { get; set; } = string.Empty;
 
     public CustomerId CustomerId { get; set; }
