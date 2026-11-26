@@ -385,7 +385,7 @@ test('a check run and a status of one name must both pass; the newest status of 
   assert.equal(gates(gate('success', minutesAgo(5), 11), gate('failure', minutesAgo(5), 12)), 'failed: factory/plan-gate');
 });
 
-const WORKTREE = { path:'C:/dev/yaf/.claude/worktrees/agent-a1', branch: 'ci/39-inflight-list', head: HEAD, locked: false };
+const WORKTREE = { path: 'C:/dev/yaf/.claude/worktrees/agent-a1', branch: 'ci/39-inflight-list', head: HEAD, locked: false };
 const READY = by(policy.bots.factory, marker('local-review', HEAD, 'ready round=1'));
 const wrow = (extra = {}) => worktreeRow({ worktree: WORKTREE, ticketLabels: ['factory'], ticketComments: [READY], pr: PULL, originHead: HEAD, ...extra }, policy);
 
