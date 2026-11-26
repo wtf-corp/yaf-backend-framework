@@ -211,7 +211,8 @@ public class SessionReserveSeatTests
 
     [Fact]
     public void Lifecycle_EveryStateReachable_AndNonFinalStatesHaveAnExit()
-        => StateMachineAssert.IsWellFormed(Session.Lifecycle, final: [SessionStatus.Cancelled, SessionStatus.Completed]);
+        => StateMachineAssert.IsWellFormed(
+            Session.Lifecycle, SessionStatus.Draft, [SessionStatus.Cancelled, SessionStatus.Completed]);
 }
 ```
 
