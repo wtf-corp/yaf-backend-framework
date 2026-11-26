@@ -83,6 +83,15 @@ YAF.Domain.Specifications.Specification<T>.IsSatisfiedBy(T candidate) -> bool
 YAF.Domain.Specifications.Specification<T>.Not() -> YAF.Domain.Specifications.Specification<T>!
 YAF.Domain.Specifications.Specification<T>.Or(YAF.Domain.Specifications.Specification<T>! other) -> YAF.Domain.Specifications.Specification<T>!
 YAF.Domain.Specifications.Specification<T>.Specification() -> void
+YAF.Domain.StateMachines.StateMachine<TState, TTrigger>
+YAF.Domain.StateMachines.StateMachine<TState, TTrigger>.Fire(TState current, TTrigger trigger) -> YAF.Core.Results.Result<TState>
+YAF.Domain.StateMachines.StateMachine<TState, TTrigger>.PermittedTriggers(TState current) -> System.Collections.Generic.IReadOnlyList<TTrigger>!
+YAF.Domain.StateMachines.StateMachine<TState, TTrigger>.States.get -> System.Collections.Generic.IReadOnlyList<TState>!
+YAF.Domain.StateMachines.StateMachineBuilder<TState, TTrigger>
+YAF.Domain.StateMachines.StateMachineBuilder<TState, TTrigger>.From(TState state) -> YAF.Domain.StateMachines.StateMachineBuilder<TState, TTrigger>!
+YAF.Domain.StateMachines.StateMachineBuilder<TState, TTrigger>.On(TTrigger trigger) -> YAF.Domain.StateMachines.StateMachineBuilder<TState, TTrigger>!
+YAF.Domain.StateMachines.StateMachineBuilder<TState, TTrigger>.Otherwise(YAF.Core.Results.ErrorDescriptor! error) -> YAF.Domain.StateMachines.StateMachine<TState, TTrigger>!
+YAF.Domain.StateMachines.StateMachineBuilder<TState, TTrigger>.To(TState state) -> YAF.Domain.StateMachines.StateMachineBuilder<TState, TTrigger>!
 YAF.Domain.ValueObject
 YAF.Domain.ValueObject.ValueObject() -> void
 YAF.Domain.ValueObject.ValueObject(YAF.Domain.ValueObject! original) -> void
@@ -184,6 +193,7 @@ static YAF.Domain.Enumeration<TSelf>.FromCode(string! code) -> YAF.Core.Results.
 static YAF.Domain.Events.DomainEvent.operator !=(YAF.Domain.Events.DomainEvent? left, YAF.Domain.Events.DomainEvent? right) -> bool
 static YAF.Domain.Events.DomainEvent.operator ==(YAF.Domain.Events.DomainEvent? left, YAF.Domain.Events.DomainEvent? right) -> bool
 static YAF.Domain.Mementos.MementoCollections.Sync<TId, TEntity, TMemento>(System.Collections.Generic.IList<TMemento>! mementos, System.Collections.Generic.IEnumerable<YAF.Domain.Entity<TId, TEntity!, TMemento>!>! entities, System.Func<TMemento>! create) -> void
+static YAF.Domain.StateMachines.StateMachine<TState, TTrigger>.Define(System.Func<YAF.Domain.StateMachines.StateMachineBuilder<TState, TTrigger>!, YAF.Domain.StateMachines.StateMachine<TState, TTrigger>!>! definition) -> YAF.Domain.StateMachines.StateMachine<TState, TTrigger>!
 static YAF.Domain.ValueObject.operator !=(YAF.Domain.ValueObject? left, YAF.Domain.ValueObject? right) -> bool
 static YAF.Domain.ValueObject.operator ==(YAF.Domain.ValueObject? left, YAF.Domain.ValueObject? right) -> bool
 static YAF.Domain.ValueObjects.Currency.All.get -> System.Collections.Generic.IReadOnlyList<YAF.Domain.ValueObjects.Currency!>!
