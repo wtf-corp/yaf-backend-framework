@@ -162,6 +162,10 @@ A <xref:YAF.Domain.StateMachines.StateMachine%602> declares the allowed transiti
 - `PermittedTriggers(current)` lists the triggers defined for a state, in definition order, for responses that tell a client what it may do next.
 - `States` lists every state the definition names, in order of first appearance.
 
+A behaviour fires the trigger from the current state and assigns the target only on success, so a refused trigger leaves the state as it was:
+
+[!code-csharp[](../../tests/Domain.Tests/Fixtures/Order.cs#state-machine-fire)]
+
 `ToMermaid()` renders the definition as a Mermaid state diagram, one line per transition in definition order:
 
 [!code-csharp[](../../tests/Domain.Tests/StateMachines/StateMachineMermaidTests.cs#mermaid)]

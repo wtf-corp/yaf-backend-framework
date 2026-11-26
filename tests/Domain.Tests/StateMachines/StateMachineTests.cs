@@ -24,6 +24,28 @@ public sealed class StateMachineTests
     }
 
     [Fact]
+    public void Cancel_PlacedOrder_IsCancelled()
+    {
+        var order = OrderIn(OrderStatus.Placed);
+
+        var result = order.Cancel();
+
+        result.IsSuccess.Should().BeTrue();
+        order.Status.Should().Be(OrderStatus.Cancelled);
+    }
+
+    [Fact]
+    public void Cancel_CancelledOrder_FailsWithTransitionNotAllowed()
+    {
+        var order = OrderIn(OrderStatus.Cancelled);
+
+        var result = order.Cancel();
+
+        result.Errors.Select(e => e.Code).Should().Equal(OrderErrors.TransitionNotAllowed.Code);
+        order.Status.Should().Be(OrderStatus.Cancelled);
+    }
+
+    [Fact]
     public void PermittedTriggers_ListsInDefinitionOrder()
     {
         var triggers = OrderLifecycle.Machine.PermittedTriggers(OrderStatus.Draft);
@@ -103,4 +125,6 @@ public sealed class StateMachineTests
         machine.States.Should().Equal(Channel.Web, Channel.Phone, Channel.Store);
         machine.Fire(Channel.Store, OrderTrigger.Reopen).Errors.Select(e => e.Code).Should().Equal(OrderErrors.TransitionNotAllowed.Code);
     }
+
+    private static Order OrderIn(OrderStatus status) => Order.Restore(new OrderData { Id = OrderId.New().Value, Status = status });
 }

@@ -21,7 +21,17 @@ namespace YAF.Domain.StateMachines;
 ///         .From(SessionStatus.Published).On(SessionTrigger.Cancel).To(SessionStatus.Cancelled)
 ///         .Otherwise(Errors.TransitionNotAllowed));
 ///
-/// public Result Publish() =&gt; Lifecycle.Fire(Status, SessionTrigger.Publish).Map(next =&gt; Status = next);
+/// public Result Cancel()
+/// {
+///     var next = Lifecycle.Fire(Status, SessionTrigger.Cancel);
+///     if (next.IsFailure)
+///     {
+///         return Result.Failure(next.Errors);
+///     }
+///
+///     Status = next.Value;
+///     return Result.Success();
+/// }
 /// </code>
 /// </example>
 /// <typeparam name="TState">The state type: an enum or an <see cref="Enumeration{TSelf}"/>.</typeparam>
