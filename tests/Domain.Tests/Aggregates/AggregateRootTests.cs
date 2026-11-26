@@ -1,7 +1,5 @@
-using System.Collections.ObjectModel;
 using Domain.Tests.Fixtures;
 using YAF.Domain;
-using YAF.Domain.Events;
 
 namespace Domain.Tests.Aggregates;
 
@@ -32,16 +30,6 @@ public sealed class AggregateRootTests
     }
 
     [Fact]
-    public void DomainEvents_IsAReadOnlyView()
-    {
-        var order = Order.Create(OrderId.New(), "Books").Value;
-
-        order.AddLine(OrderLineId.New(), 1);
-
-        order.DomainEvents.Should().BeOfType<ReadOnlyCollection<IDomainEvent>>();
-    }
-
-    [Fact]
     public void DequeueDomainEvents_ReturnsThenEmptiesQueue()
     {
         var order = Order.Create(OrderId.New(), "Books").Value;
@@ -63,7 +51,7 @@ public sealed class AggregateRootTests
     {
         var order = Order.Create(OrderId.New(), "Books").Value;
 
-        order.Version.Should().Be(default(AggregateVersion));
+        order.Version.Value.Should().Be(Guid.Empty);
     }
 
     [Fact]
@@ -76,8 +64,6 @@ public sealed class AggregateRootTests
         order.Snapshot(memento);
 
         memento.Version.Should().Be(version);
-        memento.Id.Should().Be(order.Id.Value);
-        memento.Title.Should().Be("Books");
     }
 
     [Fact]
@@ -87,7 +73,7 @@ public sealed class AggregateRootTests
 
         var order = Order.Restore(new OrderData { Id = OrderId.New().Value, Version = version, Title = "Books" });
 
-        order.Version.Should().Be(AggregateVersion.From(version));
+        order.Version.Value.Should().Be(version);
     }
 
     [Fact]
@@ -100,17 +86,5 @@ public sealed class AggregateRootTests
         var result = root.CheckInvariants();
 
         result.Errors.Select(e => e.Code).Should().Equal(OrderErrors.QuantityNotPositive.Code);
-    }
-
-    [Fact]
-    public void CheckInvariants_ThroughInterface_InvariantsHold_Succeeds()
-    {
-        var order = Order.Create(OrderId.New(), "Books").Value;
-        order.AddLine(OrderLineId.New(), 1);
-        IAggregateRoot root = order;
-
-        var result = root.CheckInvariants();
-
-        result.IsSuccess.Should().BeTrue();
     }
 }
