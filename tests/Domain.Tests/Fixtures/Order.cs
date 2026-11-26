@@ -31,6 +31,9 @@ internal sealed class Order : AggregateRoot<OrderId, Order, Order.IMemento>, IOr
 
     public static Result<Order> Create(OrderId id, string title) => Result.Success(new Order(id) { Title = title });
 
+    // The start of creation through OrderBuilder, which checks the invariants.
+    internal static Order Draft(OrderId id, string title) => new(id) { Title = title };
+
     public static Order Restore(IMemento memento)
     {
         var order = new Order(OrderId.From(memento.Id));
@@ -53,7 +56,11 @@ internal sealed class Order : AggregateRoot<OrderId, Order, Order.IMemento>, IOr
     }
     #endregion
 
-    protected override Result CheckInvariants() => CheckAll([.. _lines.Select(line => new QuantityPositive(line.Quantity))]);
+    // Queues the "created" event; OrderBuilder calls it once the invariants hold.
+    internal void Place() => Raise(new OrderPlaced(Id));
+
+    protected override Result CheckInvariants() =>
+        CheckAll([new TitleRequired(Title), .. _lines.Select(line => new QuantityPositive(line.Quantity))]);
 
     #region sync-children
     protected override void SnapshotCore(IMemento memento)
