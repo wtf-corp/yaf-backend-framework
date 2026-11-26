@@ -12,6 +12,14 @@ public sealed class ValueObjectErrors : IErrorCatalog
     [ErrorCode("core.currency.unknown")]
     public static readonly ErrorDescriptor UnknownCurrency = Error.Validation("'{Code}' is not an ISO 4217 currency code.");
 
+    /// <summary>
+    /// The error of <see cref="Money.Add"/> and <see cref="Money.Subtract"/> for two amounts in different currencies: code
+    /// <c>core.money.currency_mismatch</c>, kind <see cref="ErrorKind.Validation"/>. Its arguments are <c>Left</c> and <c>Right</c>, the
+    /// codes of the two currencies.
+    /// </summary>
+    [ErrorCode("core.money.currency_mismatch")]
+    public static readonly ErrorDescriptor CurrencyMismatch = Error.Validation("Amounts in {Left} and {Right} cannot be combined.");
+
     private ValueObjectErrors()
     {
     }
