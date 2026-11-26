@@ -85,6 +85,14 @@ public sealed class MoneyTests
     }
 
     [Fact]
+    public void Allocate_ProductBeyondDecimalRange_ThrowsOverflowException()
+    {
+        var total = new Money(1e18m, s_eur);
+
+        total.Invoking(m => m.Allocate(int.MaxValue, 1)).Should().Throw<OverflowException>();
+    }
+
+    [Fact]
     public void Add_SameCurrency_Adds()
     {
         var result = new Money(1.50m, s_eur).Add(new Money(2.25m, s_eur));

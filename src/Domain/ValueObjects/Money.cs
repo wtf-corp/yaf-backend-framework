@@ -59,6 +59,9 @@ public sealed record Money(decimal Amount, Currency Currency) : ValueObject
     /// <param name="parts">The number of shares, 1 or more.</param>
     /// <returns>The shares, as <see cref="Allocate(ReadOnlySpan{int})"/> with <paramref name="parts"/> ratios of 1 computes them.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="parts"/> is less than 1.</exception>
+    /// <exception cref="OverflowException">
+    /// The amount in minor units is too large to be multiplied by a ratio within the range of <see cref="decimal"/>.
+    /// </exception>
     public IReadOnlyList<Money> Allocate(int parts)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(parts, 1);
@@ -77,6 +80,10 @@ public sealed record Money(decimal Amount, Currency Currency) : ValueObject
     /// <returns>The shares, in the order of <paramref name="ratios"/>, in the same currency.</returns>
     /// <exception cref="ArgumentException">
     /// <paramref name="ratios"/> is empty, holds a negative ratio, or its ratios add up to 0.
+    /// </exception>
+    /// <exception cref="OverflowException">
+    /// The amount in minor units times a ratio leaves the range of <see cref="decimal"/>, even when the share itself would fit: for example
+    /// an amount of 10^18 units with two decimals and a ratio of <see cref="int.MaxValue"/>.
     /// </exception>
     public IReadOnlyList<Money> Allocate(params ReadOnlySpan<int> ratios)
     {
