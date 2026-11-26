@@ -141,3 +141,35 @@ dotnet_diagnostic.CA1724.severity = none
 dotnet_diagnostic.CA1000.severity = none
 # CA1030: 02 §10 names the method Fire. Owner's decision Q6 on #224 (specs/0009-domain/plan.md), 2026-11-25.
 dotnet_diagnostic.CA1030.severity = none
+
+[src/Application/IRequest\{TResult\}.cs]
+# CA1040: 04 §2 declares IRequest<TResult> as a marker interface. Plan 0013 T1 (specs/0013-thin-slice/plan.md, research §4).
+dotnet_diagnostic.CA1040.severity = none
+
+[src/Application/ICommand\{TResult\}.cs]
+# CA1040: 04 §2 declares ICommand<TResult> as a marker interface. Plan 0013 T1 (specs/0013-thin-slice/plan.md, research §4).
+dotnet_diagnostic.CA1040.severity = none
+
+[src/Application/IQuery\{TResult\}.cs]
+# CA1040: 04 §2 declares IQuery<TResult> as a marker interface. Plan 0013 T1 (specs/0013-thin-slice/plan.md, research §4).
+dotnet_diagnostic.CA1040.severity = none
+
+[src/Application/IStreamQuery\{TItem\}.cs]
+# CA1040: 04 §2 declares IStreamQuery<TItem> as a marker interface. Plan 0013 T1 (specs/0013-thin-slice/plan.md, research §4).
+dotnet_diagnostic.CA1040.severity = none
+
+[src/Application/IDomainEventHandler\{TEvent\}.cs]
+# CA1711: 04 §2 names the type IDomainEventHandler<TEvent>; it handles domain events, not a .NET event. Plan 0013 T1 (specs/0013-thin-slice/plan.md, research §4).
+dotnet_diagnostic.CA1711.severity = none
+
+[src/Application/Pipeline/RequestDelegate\{TResult\}.cs]
+# CA1711: 04 §3 names the delegate RequestDelegate<TResult>. Plan 0013 T1 (specs/0013-thin-slice/plan.md, research §4).
+dotnet_diagnostic.CA1711.severity = none
+
+[src/Application/Pipeline/IRequestMiddleware\{TRequest\,TResult\}.cs]
+# CA1716: 04 §3 names the parameter next of IRequestMiddleware.InvokeAsync (a Visual Basic keyword). Plan 0013 T1 (specs/0013-thin-slice/plan.md, research §4).
+dotnet_diagnostic.CA1716.severity = none
+
+[src/Application/Context/Principal.cs]
+# CA1724: 04 §7 names the type Principal (also the last part of System.Security.Principal). Plan 0013 T1 (specs/0013-thin-slice/plan.md, research §4).
+dotnet_diagnostic.CA1724.severity = none
