@@ -11,11 +11,18 @@ YAF.Domain.AggregateVersion
 YAF.Domain.AggregateVersion.AggregateVersion() -> void
 YAF.Domain.AggregateVersion.Equals(YAF.Domain.AggregateVersion other) -> bool
 YAF.Domain.AggregateVersion.Value.get -> System.Guid
+YAF.Domain.DomainErrors
 YAF.Domain.Entity<TId, TSelf, TMemento>
 YAF.Domain.Entity<TId, TSelf, TMemento>.Entity(TId id) -> void
 YAF.Domain.Entity<TId, TSelf, TMemento>.Id.get -> TId
 YAF.Domain.Entity<TId, TSelf, TMemento>.RestoreFrom(TMemento memento) -> void
 YAF.Domain.Entity<TId, TSelf, TMemento>.Snapshot(TMemento memento) -> void
+YAF.Domain.Enumeration<TSelf>
+YAF.Domain.Enumeration<TSelf>.Code.get -> string!
+YAF.Domain.Enumeration<TSelf>.Enumeration(string! code, string! name) -> void
+YAF.Domain.Enumeration<TSelf>.Name.get -> string!
+YAF.Domain.EnumerationJsonConverterFactory
+YAF.Domain.EnumerationJsonConverterFactory.EnumerationJsonConverterFactory() -> void
 YAF.Domain.Events.DomainEvent
 YAF.Domain.Events.DomainEvent.DomainEvent() -> void
 YAF.Domain.Events.DomainEvent.DomainEvent(YAF.Domain.Events.DomainEvent! original) -> void
@@ -76,6 +83,11 @@ abstract YAF.Domain.Entity<TId, TSelf, TMemento>.RestoreCore(TMemento memento) -
 abstract YAF.Domain.Entity<TId, TSelf, TMemento>.SnapshotCore(TMemento memento) -> void
 abstract YAF.Domain.Events.DomainEvent.<Clone>$() -> YAF.Domain.Events.DomainEvent!
 override YAF.Domain.AggregateVersion.GetHashCode() -> int
+override YAF.Domain.Enumeration<TSelf>.Equals(object? obj) -> bool
+override YAF.Domain.Enumeration<TSelf>.GetHashCode() -> int
+override YAF.Domain.Enumeration<TSelf>.ToString() -> string!
+override YAF.Domain.EnumerationJsonConverterFactory.CanConvert(System.Type! typeToConvert) -> bool
+override YAF.Domain.EnumerationJsonConverterFactory.CreateConverter(System.Type! typeToConvert, System.Text.Json.JsonSerializerOptions! options) -> System.Text.Json.Serialization.JsonConverter!
 override YAF.Domain.Events.DomainEvent.Equals(object? obj) -> bool
 override YAF.Domain.Events.DomainEvent.GetHashCode() -> int
 override YAF.Domain.Events.DomainEvent.ToString() -> string!
@@ -84,12 +96,22 @@ static YAF.Domain.AggregateVersion.operator !=(YAF.Domain.AggregateVersion left,
 static YAF.Domain.AggregateVersion.operator ==(YAF.Domain.AggregateVersion left, YAF.Domain.AggregateVersion right) -> bool
 static YAF.Domain.Entity<TId, TSelf, TMemento>.Check(params YAF.Domain.Rules.IBusinessRule![]! rules) -> YAF.Core.Results.Result
 static YAF.Domain.Entity<TId, TSelf, TMemento>.CheckAll(params YAF.Domain.Rules.IBusinessRule![]! rules) -> YAF.Core.Results.Result
+static YAF.Domain.Enumeration<TSelf>.All.get -> System.Collections.Generic.IReadOnlyList<TSelf!>!
+static YAF.Domain.Enumeration<TSelf>.FromCode(string! code) -> YAF.Core.Results.Result<TSelf!>
 static YAF.Domain.Events.DomainEvent.operator !=(YAF.Domain.Events.DomainEvent? left, YAF.Domain.Events.DomainEvent? right) -> bool
 static YAF.Domain.Events.DomainEvent.operator ==(YAF.Domain.Events.DomainEvent? left, YAF.Domain.Events.DomainEvent? right) -> bool
 static YAF.Domain.Mementos.MementoCollections.Sync<TId, TEntity, TMemento>(System.Collections.Generic.IList<TMemento>! mementos, System.Collections.Generic.IEnumerable<YAF.Domain.Entity<TId, TEntity!, TMemento>!>! entities, System.Func<TMemento>! create) -> void
+static readonly YAF.Domain.DomainErrors.UnknownEnumerationCode -> YAF.Core.Results.ErrorDescriptor!
 virtual YAF.Domain.Entity<TId, TSelf, TMemento>.CheckInvariants() -> YAF.Core.Results.Result
+virtual YAF.Domain.Enumeration<TSelf>.EqualityContract.get -> System.Type!
+virtual YAF.Domain.Enumeration<TSelf>.PrintMembers(System.Text.StringBuilder! builder) -> bool
 virtual YAF.Domain.Events.DomainEvent.EqualityContract.get -> System.Type!
 virtual YAF.Domain.Events.DomainEvent.Equals(YAF.Domain.Events.DomainEvent? other) -> bool
 virtual YAF.Domain.Events.DomainEvent.PrintMembers(System.Text.StringBuilder! builder) -> bool
+~YAF.Domain.Enumeration<TSelf>.Enumeration(YAF.Domain.Enumeration<TSelf>! original) -> void
+~abstract YAF.Domain.Enumeration<TSelf>.<Clone>$() -> YAF.Domain.Enumeration<TSelf>!
 ~override YAF.Domain.AggregateVersion.Equals(object obj) -> bool
 ~override YAF.Domain.AggregateVersion.ToString() -> string
+~static YAF.Domain.Enumeration<TSelf>.operator !=(YAF.Domain.Enumeration<TSelf>? left, YAF.Domain.Enumeration<TSelf>? right) -> bool
+~static YAF.Domain.Enumeration<TSelf>.operator ==(YAF.Domain.Enumeration<TSelf>? left, YAF.Domain.Enumeration<TSelf>? right) -> bool
+~virtual YAF.Domain.Enumeration<TSelf>.Equals(YAF.Domain.Enumeration<TSelf>? other) -> bool
