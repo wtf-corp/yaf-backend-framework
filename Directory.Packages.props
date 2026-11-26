@@ -25,6 +25,27 @@
     <PackageVersion Include="TngTech.ArchUnitNET.xUnitV3" Version="0.13.5" />
     <!-- Benchmarks in tests/Benchmarks only, never in a package (ADR-0030). Latest stable on nuget.org, checked 2026-11-24. -->
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
+    <!-- EF Core in YAF.Persistence.EfCore (ADR-0003 row YAF.Persistence.EfCore). Licence MIT (nuspec). Latest stable on nuget.org,
+         checked 2026-11-26 (specs/0013-thin-slice/research.md §2). -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="11.0.0" />
+    <!-- Npgsql's EF Core provider in YAF.Persistence.EfCore.PostgreSql (ADR-0003 row YAF.Persistence.EfCore, .PostgreSql). Licence
+         PostgreSQL (nuspec). Latest stable on nuget.org, checked 2026-11-26 (specs/0013-thin-slice/research.md §2). -->
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="11.0.0" />
+    <!-- Design-time EF Core for `dotnet ef` in the sample's infrastructure project, private assets, never in a package (ADR-0003, EF
+         Core). Licence MIT (nuspec). Latest stable on nuget.org, checked 2026-11-26 (specs/0013-thin-slice/research.md §2). -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="11.0.0" />
+    <!-- PostgreSQL container in YAF.Testing.Integration (ADR-0003 row YAF.Testing.Integration, Testcontainers). Licence MIT (nuspec).
+         Latest stable on nuget.org, checked 2026-11-26 (specs/0013-thin-slice/research.md §2). -->
+    <PackageVersion Include="Testcontainers.PostgreSql" Version="4.17.0" />
+    <!-- Test host in YAF.Testing.Integration (ADR-0003 row YAF.Testing.Integration, ASP.NET Core test host). Licence MIT (nuspec).
+         Latest stable on nuget.org, checked 2026-11-26 (specs/0013-thin-slice/research.md §2). -->
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="11.0.0" />
+    <!-- Fixtures and collections in YAF.Testing.Integration (ADR-0003 row YAF.Testing.Integration, test framework); the version line of
+         xunit.v3 above. Licence Apache-2.0 (nuspec). Latest stable on nuget.org, checked 2026-11-26 (specs/0013-thin-slice/research.md §2). -->
+    <PackageVersion Include="xunit.v3.extensibility.core" Version="4.0.3" />
+    <!-- Architecture rules in YAF.Testing (15 §3, ADR-0018); ADR-0003 row YAF.Testing, superseded for this package by ADR-0033 (plan
+         0013, Q3). Licence Apache-2.0 (nuspec). Latest stable on nuget.org, checked 2026-11-26 (specs/0013-thin-slice/research.md §2). -->
+    <PackageVersion Include="TngTech.ArchUnitNET" Version="0.13.5" />
   </ItemGroup>
 
 </Project>
