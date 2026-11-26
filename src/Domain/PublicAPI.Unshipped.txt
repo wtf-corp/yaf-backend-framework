@@ -61,6 +61,7 @@ YAF.Domain.Mementos.ITenantOwnedMemento.TenantId.set -> void
 YAF.Domain.Mementos.IVersionedMemento
 YAF.Domain.Mementos.IVersionedMemento.Version.get -> System.Guid
 YAF.Domain.Mementos.IVersionedMemento.Version.set -> void
+YAF.Domain.Mementos.MementoCollections
 YAF.Domain.Rules.IBusinessRule
 YAF.Domain.Rules.IBusinessRule.Error.get -> YAF.Core.Results.ErrorDescriptor!
 YAF.Domain.Rules.IBusinessRule.IsSatisfied() -> bool
@@ -80,6 +81,7 @@ static YAF.Domain.Entity<TId, TSelf, TMemento>.Check(params YAF.Domain.Rules.IBu
 static YAF.Domain.Entity<TId, TSelf, TMemento>.CheckAll(params YAF.Domain.Rules.IBusinessRule![]! rules) -> YAF.Core.Results.Result
 static YAF.Domain.Events.DomainEvent.operator !=(YAF.Domain.Events.DomainEvent? left, YAF.Domain.Events.DomainEvent? right) -> bool
 static YAF.Domain.Events.DomainEvent.operator ==(YAF.Domain.Events.DomainEvent? left, YAF.Domain.Events.DomainEvent? right) -> bool
+static YAF.Domain.Mementos.MementoCollections.Sync<TId, TEntity, TMemento>(System.Collections.Generic.IList<TMemento>! mementos, System.Collections.Generic.IEnumerable<YAF.Domain.Entity<TId, TEntity!, TMemento>!>! entities, System.Func<TMemento>! create) -> void
 virtual YAF.Domain.Entity<TId, TSelf, TMemento>.CheckInvariants() -> YAF.Core.Results.Result
 virtual YAF.Domain.Events.DomainEvent.EqualityContract.get -> System.Type!
 virtual YAF.Domain.Events.DomainEvent.Equals(YAF.Domain.Events.DomainEvent? other) -> bool
