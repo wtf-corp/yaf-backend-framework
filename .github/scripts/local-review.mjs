@@ -40,7 +40,7 @@ const KIT = 'docs/spec/factory/.github/factory';
 const TOOLS = ['Read(./**)', 'Grep', 'Glob', 'Bash(git -C pr diff *)', 'Bash(git -C pr log *)', 'Bash(git -C pr show *)'];
 const REVIEWS = {
   code: { check: 'factory/review', role: 'prReviewer', prompt: 'pr-review.md', schema: 'review.schema.json', maxTurns: 60, other: 'factory/doc-review', otherTitle: 'not a spec or plan pull request' },
-  doc: { check: 'factory/doc-review', role: 'docReviewer', prompt: 'doc-review.md', schema: 'doc-review.schema.json', maxTurns: 40, other: 'factory/review', otherTitle: null },
+  doc: { check: 'factory/doc-review', role: 'docReviewer', prompt: 'doc-review.md', schema: 'doc-review.schema.json', maxTurns: 80, other: 'factory/review', otherTitle: null },
 };
 
 function run(cmd, cmdArgs, opts = {}) {
