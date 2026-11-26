@@ -77,11 +77,20 @@ YAF.Domain.Rules.IBusinessRule.Error.get -> YAF.Core.Results.ErrorDescriptor!
 YAF.Domain.Rules.IBusinessRule.IsSatisfied() -> bool
 YAF.Domain.Rules.IPolicy<TInput, TDecision>
 YAF.Domain.Rules.IPolicy<TInput, TDecision>.Decide(TInput input) -> TDecision
+YAF.Domain.ValueObject
+YAF.Domain.ValueObject.ValueObject() -> void
+YAF.Domain.ValueObject.ValueObject(YAF.Domain.ValueObject! original) -> void
+YAF.Domain.ValueObjects.Currency
+YAF.Domain.ValueObjects.Currency.Code.get -> string!
+YAF.Domain.ValueObjects.Currency.Equals(YAF.Domain.ValueObjects.Currency? other) -> bool
+YAF.Domain.ValueObjects.Currency.MinorUnits.get -> int
+YAF.Domain.ValueObjects.ValueObjectErrors
 abstract YAF.Domain.AggregateBuilder<TAggregate>.Create() -> TAggregate
 abstract YAF.Domain.AggregateBuilder<TAggregate>.OnCreated(TAggregate aggregate) -> void
 abstract YAF.Domain.Entity<TId, TSelf, TMemento>.RestoreCore(TMemento memento) -> void
 abstract YAF.Domain.Entity<TId, TSelf, TMemento>.SnapshotCore(TMemento memento) -> void
 abstract YAF.Domain.Events.DomainEvent.<Clone>$() -> YAF.Domain.Events.DomainEvent!
+abstract YAF.Domain.ValueObject.<Clone>$() -> YAF.Domain.ValueObject!
 override YAF.Domain.AggregateVersion.GetHashCode() -> int
 override YAF.Domain.Enumeration<TSelf>.Equals(object? obj) -> bool
 override YAF.Domain.Enumeration<TSelf>.GetHashCode() -> int
@@ -91,6 +100,14 @@ override YAF.Domain.EnumerationJsonConverterFactory.CreateConverter(System.Type!
 override YAF.Domain.Events.DomainEvent.Equals(object? obj) -> bool
 override YAF.Domain.Events.DomainEvent.GetHashCode() -> int
 override YAF.Domain.Events.DomainEvent.ToString() -> string!
+override YAF.Domain.ValueObject.Equals(object? obj) -> bool
+override YAF.Domain.ValueObject.GetHashCode() -> int
+override YAF.Domain.ValueObject.ToString() -> string!
+override YAF.Domain.ValueObjects.Currency.<Clone>$() -> YAF.Domain.ValueObjects.Currency!
+override YAF.Domain.ValueObjects.Currency.Equals(object? obj) -> bool
+override YAF.Domain.ValueObjects.Currency.GetHashCode() -> int
+override YAF.Domain.ValueObjects.Currency.ToString() -> string!
+override sealed YAF.Domain.ValueObjects.Currency.Equals(YAF.Domain.ValueObject? other) -> bool
 static YAF.Domain.AggregateVersion.From(System.Guid value) -> YAF.Domain.AggregateVersion
 static YAF.Domain.AggregateVersion.operator !=(YAF.Domain.AggregateVersion left, YAF.Domain.AggregateVersion right) -> bool
 static YAF.Domain.AggregateVersion.operator ==(YAF.Domain.AggregateVersion left, YAF.Domain.AggregateVersion right) -> bool
@@ -101,13 +118,23 @@ static YAF.Domain.Enumeration<TSelf>.FromCode(string! code) -> YAF.Core.Results.
 static YAF.Domain.Events.DomainEvent.operator !=(YAF.Domain.Events.DomainEvent? left, YAF.Domain.Events.DomainEvent? right) -> bool
 static YAF.Domain.Events.DomainEvent.operator ==(YAF.Domain.Events.DomainEvent? left, YAF.Domain.Events.DomainEvent? right) -> bool
 static YAF.Domain.Mementos.MementoCollections.Sync<TId, TEntity, TMemento>(System.Collections.Generic.IList<TMemento>! mementos, System.Collections.Generic.IEnumerable<YAF.Domain.Entity<TId, TEntity!, TMemento>!>! entities, System.Func<TMemento>! create) -> void
+static YAF.Domain.ValueObject.operator !=(YAF.Domain.ValueObject? left, YAF.Domain.ValueObject? right) -> bool
+static YAF.Domain.ValueObject.operator ==(YAF.Domain.ValueObject? left, YAF.Domain.ValueObject? right) -> bool
+static YAF.Domain.ValueObjects.Currency.All.get -> System.Collections.Generic.IReadOnlyList<YAF.Domain.ValueObjects.Currency!>!
+static YAF.Domain.ValueObjects.Currency.FromCode(string! code) -> YAF.Core.Results.Result<YAF.Domain.ValueObjects.Currency!>
+static YAF.Domain.ValueObjects.Currency.operator !=(YAF.Domain.ValueObjects.Currency? left, YAF.Domain.ValueObjects.Currency? right) -> bool
+static YAF.Domain.ValueObjects.Currency.operator ==(YAF.Domain.ValueObjects.Currency? left, YAF.Domain.ValueObjects.Currency? right) -> bool
 static readonly YAF.Domain.DomainErrors.UnknownEnumerationCode -> YAF.Core.Results.ErrorDescriptor!
+static readonly YAF.Domain.ValueObjects.ValueObjectErrors.UnknownCurrency -> YAF.Core.Results.ErrorDescriptor!
 virtual YAF.Domain.Entity<TId, TSelf, TMemento>.CheckInvariants() -> YAF.Core.Results.Result
 virtual YAF.Domain.Enumeration<TSelf>.EqualityContract.get -> System.Type!
 virtual YAF.Domain.Enumeration<TSelf>.PrintMembers(System.Text.StringBuilder! builder) -> bool
 virtual YAF.Domain.Events.DomainEvent.EqualityContract.get -> System.Type!
 virtual YAF.Domain.Events.DomainEvent.Equals(YAF.Domain.Events.DomainEvent? other) -> bool
 virtual YAF.Domain.Events.DomainEvent.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual YAF.Domain.ValueObject.EqualityContract.get -> System.Type!
+virtual YAF.Domain.ValueObject.Equals(YAF.Domain.ValueObject? other) -> bool
+virtual YAF.Domain.ValueObject.PrintMembers(System.Text.StringBuilder! builder) -> bool
 ~YAF.Domain.Enumeration<TSelf>.Enumeration(YAF.Domain.Enumeration<TSelf>! original) -> void
 ~abstract YAF.Domain.Enumeration<TSelf>.<Clone>$() -> YAF.Domain.Enumeration<TSelf>!
 ~override YAF.Domain.AggregateVersion.Equals(object obj) -> bool
