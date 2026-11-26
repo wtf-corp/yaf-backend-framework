@@ -87,6 +87,7 @@ YAF.Domain.StateMachines.StateMachine<TState, TTrigger>
 YAF.Domain.StateMachines.StateMachine<TState, TTrigger>.Fire(TState current, TTrigger trigger) -> YAF.Core.Results.Result<TState>
 YAF.Domain.StateMachines.StateMachine<TState, TTrigger>.PermittedTriggers(TState current) -> System.Collections.Generic.IReadOnlyList<TTrigger>!
 YAF.Domain.StateMachines.StateMachine<TState, TTrigger>.States.get -> System.Collections.Generic.IReadOnlyList<TState>!
+YAF.Domain.StateMachines.StateMachine<TState, TTrigger>.ToMermaid() -> string!
 YAF.Domain.StateMachines.StateMachineBuilder<TState, TTrigger>
 YAF.Domain.StateMachines.StateMachineBuilder<TState, TTrigger>.From(TState state) -> YAF.Domain.StateMachines.StateMachineBuilder<TState, TTrigger>!
 YAF.Domain.StateMachines.StateMachineBuilder<TState, TTrigger>.On(TTrigger trigger) -> YAF.Domain.StateMachines.StateMachineBuilder<TState, TTrigger>!
