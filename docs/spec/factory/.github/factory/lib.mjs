@@ -65,6 +65,29 @@ export function setCheck(sha, name, conclusion, title, summary = '') {
 }
 
 /**
+ * The body of a commit status. conclusion: success | failure. The REST page states no limit for `description`;
+ * it is cut to 140 characters as a precaution. `target_url` is left out when the run is unknown.
+ */
+export function statusBody(name, conclusion, title, targetUrl) {
+  const body = { context: name, state: conclusion, description: title.slice(0, 140) };
+  if (targetUrl) body.target_url = targetUrl;
+  return body;
+}
+
+/**
+ * Reports a commit status on a commit, for the gate checks. A status belongs to no check suite, so a later
+ * workflow run on the same commit cannot hide it (issue #278); the latest status of a context counts.
+ * The markdown summary, which a status cannot hold, goes into the job summary that `target_url` links to.
+ */
+export function setStatus(sha, name, conclusion, title, summary = '') {
+  const { GITHUB_SERVER_URL: server, GITHUB_REPOSITORY: slug, GITHUB_RUN_ID: runId } = process.env;
+  const targetUrl = server && slug && runId ? `${server}/${slug}/actions/runs/${runId}` : undefined;
+  api(`repos/${repoSlug()}/statuses/${sha}`, { method: 'POST', body: statusBody(name, conclusion, title, targetUrl) });
+  if (summary) writeSummary(`#### ${name}: ${title}\n\n${summary}\n`);
+  console.log(`${conclusion === 'success' ? 'PASS' : 'FAIL'} ${name}: ${title}`);
+}
+
+/**
  * The body of a check run that is in progress: what a running review reports on the head commit before its
  * verdict. It has no conclusion; the completed run reported afterwards is newer, and the newest of a name counts.
  * It has no start time either: GitHub stamps it, as it stamps the completed run, so their order needs no local clock.

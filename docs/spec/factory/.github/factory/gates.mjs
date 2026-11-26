@@ -1,11 +1,11 @@
 // Entry point of factory-gates.yml. Computes every deterministic gate for one pull request and
-// reports each as a check run. Run from a checkout of the BASE branch; the pull request head is
+// reports each as a commit status (issue #278). Run from a checkout of the BASE branch; the pull request head is
 // checked out in a sub-directory and is only read, never executed.
 //
 //   node .github/factory/gates.mjs --pr-dir pr
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { loadPolicy, git, api, repoSlug, readEvent, setCheck, writeSummary, setOutput, parseNumstat, parseDiff, makeHumanCheck, lastLabelActor, matchesAny } from './lib.mjs';
+import { loadPolicy, git, api, repoSlug, readEvent, setCheck, setStatus, writeSummary, setOutput, parseNumstat, parseDiff, makeHumanCheck, lastLabelActor, matchesAny } from './lib.mjs';
 import { countSize, sizeVerdict } from './size.mjs';
 import { actualDelta, compareDelta, deltaVerdict, isEmptyDelta } from './delta.mjs';
 import { findGuardChanges, dropMovedTests, guardVerdict } from './guards.mjs';
@@ -22,8 +22,12 @@ const repo = repoSlug();
 const event = readEvent();
 
 // Merge queue: the pull request already passed every gate; report the same names on the queue's commit.
+// The two reviews stay check runs (the ruleset takes them from the reviewer app); the gates are statuses.
 if (process.env.GITHUB_EVENT_NAME === 'merge_group') {
-  for (const name of policy.checks) setCheck(event.merge_group.head_sha, name, 'success', 'passed on the pull request');
+  for (const name of policy.checks) {
+    if (name === 'factory/review' || name === 'factory/doc-review') setCheck(event.merge_group.head_sha, name, 'success', 'passed on the pull request');
+    else setStatus(event.merge_group.head_sha, name, 'success', 'passed on the pull request');
+  }
   process.exit(0);
 }
 
@@ -85,7 +89,7 @@ for (const t of TIERS) {
 }
 if (!labels.includes(`tier:${tier}`)) api(`repos/${repo}/issues/${number}/labels`, { method: 'POST', body: { labels: [`tier:${tier}`] } });
 
-setCheck(sha, 'factory/tier', 'success', `tier ${tier}`, `Floor: **${tierResult.floor}**. Kind: ${kind}.\n\n${tierResult.reasons.map((r) => `- ${r}`).join('\n')}`);
+setStatus(sha, 'factory/tier', 'success', `tier ${tier}`, `Floor: **${tierResult.floor}**. Kind: ${kind}.\n\n${tierResult.reasons.map((r) => `- ${r}`).join('\n')}`);
 
 // ticket
 let issue = null;
@@ -94,21 +98,21 @@ if (kind === 'code' && parsed.closes.length === 1) {
 }
 const touchesPlan = kind === 'code' && files.some((f) => matchesAny(f, policy.docPaths.plan));
 const ticketV = ticketVerdict({ kind, tier, changedLines: size.lines, parsed, issue, planExistsOnBase: Boolean(planHere), touchesPlan });
-setCheck(sha, 'factory/ticket', ticketV.pass ? 'success' : 'failure', ticketV.title);
+setStatus(sha, 'factory/ticket', ticketV.pass ? 'success' : 'failure', ticketV.title);
 
 // size, guards, delta
 const sizeSummary = `Counted ${size.counted.length} file(s), excluded ${size.excluded.length}.\n\n` + size.counted.map((f) => `- ${f.file}: +${f.added} −${f.deleted}`).join('\n');
-if (kind === 'code') setCheck(sha, 'factory/size', sizeV.pass ? 'success' : 'failure', sizeV.title, sizeSummary);
-else setCheck(sha, 'factory/size', 'success', `${kind} pull request: the size limit applies to code`, sizeSummary);
+if (kind === 'code') setStatus(sha, 'factory/size', sizeV.pass ? 'success' : 'failure', sizeV.title, sizeSummary);
+else setStatus(sha, 'factory/size', 'success', `${kind} pull request: the size limit applies to code`, sizeSummary);
 
-setCheck(sha, 'factory/guards', guardV.pass ? 'success' : 'failure', guardV.title, guardFindings.map((f) => `- ${f.file}: ${f.what} — \`${f.line.slice(0, 160)}\``).join('\n'));
+setStatus(sha, 'factory/guards', guardV.pass ? 'success' : 'failure', guardV.title, guardFindings.map((f) => `- ${f.file}: ${f.what} — \`${f.line.slice(0, 160)}\``).join('\n'));
 
 const deltaV = deltaError ? { pass: false, title: `the plan's factory:delta block is invalid: ${deltaError}` } : deltaVerdict(tier, actual, comparison);
 const deltaSummary = [
   ...comparison.undeclared.map((d) => `- undeclared ${d.category}: \`${d.line.slice(0, 200)}\``),
   ...comparison.removed.map((d) => `- removed ${d.category}: \`${d.line.slice(0, 200)}\``),
 ].join('\n');
-setCheck(sha, 'factory/delta', deltaV.pass ? 'success' : 'failure', deltaV.title, deltaSummary);
+setStatus(sha, 'factory/delta', deltaV.pass ? 'success' : 'failure', deltaV.title, deltaSummary);
 
 // plan gate
 if (kind === 'plan') {
@@ -126,17 +130,17 @@ if (kind === 'plan') {
       problems.push(`${f}: ${e.message}`);
     }
   }
-  if (problems.length) setCheck(sha, 'factory/plan-gate', 'failure', `${problems.length} problem(s) in the ticket list`, problems.map((p) => `- ${p}`).join('\n'));
-  else if (reasons.length === 0) setCheck(sha, 'factory/plan-gate', 'success', 'not flagged: merges after the plan review passes');
-  else setCheck(sha, 'factory/plan-gate', approver ? 'success' : 'failure', approver ? `flagged, approved by ${approver}` : 'flagged: needs a human maintainer\'s approving review', reasons.map((r) => `- ${r}`).join('\n'));
+  if (problems.length) setStatus(sha, 'factory/plan-gate', 'failure', `${problems.length} problem(s) in the ticket list`, problems.map((p) => `- ${p}`).join('\n'));
+  else if (reasons.length === 0) setStatus(sha, 'factory/plan-gate', 'success', 'not flagged: merges after the plan review passes');
+  else setStatus(sha, 'factory/plan-gate', approver ? 'success' : 'failure', approver ? `flagged, approved by ${approver}` : 'flagged: needs a human maintainer\'s approving review', reasons.map((r) => `- ${r}`).join('\n'));
 } else {
-  setCheck(sha, 'factory/plan-gate', 'success', 'not a plan pull request');
+  setStatus(sha, 'factory/plan-gate', 'success', 'not a plan pull request');
 }
 
 // human approval (specs are covered by CODEOWNERS; the check still demands a maintainer because kind spec is tier high)
 const reviews = api(`repos/${repo}/pulls/${number}/reviews?per_page=100`, { paginate: true });
 const approvalV = humanApprovalVerdict(approvalTier(kind, tier), approvingHuman(reviews, { author: pr.user.login, headSha: sha, isHuman }));
-setCheck(sha, 'factory/human-approval', approvalV.pass ? 'success' : 'failure', kind === 'plan' && tier !== 'high' ?'plan pull request: see factory/plan-gate' : approvalV.title);
+setStatus(sha, 'factory/human-approval', approvalV.pass ? 'success' : 'failure', kind === 'plan' && tier !== 'high' ?'plan pull request: see factory/plan-gate' : approvalV.title);
 
 // the two agent reviews report elsewhere; report "not applicable" for the one that does not run on this kind
 if (kind === 'code') setCheck(sha, 'factory/doc-review', 'success', 'not a spec or plan pull request');
