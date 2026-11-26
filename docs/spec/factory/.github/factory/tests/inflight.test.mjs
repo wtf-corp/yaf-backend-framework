@@ -337,7 +337,55 @@ test('a fix row holds the summary comment verbatim', () => {
   }
 });
 
-const WORKTREE = { path: 'C:/dev/yaf/.claude/worktrees/agent-a1', branch: 'ci/39-inflight-list', head: HEAD, locked: false };
+/** A commit status as the REST API gives it, from the gates bot unless `login` says otherwise. */
+const status = (context, state, createdAt = minutesAgo(20), id = 1, description = '', login = policy.bots.gates) => (
+  { id, context, state, description, created_at: createdAt, creator: { login } });
+const GATE_NAMES = ['factory/tier', 'factory/ticket', 'factory/size', 'factory/delta', 'factory/guards', 'factory/plan-gate', 'factory/human-approval'];
+const JOB_RUNS = RUNS.filter((run) => !GATE_NAMES.includes(run.name));
+/** The row of #61 with green reviews and jobs as check runs and the seven gates as statuses; `gates` overrides a status by name. */
+const statusRow = (gates = {}, extra = {}) => row({ checkRuns: JOB_RUNS, comments: [],
+  statuses: GATE_NAMES.map((name, i) => gates[name] ?? status(name, 'success', minutesAgo(20), i + 1)), ...extra });
+const GREEN_REASON = 'the checks are green: GitHub merges';
+
+test('the gates are read from the gates bot\'s statuses too', () => {
+  assert.equal(statusRow().reason, GREEN_REASON);
+  const others = statusRow({}, { statuses: GATE_NAMES.map((name) => status(name, 'success', minutesAgo(20), 1, '', 'somebody')) });
+  assert.equal(others.reason, 'the gates have not reported');
+  // pending is in progress: not reported; failure and error are failed
+  assert.equal(statusRow({ 'factory/tier': status('factory/tier', 'pending') }).reason, 'the gates have not reported');
+  assert.equal(statusRow({ 'factory/delta': status('factory/delta', 'pending') }).reason, 'not reported yet: factory/delta');
+  assert.deepEqual([statusRow({ 'factory/size': status('factory/size', 'failure') }).action, statusRow({ 'factory/size': status('factory/size', 'failure') }).reason], ['gate-failed', 'failed: factory/size']);
+  assert.equal(statusRow({ 'factory/guards': status('factory/guards', 'error') }).reason, 'failed: factory/guards');
+  // a review comes from the reviewer app, never from a status
+  assert.equal(statusRow({}, { checkRuns: JOB_RUNS.filter((run) => run.name !== 'factory/review'), statuses: [...GATE_NAMES.map((name) => status(name, 'success')), status('factory/review', 'success')] }).action, 'review');
+});
+
+test('a flagged plan gate status is the owner\'s, another failed one is gate-failed', () => {
+  const plan = { pr: { ...PULL, body: 'A plan.' }, files: ['specs/0004-x/plan.md'] };
+  const flagged = { 'factory/plan-gate': status('factory/plan-gate', 'failure', minutesAgo(20), 6, 'flagged: needs a human maintainer\'s approving review') };
+  assert.deepEqual([statusRow(flagged, plan).action, statusRow(flagged, plan).reason], ['human', 'a flagged plan: waiting for a human maintainer\'s approval']);
+  const high = { pr: { ...plan.pr, labels: [{ name: 'factory' }, { name: 'tier:high' }] }, files: plan.files };
+  assert.equal(statusRow(flagged, high).reason, 'tier high: waiting for a human maintainer\'s approval of the head commit');
+  assert.equal(statusRow({ 'factory/plan-gate': status('factory/plan-gate', 'failure', minutesAgo(20), 6, 'the plan has no Tickets table') }, plan).reason, 'failed: factory/plan-gate');
+});
+
+test('a check run and a status of one name must both pass; the newest status of a context counts', () => {
+  const size = (conclusion) => checkRun('factory/size', conclusion, minutesAgo(20), 50);
+  assert.equal(statusRow({ 'factory/size': status('factory/size', 'failure') }, { checkRuns: [...JOB_RUNS, size('success')] }).reason, 'failed: factory/size');
+  assert.equal(statusRow({}, { checkRuns: [...JOB_RUNS, size('failure')] }).reason, 'failed: factory/size');
+  assert.equal(statusRow({}, { checkRuns: [...JOB_RUNS, size('success')] }).reason, GREEN_REASON);
+  // failed first, then passed (a flagged plan after its approval, or a re-run), in either order of the list
+  const gate = (state, createdAt, id) => status('factory/plan-gate', state, createdAt, id);
+  const rest = GATE_NAMES.filter((name) => name !== 'factory/plan-gate').map((name) => status(name, 'success'));
+  const gates = (...plans) => statusRow({}, { statuses: [...rest, ...plans] }).reason;
+  assert.equal(gates(gate('failure', minutesAgo(20), 10), gate('success', minutesAgo(5), 11)), GREEN_REASON);
+  assert.equal(gates(gate('success', minutesAgo(5), 11), gate('failure', minutesAgo(20), 10)), GREEN_REASON);
+  // the same creation time: the highest id is the newest
+  assert.equal(gates(gate('failure', minutesAgo(5), 12), gate('success', minutesAgo(5), 11)), 'failed: factory/plan-gate');
+  assert.equal(gates(gate('success', minutesAgo(5), 11), gate('failure', minutesAgo(5), 12)), 'failed: factory/plan-gate');
+});
+
+const WORKTREE = { path:'C:/dev/yaf/.claude/worktrees/agent-a1', branch: 'ci/39-inflight-list', head: HEAD, locked: false };
 const READY = by(policy.bots.factory, marker('local-review', HEAD, 'ready round=1'));
 const wrow = (extra = {}) => worktreeRow({ worktree: WORKTREE, ticketLabels: ['factory'], ticketComments: [READY], pr: PULL, originHead: HEAD, ...extra }, policy);
 
@@ -385,6 +433,7 @@ test('the command lists the pull requests and the ticket worktrees, and writes n
     [`repos/${repo}/pulls/61/files?per_page=100`]: [[{ filename: 'docs/spec/factory/.github/factory/inflight.mjs' }]],
     [`repos/${repo}/pulls/61/reviews?per_page=100`]: [[]],
     [`repos/${repo}/commits/${OLD}/check-runs?filter=all&per_page=100`]: [{ check_runs: REVIEW_FAILED }],
+    [`repos/${repo}/commits/${OLD}/statuses?per_page=100`]: [[]],
     [`repos/${repo}/issues/61/comments?per_page=100`]: [[by('yaf-reviewer[bot]', SUMMARY)]],
     [`repos/${repo}/issues/39/comments?per_page=100`]: [[READY]],
     [`repos/${repo}/issues/39`]: { number: 39, labels: [{ name: 'factory' }] },

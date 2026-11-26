@@ -104,9 +104,39 @@ test('a plan gate from another app does not count', () => {
   assert.equal(planGateConclusion([tie('success', 8), tie('failure', 9)], gates), 'failure');
 });
 
+/** A commit status as the REST API gives it. */
+const status = (context, state, login, created_at = '2026-11-20T11:00:00Z', id = 1) => ({ id, context, state, description: '', created_at, creator: { login } });
+
+test('a plan gate status from the gates bot counts, next to the check runs', () => {
+  const gates = policy.bots.gates;
+  assert.equal(planGateConclusion([], gates, [status('factory/plan-gate', 'success', gates)]), 'success');
+  assert.equal(planGateConclusion([], gates, [status('factory/plan-gate', 'success', 'yaf-reviewer[bot]')]), null);
+  assert.equal(planGateConclusion([], gates, [status('factory/tier', 'success', gates)]), null);
+  assert.equal(planGateConclusion([], gates, [status('factory/plan-gate', 'pending', gates)]), 'pending');
+  // a check run and a status of the name: the one that has not passed decides
+  const ok = run('github-actions', 'success', '2026-11-20T11:00:00Z');
+  assert.equal(planGateConclusion([ok], gates, [status('factory/plan-gate', 'failure', gates)]), 'failure');
+  assert.equal(planGateConclusion([run('github-actions', 'failure', '2026-11-20T11:00:00Z')], gates, [status('factory/plan-gate', 'success', gates)]), 'failure');
+  assert.equal(planGateConclusion([run('github-actions', null, '2026-11-20T11:00:00Z')], gates, [status('factory/plan-gate', 'success', gates)]), null);
+  assert.equal(planGateConclusion([ok], gates, [status('factory/plan-gate', 'success', gates)]), 'success');
+});
+
+test('the newest plan gate status counts, whatever the order', () => {
+  const gates = policy.bots.gates;
+  // a flagged plan: failed first, then passed after the approval
+  const flagged = status('factory/plan-gate', 'failure', gates, '2026-11-20T10:00:00Z', 1);
+  const approved = status('factory/plan-gate', 'success', gates, '2026-11-20T11:00:00Z', 2);
+  assert.equal(planGateConclusion([], gates, [approved, flagged]), 'success');
+  assert.equal(planGateConclusion([], gates, [flagged, approved]), 'success');
+  // the same creation time: the highest id is the newest
+  const tie = (state, id) => status('factory/plan-gate', state, gates, '2026-11-20T11:00:00Z', id);
+  assert.equal(planGateConclusion([], gates, [tie('failure', 9), tie('success', 8)]), 'failure');
+  assert.equal(planGateConclusion([], gates, [tie('success', 8), tie('failure', 9)]), 'failure');
+});
+
 // The command part, with gh injected: answers by endpoint, records every call.
 // listed: further pull requests the commit's list returns. fetchedHead: the head the single read returns (a push in between).
-function fakeGh({ labels, reviews = [], files = ['src/Core/A.cs'], checkRuns = [], autoMerge = null, head = 'h2', fetchedHead = head, listed = [], failMerge = false }) {
+function fakeGh({ labels, reviews = [], files = ['src/Core/A.cs'], checkRuns = [], statuses = [], autoMerge = null, head = 'h2', fetchedHead = head, listed = [], failMerge = false }) {
   const pr = { number: 7, state: 'open', draft: false, head: { sha: head }, user: { login: AUTHOR }, labels: labels.map((name) => ({ name })), auto_merge: autoMerge };
   const calls = [];
   const gh = (...args) => {
@@ -121,6 +151,7 @@ function fakeGh({ labels, reviews = [], files = ['src/Core/A.cs'], checkRuns = [
     if (endpoint.includes('/reviews')) return JSON.stringify([reviews]);
     if (endpoint.includes('/files')) return JSON.stringify([files.map((filename) => ({ filename }))]);
     if (endpoint.includes('/commits/h2/check-runs')) return JSON.stringify([{ check_runs: checkRuns }]);
+    if (endpoint.includes('/commits/h2/statuses')) return JSON.stringify([statuses]);
     throw new Error(`unexpected: ${endpoint}`);
   };
   return { gh, merges: () => calls.filter((c) => c.startsWith('pr merge')) };
@@ -142,6 +173,9 @@ test('the command arms the head commit it decided on, disarms, or calls nothing'
   const plan = { labels: ['tier:high'], reviews: [approval], files: ['specs/0009-x/plan.md'] };
   assert.deepEqual(command({ ...plan, checkRuns: [run('yaf-reviewer', 'success', '2026-11-20T11:00:00Z')] }).merges, []);
   assert.deepEqual(command({ ...plan, checkRuns: [run('github-actions', 'success', '2026-11-20T11:00:00Z')] }).merges, [ARM]);
+  // a flagged plan whose gate is only a status: the gates bot's arms, anybody else's does not
+  assert.deepEqual(command({ ...plan, statuses: [status('factory/plan-gate', 'success', policy.bots.gates)] }).merges, [ARM]);
+  assert.deepEqual(command({ ...plan, statuses: [status('factory/plan-gate', 'success', 'yaf-factory[bot]')] }).merges, []);
   // no open pull request with that head: nothing is read further and nothing is called
   assert.deepEqual(command({ labels: ['tier:low'], head: 'h3' }).decisions, []);
 });

@@ -120,25 +120,39 @@ const labelNames = (labels) => (labels ?? []).map((l) => (typeof l === 'string' 
 const closedIssue = (pr) => { const { closes } = parseBody(pr.body ?? ''); return closes.length === 1 ? closes[0] : null; };
 
 /**
- * REST check runs of a commit → the newest per name, as nextAction reads them; the same start: the highest id.
+ * REST check runs and commit statuses of a commit → the newest check per name, as nextAction reads them.
  * A run counts only from the app the ruleset accepts it from: the two reviews from the reviewer app (the gates bot
- * where the policy names none), everything else from the gates bot. Anybody else's run of that name is not read.
+ * where the policy names none), everything else from the gates bot. A status counts only from the gates bot, for a
+ * name the ruleset accepts from it. Anybody else's run or status of that name is not read. The newest run of a name
+ * and the newest status of a context count (the same time: the highest id); with both, the one that has not passed
+ * decides, as GitHub requires both to pass.
  */
-function newestChecks(checkRuns, policy) {
-  const newest = new Map();
-  const at = (c) => c.started_at ?? '';
-  const slug = (name) => ((REVIEWS.includes(name) && policy.bots.reviewer) || policy.bots.gates).replace(/\[bot\]$/, '');
-  for (const c of checkRuns) {
-    if (c.app?.slug !== slug(c.name)) continue;
-    const old = newest.get(c.name);
-    if (!old || at(c) > at(old) || (at(c) === at(old) && c.id > old.id)) newest.set(c.name, c);
+function newestChecks(checkRuns, policy, statuses = []) {
+  const source = (name) => (REVIEWS.includes(name) && policy.bots.reviewer) || policy.bots.gates;
+  const newest = (list, key, at) => {
+    const found = new Map();
+    for (const c of list) {
+      const old = found.get(key(c));
+      if (!old || at(c) > at(old) || (at(c) === at(old) && c.id > old.id)) found.set(key(c), c);
+    }
+    return found;
+  };
+  const runs = newest(checkRuns.filter((c) => c.app?.slug === source(c.name).replace(/\[bot\]$/, '')), (c) => c.name, (c) => c.started_at ?? '');
+  const posted = newest(statuses.filter((s) => s.creator?.login === policy.bots.gates && source(s.context) === policy.bots.gates), (s) => s.context, (s) => s.created_at ?? '');
+  const checks = new Map([...runs.values()].map((c) => [c.name, { name: c.name, status: c.status, conclusion: c.conclusion, title: c.output?.title ?? '', startedAt: c.started_at }]));
+  const rank = (c) => (c.status !== 'completed' ? 1 : PASSED.includes(c.conclusion) ? 2 : 0); // failed, then running, then passed
+  for (const s of posted.values()) {
+    const done = s.state !== 'pending';
+    const check = { name: s.context, status: done ? 'completed' : 'in_progress', conclusion: done ? s.state : null, title: s.description ?? '', startedAt: s.created_at };
+    const run = checks.get(s.context);
+    if (!run || rank(check) < rank(run)) checks.set(s.context, check);
   }
-  return [...newest.values()].map((c) => ({ name: c.name, status: c.status, conclusion: c.conclusion, title: c.output?.title ?? '', startedAt: c.started_at }));
+  return [...checks.values()];
 }
 
 /**
  * One open pull request's row, from what was fetched (U5c). As the REST API gives them: pr, files (the changed
- * paths), reviews, checkRuns (of the head commit), comments (the pull request's) and ticketComments (those of the
+ * paths), reviews, checkRuns and statuses (of the head commit), comments (the pull request's) and ticketComments (those of the
  * issue it closes). worktree: the one that holds the branch ({ locked, ahead }), or null. isHuman: (user) => boolean.
  * → { number, branch, issue (the closed one, or null), kind, action, reason, round, cause (as nextAction gives them),
  *     fixRounds, findings (for a fix after a failed review: the review's summary comment, verbatim) }
@@ -146,7 +160,7 @@ function newestChecks(checkRuns, policy) {
  * a references fix handed out for any commit of the ticket is the one try, and a pull request that closes no single
  * issue has no ticket to mark the try on, so it gets none.
  */
-export function pullRequestRow({ pr, files, reviews, checkRuns, comments, ticketComments, worktree, isHuman }, policy, now) {
+export function pullRequestRow({ pr, files, reviews, checkRuns, statuses = [], comments, ticketComments, worktree, isHuman }, policy, now) {
   const kind = prKind(files, policy);
   const issue = closedIssue(pr);
   // The marker's syntax is markers.mjs's: the first thing in its comment, `<!-- factory:references-fix <sha> -->`.
@@ -158,7 +172,7 @@ export function pullRequestRow({ pr, files, reviews, checkRuns, comments, ticket
     draft: pr.draft,
     kind,
     approved: Boolean(approvingHuman(reviews, { author: pr.user.login, headSha: pr.head.sha, isHuman })),
-    checks: newestChecks(checkRuns, policy),
+    checks: newestChecks(checkRuns, policy, statuses),
     rounds: summary?.rounds,
     referencesFixTried: issue === null || fixTried,
     worktree,
@@ -215,6 +229,7 @@ export function inflight({ repo, policy, gh, git, isHuman, now }) {
         files: list(`repos/${repo}/pulls/${pr.number}/files?per_page=100`).map((f) => f.filename),
         reviews: list(`repos/${repo}/pulls/${pr.number}/reviews?per_page=100`),
         checkRuns: list(`repos/${repo}/commits/${pr.head.sha}/check-runs?filter=all&per_page=100`).flatMap((page) => page.check_runs),
+        statuses: list(`repos/${repo}/commits/${pr.head.sha}/statuses?per_page=100`),
         comments: comments(pr.number),
         ticketComments: issue ? comments(issue) : [],
         worktree: held ? { locked: held.locked, ahead: ahead(held.head, pr.head.sha) } : null,
