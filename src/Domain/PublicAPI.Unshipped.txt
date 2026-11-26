@@ -84,6 +84,13 @@ YAF.Domain.ValueObjects.Currency
 YAF.Domain.ValueObjects.Currency.Code.get -> string!
 YAF.Domain.ValueObjects.Currency.Equals(YAF.Domain.ValueObjects.Currency? other) -> bool
 YAF.Domain.ValueObjects.Currency.MinorUnits.get -> int
+YAF.Domain.ValueObjects.DateRange
+YAF.Domain.ValueObjects.DateRange.Contains(System.DateOnly date) -> bool
+YAF.Domain.ValueObjects.DateRange.End.get -> System.DateOnly
+YAF.Domain.ValueObjects.DateRange.Equals(YAF.Domain.ValueObjects.DateRange? other) -> bool
+YAF.Domain.ValueObjects.DateRange.Intersect(YAF.Domain.ValueObjects.DateRange! other) -> YAF.Domain.ValueObjects.DateRange?
+YAF.Domain.ValueObjects.DateRange.Overlaps(YAF.Domain.ValueObjects.DateRange! other) -> bool
+YAF.Domain.ValueObjects.DateRange.Start.get -> System.DateOnly
 YAF.Domain.ValueObjects.Money
 YAF.Domain.ValueObjects.Money.Add(YAF.Domain.ValueObjects.Money! other) -> YAF.Core.Results.Result<YAF.Domain.ValueObjects.Money!>
 YAF.Domain.ValueObjects.Money.Allocate(int parts) -> System.Collections.Generic.IReadOnlyList<YAF.Domain.ValueObjects.Money!>!
@@ -101,6 +108,13 @@ YAF.Domain.ValueObjects.Percentage.Equals(YAF.Domain.ValueObjects.Percentage? ot
 YAF.Domain.ValueObjects.Percentage.Of(YAF.Domain.ValueObjects.Money! money) -> YAF.Domain.ValueObjects.Money!
 YAF.Domain.ValueObjects.Percentage.Of(decimal amount) -> decimal
 YAF.Domain.ValueObjects.Percentage.Value.get -> decimal
+YAF.Domain.ValueObjects.Period
+YAF.Domain.ValueObjects.Period.Contains(System.DateTimeOffset instant) -> bool
+YAF.Domain.ValueObjects.Period.End.get -> System.DateTimeOffset
+YAF.Domain.ValueObjects.Period.Equals(YAF.Domain.ValueObjects.Period? other) -> bool
+YAF.Domain.ValueObjects.Period.Intersect(YAF.Domain.ValueObjects.Period! other) -> YAF.Domain.ValueObjects.Period?
+YAF.Domain.ValueObjects.Period.Overlaps(YAF.Domain.ValueObjects.Period! other) -> bool
+YAF.Domain.ValueObjects.Period.Start.get -> System.DateTimeOffset
 YAF.Domain.ValueObjects.ValueObjectErrors
 abstract YAF.Domain.AggregateBuilder<TAggregate>.Create() -> TAggregate
 abstract YAF.Domain.AggregateBuilder<TAggregate>.OnCreated(TAggregate aggregate) -> void
@@ -124,6 +138,10 @@ override YAF.Domain.ValueObjects.Currency.<Clone>$() -> YAF.Domain.ValueObjects.
 override YAF.Domain.ValueObjects.Currency.Equals(object? obj) -> bool
 override YAF.Domain.ValueObjects.Currency.GetHashCode() -> int
 override YAF.Domain.ValueObjects.Currency.ToString() -> string!
+override YAF.Domain.ValueObjects.DateRange.<Clone>$() -> YAF.Domain.ValueObjects.DateRange!
+override YAF.Domain.ValueObjects.DateRange.Equals(object? obj) -> bool
+override YAF.Domain.ValueObjects.DateRange.GetHashCode() -> int
+override YAF.Domain.ValueObjects.DateRange.ToString() -> string!
 override YAF.Domain.ValueObjects.Money.<Clone>$() -> YAF.Domain.ValueObjects.Money!
 override YAF.Domain.ValueObjects.Money.Equals(object? obj) -> bool
 override YAF.Domain.ValueObjects.Money.GetHashCode() -> int
@@ -132,9 +150,15 @@ override YAF.Domain.ValueObjects.Percentage.<Clone>$() -> YAF.Domain.ValueObject
 override YAF.Domain.ValueObjects.Percentage.Equals(object? obj) -> bool
 override YAF.Domain.ValueObjects.Percentage.GetHashCode() -> int
 override YAF.Domain.ValueObjects.Percentage.ToString() -> string!
+override YAF.Domain.ValueObjects.Period.<Clone>$() -> YAF.Domain.ValueObjects.Period!
+override YAF.Domain.ValueObjects.Period.Equals(object? obj) -> bool
+override YAF.Domain.ValueObjects.Period.GetHashCode() -> int
+override YAF.Domain.ValueObjects.Period.ToString() -> string!
 override sealed YAF.Domain.ValueObjects.Currency.Equals(YAF.Domain.ValueObject? other) -> bool
+override sealed YAF.Domain.ValueObjects.DateRange.Equals(YAF.Domain.ValueObject? other) -> bool
 override sealed YAF.Domain.ValueObjects.Money.Equals(YAF.Domain.ValueObject? other) -> bool
 override sealed YAF.Domain.ValueObjects.Percentage.Equals(YAF.Domain.ValueObject? other) -> bool
+override sealed YAF.Domain.ValueObjects.Period.Equals(YAF.Domain.ValueObject? other) -> bool
 static YAF.Domain.AggregateVersion.From(System.Guid value) -> YAF.Domain.AggregateVersion
 static YAF.Domain.AggregateVersion.operator !=(YAF.Domain.AggregateVersion left, YAF.Domain.AggregateVersion right) -> bool
 static YAF.Domain.AggregateVersion.operator ==(YAF.Domain.AggregateVersion left, YAF.Domain.AggregateVersion right) -> bool
@@ -151,14 +175,22 @@ static YAF.Domain.ValueObjects.Currency.All.get -> System.Collections.Generic.IR
 static YAF.Domain.ValueObjects.Currency.FromCode(string! code) -> YAF.Core.Results.Result<YAF.Domain.ValueObjects.Currency!>
 static YAF.Domain.ValueObjects.Currency.operator !=(YAF.Domain.ValueObjects.Currency? left, YAF.Domain.ValueObjects.Currency? right) -> bool
 static YAF.Domain.ValueObjects.Currency.operator ==(YAF.Domain.ValueObjects.Currency? left, YAF.Domain.ValueObjects.Currency? right) -> bool
+static YAF.Domain.ValueObjects.DateRange.Create(System.DateOnly start, System.DateOnly end) -> YAF.Core.Results.Result<YAF.Domain.ValueObjects.DateRange!>
+static YAF.Domain.ValueObjects.DateRange.operator !=(YAF.Domain.ValueObjects.DateRange? left, YAF.Domain.ValueObjects.DateRange? right) -> bool
+static YAF.Domain.ValueObjects.DateRange.operator ==(YAF.Domain.ValueObjects.DateRange? left, YAF.Domain.ValueObjects.DateRange? right) -> bool
 static YAF.Domain.ValueObjects.Money.operator !=(YAF.Domain.ValueObjects.Money? left, YAF.Domain.ValueObjects.Money? right) -> bool
 static YAF.Domain.ValueObjects.Money.operator ==(YAF.Domain.ValueObjects.Money? left, YAF.Domain.ValueObjects.Money? right) -> bool
 static YAF.Domain.ValueObjects.Percentage.Create(decimal value) -> YAF.Core.Results.Result<YAF.Domain.ValueObjects.Percentage!>
 static YAF.Domain.ValueObjects.Percentage.operator !=(YAF.Domain.ValueObjects.Percentage? left, YAF.Domain.ValueObjects.Percentage? right) -> bool
 static YAF.Domain.ValueObjects.Percentage.operator ==(YAF.Domain.ValueObjects.Percentage? left, YAF.Domain.ValueObjects.Percentage? right) -> bool
+static YAF.Domain.ValueObjects.Period.Create(System.DateTimeOffset start, System.DateTimeOffset end) -> YAF.Core.Results.Result<YAF.Domain.ValueObjects.Period!>
+static YAF.Domain.ValueObjects.Period.operator !=(YAF.Domain.ValueObjects.Period? left, YAF.Domain.ValueObjects.Period? right) -> bool
+static YAF.Domain.ValueObjects.Period.operator ==(YAF.Domain.ValueObjects.Period? left, YAF.Domain.ValueObjects.Period? right) -> bool
 static readonly YAF.Domain.DomainErrors.UnknownEnumerationCode -> YAF.Core.Results.ErrorDescriptor!
 static readonly YAF.Domain.ValueObjects.ValueObjectErrors.CurrencyMismatch -> YAF.Core.Results.ErrorDescriptor!
+static readonly YAF.Domain.ValueObjects.ValueObjectErrors.DateRangeEndBeforeStart -> YAF.Core.Results.ErrorDescriptor!
 static readonly YAF.Domain.ValueObjects.ValueObjectErrors.PercentageOutOfRange -> YAF.Core.Results.ErrorDescriptor!
+static readonly YAF.Domain.ValueObjects.ValueObjectErrors.PeriodEndBeforeStart -> YAF.Core.Results.ErrorDescriptor!
 static readonly YAF.Domain.ValueObjects.ValueObjectErrors.UnknownCurrency -> YAF.Core.Results.ErrorDescriptor!
 virtual YAF.Domain.Entity<TId, TSelf, TMemento>.CheckInvariants() -> YAF.Core.Results.Result
 virtual YAF.Domain.Enumeration<TSelf>.EqualityContract.get -> System.Type!
