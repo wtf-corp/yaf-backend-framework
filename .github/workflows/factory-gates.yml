@@ -31,6 +31,7 @@ jobs:
       pull-requests: write   # tier label
       issues: write          # labels are set through the issues API
       checks: write          # the factory/* check runs
+      statuses: write        # the seven gate checks are commit statuses: no later run can hide them (issue #278)
     outputs:
       tier: ${{ steps.gates.outputs.tier }}
       kind: ${{ steps.gates.outputs.kind }}
