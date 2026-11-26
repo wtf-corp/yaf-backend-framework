@@ -19,6 +19,8 @@
   <ItemGroup>
     <ProjectReference Include="../../src/Analyzers/Analyzers.csproj" />
     <ProjectReference Include="../../src/Core/Core.csproj" />
+    <ProjectReference Include="../../src/Domain/Domain.csproj" />
+    <ProjectReference Include="../../src/Testing/Testing.csproj" />
   </ItemGroup>
 
 </Project>
