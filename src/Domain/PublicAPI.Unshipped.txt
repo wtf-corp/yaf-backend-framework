@@ -84,6 +84,18 @@ YAF.Domain.ValueObjects.Currency
 YAF.Domain.ValueObjects.Currency.Code.get -> string!
 YAF.Domain.ValueObjects.Currency.Equals(YAF.Domain.ValueObjects.Currency? other) -> bool
 YAF.Domain.ValueObjects.Currency.MinorUnits.get -> int
+YAF.Domain.ValueObjects.Money
+YAF.Domain.ValueObjects.Money.Add(YAF.Domain.ValueObjects.Money! other) -> YAF.Core.Results.Result<YAF.Domain.ValueObjects.Money!>
+YAF.Domain.ValueObjects.Money.Allocate(int parts) -> System.Collections.Generic.IReadOnlyList<YAF.Domain.ValueObjects.Money!>!
+YAF.Domain.ValueObjects.Money.Allocate(params System.ReadOnlySpan<int> ratios) -> System.Collections.Generic.IReadOnlyList<YAF.Domain.ValueObjects.Money!>!
+YAF.Domain.ValueObjects.Money.Amount.get -> decimal
+YAF.Domain.ValueObjects.Money.Currency.get -> YAF.Domain.ValueObjects.Currency!
+YAF.Domain.ValueObjects.Money.Deconstruct(out decimal Amount, out YAF.Domain.ValueObjects.Currency! Currency) -> void
+YAF.Domain.ValueObjects.Money.Equals(YAF.Domain.ValueObjects.Money? other) -> bool
+YAF.Domain.ValueObjects.Money.Money(decimal Amount, YAF.Domain.ValueObjects.Currency! Currency) -> void
+YAF.Domain.ValueObjects.Money.Multiply(decimal factor) -> YAF.Domain.ValueObjects.Money!
+YAF.Domain.ValueObjects.Money.Round(System.MidpointRounding mode) -> YAF.Domain.ValueObjects.Money!
+YAF.Domain.ValueObjects.Money.Subtract(YAF.Domain.ValueObjects.Money! other) -> YAF.Core.Results.Result<YAF.Domain.ValueObjects.Money!>
 YAF.Domain.ValueObjects.ValueObjectErrors
 abstract YAF.Domain.AggregateBuilder<TAggregate>.Create() -> TAggregate
 abstract YAF.Domain.AggregateBuilder<TAggregate>.OnCreated(TAggregate aggregate) -> void
@@ -107,7 +119,12 @@ override YAF.Domain.ValueObjects.Currency.<Clone>$() -> YAF.Domain.ValueObjects.
 override YAF.Domain.ValueObjects.Currency.Equals(object? obj) -> bool
 override YAF.Domain.ValueObjects.Currency.GetHashCode() -> int
 override YAF.Domain.ValueObjects.Currency.ToString() -> string!
+override YAF.Domain.ValueObjects.Money.<Clone>$() -> YAF.Domain.ValueObjects.Money!
+override YAF.Domain.ValueObjects.Money.Equals(object? obj) -> bool
+override YAF.Domain.ValueObjects.Money.GetHashCode() -> int
+override YAF.Domain.ValueObjects.Money.ToString() -> string!
 override sealed YAF.Domain.ValueObjects.Currency.Equals(YAF.Domain.ValueObject? other) -> bool
+override sealed YAF.Domain.ValueObjects.Money.Equals(YAF.Domain.ValueObject? other) -> bool
 static YAF.Domain.AggregateVersion.From(System.Guid value) -> YAF.Domain.AggregateVersion
 static YAF.Domain.AggregateVersion.operator !=(YAF.Domain.AggregateVersion left, YAF.Domain.AggregateVersion right) -> bool
 static YAF.Domain.AggregateVersion.operator ==(YAF.Domain.AggregateVersion left, YAF.Domain.AggregateVersion right) -> bool
@@ -124,7 +141,10 @@ static YAF.Domain.ValueObjects.Currency.All.get -> System.Collections.Generic.IR
 static YAF.Domain.ValueObjects.Currency.FromCode(string! code) -> YAF.Core.Results.Result<YAF.Domain.ValueObjects.Currency!>
 static YAF.Domain.ValueObjects.Currency.operator !=(YAF.Domain.ValueObjects.Currency? left, YAF.Domain.ValueObjects.Currency? right) -> bool
 static YAF.Domain.ValueObjects.Currency.operator ==(YAF.Domain.ValueObjects.Currency? left, YAF.Domain.ValueObjects.Currency? right) -> bool
+static YAF.Domain.ValueObjects.Money.operator !=(YAF.Domain.ValueObjects.Money? left, YAF.Domain.ValueObjects.Money? right) -> bool
+static YAF.Domain.ValueObjects.Money.operator ==(YAF.Domain.ValueObjects.Money? left, YAF.Domain.ValueObjects.Money? right) -> bool
 static readonly YAF.Domain.DomainErrors.UnknownEnumerationCode -> YAF.Core.Results.ErrorDescriptor!
+static readonly YAF.Domain.ValueObjects.ValueObjectErrors.CurrencyMismatch -> YAF.Core.Results.ErrorDescriptor!
 static readonly YAF.Domain.ValueObjects.ValueObjectErrors.UnknownCurrency -> YAF.Core.Results.ErrorDescriptor!
 virtual YAF.Domain.Entity<TId, TSelf, TMemento>.CheckInvariants() -> YAF.Core.Results.Result
 virtual YAF.Domain.Enumeration<TSelf>.EqualityContract.get -> System.Type!
