@@ -1,4 +1,7 @@
 #nullable enable
+YAF.Domain.AggregateBuilder<TAggregate>
+YAF.Domain.AggregateBuilder<TAggregate>.AggregateBuilder() -> void
+YAF.Domain.AggregateBuilder<TAggregate>.Build() -> YAF.Core.Results.Result<TAggregate>
 YAF.Domain.AggregateRoot<TId, TSelf, TMemento>
 YAF.Domain.AggregateRoot<TId, TSelf, TMemento>.AggregateRoot(TId id) -> void
 YAF.Domain.AggregateRoot<TId, TSelf, TMemento>.DomainEvents.get -> System.Collections.Generic.IReadOnlyList<YAF.Domain.Events.IDomainEvent!>!
@@ -67,6 +70,8 @@ YAF.Domain.Rules.IBusinessRule.Error.get -> YAF.Core.Results.ErrorDescriptor!
 YAF.Domain.Rules.IBusinessRule.IsSatisfied() -> bool
 YAF.Domain.Rules.IPolicy<TInput, TDecision>
 YAF.Domain.Rules.IPolicy<TInput, TDecision>.Decide(TInput input) -> TDecision
+abstract YAF.Domain.AggregateBuilder<TAggregate>.Create() -> TAggregate
+abstract YAF.Domain.AggregateBuilder<TAggregate>.OnCreated(TAggregate aggregate) -> void
 abstract YAF.Domain.Entity<TId, TSelf, TMemento>.RestoreCore(TMemento memento) -> void
 abstract YAF.Domain.Entity<TId, TSelf, TMemento>.SnapshotCore(TMemento memento) -> void
 abstract YAF.Domain.Events.DomainEvent.<Clone>$() -> YAF.Domain.Events.DomainEvent!
