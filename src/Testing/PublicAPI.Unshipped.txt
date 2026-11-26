@@ -1,11 +1,15 @@
 #nullable enable
+static YAF.Testing.AggregateAssert.InvariantsHold(YAF.Domain.IAggregateRoot! aggregate) -> void
 static YAF.Testing.Approvals.Verify(string! actualText, string! name, string! callerFilePath = "") -> void
+static YAF.Testing.DomainEventAssert.Raised<TEvent>(YAF.Domain.IAggregateRoot! aggregate) -> TEvent
 static YAF.Testing.MementoAssert.RoundTrips<TId, TEntity, TMemento>(YAF.Domain.Entity<TId, TEntity!, TMemento>! entity, System.Func<TMemento>! mementoFactory) -> void
 static YAF.Testing.ResultAssert.ShouldFailWith(this YAF.Core.Results.Result result, YAF.Core.Results.ErrorDescriptor! expected) -> void
 static YAF.Testing.ResultAssert.ShouldFailWith<T>(this YAF.Core.Results.Result<T> result, YAF.Core.Results.ErrorDescriptor! expected) -> void
 static YAF.Testing.ResultAssert.ShouldSucceed(this YAF.Core.Results.Result result) -> void
 static YAF.Testing.ResultAssert.ShouldSucceed<T>(this YAF.Core.Results.Result<T> result) -> T
+YAF.Testing.AggregateAssert
 YAF.Testing.Approvals
+YAF.Testing.DomainEventAssert
 YAF.Testing.MementoAssert
 YAF.Testing.ResultAssert
 YAF.Testing.YafAssertionException
