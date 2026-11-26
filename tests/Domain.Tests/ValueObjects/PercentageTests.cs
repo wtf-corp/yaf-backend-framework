@@ -1,3 +1,4 @@
+using YAF.Core.Results;
 using YAF.Domain.ValueObjects;
 
 namespace Domain.Tests.ValueObjects;
@@ -11,6 +12,14 @@ public sealed class PercentageTests
 
         result.Errors.Select(e => e.Code).Should().Equal(ValueObjectErrors.PercentageOutOfRange.Code);
         ValueObjectErrors.PercentageOutOfRange.Code.Should().Be("core.percentage.out_of_range");
+    }
+
+    [Fact]
+    public void Create_OutOfRange_FailsWithAValidationError()
+    {
+        var result = Percentage.Create(100.01m);
+
+        result.FirstError.Kind.Should().Be(ErrorKind.Validation);
     }
 
     [Fact]
