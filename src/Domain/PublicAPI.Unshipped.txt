@@ -77,6 +77,12 @@ YAF.Domain.Rules.IBusinessRule.Error.get -> YAF.Core.Results.ErrorDescriptor!
 YAF.Domain.Rules.IBusinessRule.IsSatisfied() -> bool
 YAF.Domain.Rules.IPolicy<TInput, TDecision>
 YAF.Domain.Rules.IPolicy<TInput, TDecision>.Decide(TInput input) -> TDecision
+YAF.Domain.Specifications.Specification<T>
+YAF.Domain.Specifications.Specification<T>.And(YAF.Domain.Specifications.Specification<T>! other) -> YAF.Domain.Specifications.Specification<T>!
+YAF.Domain.Specifications.Specification<T>.IsSatisfiedBy(T candidate) -> bool
+YAF.Domain.Specifications.Specification<T>.Not() -> YAF.Domain.Specifications.Specification<T>!
+YAF.Domain.Specifications.Specification<T>.Or(YAF.Domain.Specifications.Specification<T>! other) -> YAF.Domain.Specifications.Specification<T>!
+YAF.Domain.Specifications.Specification<T>.Specification() -> void
 YAF.Domain.ValueObject
 YAF.Domain.ValueObject.ValueObject() -> void
 YAF.Domain.ValueObject.ValueObject(YAF.Domain.ValueObject! original) -> void
@@ -124,6 +130,7 @@ abstract YAF.Domain.AggregateBuilder<TAggregate>.OnCreated(TAggregate aggregate)
 abstract YAF.Domain.Entity<TId, TSelf, TMemento>.RestoreCore(TMemento memento) -> void
 abstract YAF.Domain.Entity<TId, TSelf, TMemento>.SnapshotCore(TMemento memento) -> void
 abstract YAF.Domain.Events.DomainEvent.<Clone>$() -> YAF.Domain.Events.DomainEvent!
+abstract YAF.Domain.Specifications.Specification<T>.ToExpression() -> System.Linq.Expressions.Expression<System.Func<T, bool>!>!
 abstract YAF.Domain.ValueObject.<Clone>$() -> YAF.Domain.ValueObject!
 override YAF.Domain.AggregateVersion.GetHashCode() -> int
 override YAF.Domain.Enumeration<TSelf>.Equals(object? obj) -> bool
