@@ -32,16 +32,19 @@ export function armDecision({ labels, draft, kind, approver, planGate, armed, pa
 }
 
 /**
- * The conclusion of the newest `factory/plan-gate` check run reported by the gates' app, or null.
- * A check of that name from any other app is ignored. gatesBot: `bots.gates` of the policy.
+ * The result of `factory/plan-gate` on the head commit, or null when the gates have not reported it: the conclusion
+ * of the newest check run reported by the gates' app, and the state of the newest commit status the gates bot created.
+ * With both, the one that has not passed decides, as GitHub requires both to pass. A check run or status of that
+ * name from anybody else is ignored. gatesBot: `bots.gates` of the policy.
  */
-export function planGateConclusion(checkRuns, gatesBot) {
+export function planGateConclusion(checkRuns, gatesBot, statuses = []) {
   const slug = gatesBot.replace(/\[bot\]$/, '');
-  const mine = checkRuns.filter((c) => c.name === 'factory/plan-gate' && c.app?.slug === slug);
-  if (mine.length === 0) return null;
-  const at = (c) => c.started_at ?? '';
-  const newer = (a, b) => (at(a) === at(b) ? a.id > b.id : at(a) > at(b)); // the same start: the highest id
-  return mine.reduce((a, b) => (newer(b, a) ? b : a)).conclusion ?? null;
+  const newest = (list, at) => list.reduce((a, b) => (!a || (at(a) === at(b) ? b.id > a.id : at(b) > at(a)) ? b : a), null); // the same time: the highest id
+  const run = newest(checkRuns.filter((c) => c.name === 'factory/plan-gate' && c.app?.slug === slug), (c) => c.started_at ?? '');
+  const status = newest(statuses.filter((s) => s.context === 'factory/plan-gate' && s.creator?.login === gatesBot), (s) => s.created_at ?? '');
+  const results = [...(run ? [run.conclusion ?? null] : []), ...(status ? [status.state] : [])];
+  if (results.length === 0) return null;
+  return results.every((r) => r === 'success') ? 'success' : results.find((r) => r !== 'success');
 }
 
 /**
@@ -74,7 +77,8 @@ function decideOne({ repo, headSha, paused, gatesConclusion, policy, gh }, pr) {
   const files = list(`repos/${repo}/pulls/${pr.number}/files?per_page=100`).map((f) => f.filename);
   const kind = prKind(files, policy);
   const planGate = kind === 'plan'
-    ? planGateConclusion(list(`repos/${repo}/commits/${headSha}/check-runs?check_name=factory%2Fplan-gate&filter=all&per_page=100`).flatMap((p) => p.check_runs), policy.bots.gates)
+    ? planGateConclusion(list(`repos/${repo}/commits/${headSha}/check-runs?check_name=factory%2Fplan-gate&filter=all&per_page=100`).flatMap((p) => p.check_runs), policy.bots.gates,
+      list(`repos/${repo}/commits/${headSha}/statuses?per_page=100`))
     : null;
 
   const decision = armDecision({
