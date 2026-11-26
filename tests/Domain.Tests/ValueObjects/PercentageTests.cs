@@ -53,4 +53,14 @@ public sealed class PercentageTests
 
         share.Should().Be(3.3m);
     }
+
+    [Fact]
+    public void Of_AmountNearDecimalMax_ReturnsTheShare()
+    {
+        var percentage = Percentage.Create(50m).Value;
+
+        var share = percentage.Of(decimal.MaxValue);
+
+        share.Should().Be(decimal.MaxValue * 0.5m);
+    }
 }

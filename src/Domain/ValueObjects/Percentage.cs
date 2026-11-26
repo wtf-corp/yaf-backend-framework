@@ -44,5 +44,5 @@ public sealed record Percentage : ValueObject
     /// <summary>Applies the percentage to a number, without rounding.</summary>
     /// <param name="amount">The number.</param>
     /// <returns>The share of <paramref name="amount"/>.</returns>
-    public decimal Of(decimal amount) => amount * Value / 100m;
+    public decimal Of(decimal amount) => amount * (Value / 100m);
 }
