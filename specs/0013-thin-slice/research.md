@@ -26,11 +26,11 @@ Latest stable versions on nuget.org on 2026-11-26:
 | `Testcontainers` | 4.17.0 | MIT | (`net10.0`) `Docker.DotNet.Enhanced` 4.3.3, `Docker.DotNet.Enhanced.X509` 4.3.3, `Microsoft.Extensions.Logging.Abstractions` 8.0.3, `SSH.NET` 2026.0.0, `SharpZipLib` 1.4.2 | transitively |
 | `Microsoft.AspNetCore.Mvc.Testing` | 11.0.0 | MIT | `Microsoft.AspNetCore.TestHost`, `Microsoft.Extensions.DependencyModel`, `Microsoft.Extensions.Hosting` 11.0.0 | `YAF.Testing.Integration` |
 | `xunit.v3.extensibility.core` | 4.0.3 | Apache-2.0 | `xunit.v3.common` [4.0.3] | `YAF.Testing.Integration` (fixtures, collections); the same version line as `xunit.v3` 4.0.3 on `main` |
-| `TngTech.ArchUnitNET` | 0.13.5 | Apache-2.0 | (`netstandard2.0`) `CycleDetection` 2.0.0, `JetBrains.Annotations` 2026.2.0, `Mono.Cecil` 0.11.6, `Newtonsoft.Json` 13.0.4, `System.ValueTuple` 4.6.2 | `YAF.Testing`, only if the owner chooses option (a) of Q3 |
+| `TngTech.ArchUnitNET` | 0.13.5 | Apache-2.0 | (`netstandard2.0`) `CycleDetection` 2.0.0, `JetBrains.Annotations` 2026.2.0, `Mono.Cecil` 0.11.6, `Newtonsoft.Json` 13.0.4, `System.ValueTuple` 4.6.2 | `YAF.Testing` (Q3, decided by the owner on 2026-11-26; ADR-0033) |
 
 All are permissively licensed (ADR-0003, licence policy). `TngTech.ArchUnitNET.xUnitV3` 0.13.5 is already pinned for `tests/Architecture.Tests`; the core package above is what a library that must not reference a test framework would use.
 
-ADR-0003 allows EF Core and Npgsql in `YAF.Persistence.EfCore(.PostgreSql)`, "Test framework, Testcontainers, ASP.NET Core test host" in `YAF.Testing.Integration`, and "nothing beyond `YAF.Application`'s row" in `YAF.Testing`, which is why ArchUnitNET is question Q3.
+ADR-0003 allows EF Core and Npgsql in `YAF.Persistence.EfCore(.PostgreSql)`, "Test framework, Testcontainers, ASP.NET Core test host" in `YAF.Testing.Integration`, and "nothing beyond `YAF.Application`'s row" in `YAF.Testing`, which is why ArchUnitNET needs ADR-0033 (Q3, T58).
 
 ## 3. The `Microsoft.Extensions` abstractions are part of `Microsoft.NETCore.App` 11
 
