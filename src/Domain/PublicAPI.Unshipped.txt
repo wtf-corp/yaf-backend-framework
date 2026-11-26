@@ -96,6 +96,11 @@ YAF.Domain.ValueObjects.Money.Money(decimal Amount, YAF.Domain.ValueObjects.Curr
 YAF.Domain.ValueObjects.Money.Multiply(decimal factor) -> YAF.Domain.ValueObjects.Money!
 YAF.Domain.ValueObjects.Money.Round(System.MidpointRounding mode) -> YAF.Domain.ValueObjects.Money!
 YAF.Domain.ValueObjects.Money.Subtract(YAF.Domain.ValueObjects.Money! other) -> YAF.Core.Results.Result<YAF.Domain.ValueObjects.Money!>
+YAF.Domain.ValueObjects.Percentage
+YAF.Domain.ValueObjects.Percentage.Equals(YAF.Domain.ValueObjects.Percentage? other) -> bool
+YAF.Domain.ValueObjects.Percentage.Of(YAF.Domain.ValueObjects.Money! money) -> YAF.Domain.ValueObjects.Money!
+YAF.Domain.ValueObjects.Percentage.Of(decimal amount) -> decimal
+YAF.Domain.ValueObjects.Percentage.Value.get -> decimal
 YAF.Domain.ValueObjects.ValueObjectErrors
 abstract YAF.Domain.AggregateBuilder<TAggregate>.Create() -> TAggregate
 abstract YAF.Domain.AggregateBuilder<TAggregate>.OnCreated(TAggregate aggregate) -> void
@@ -123,8 +128,13 @@ override YAF.Domain.ValueObjects.Money.<Clone>$() -> YAF.Domain.ValueObjects.Mon
 override YAF.Domain.ValueObjects.Money.Equals(object? obj) -> bool
 override YAF.Domain.ValueObjects.Money.GetHashCode() -> int
 override YAF.Domain.ValueObjects.Money.ToString() -> string!
+override YAF.Domain.ValueObjects.Percentage.<Clone>$() -> YAF.Domain.ValueObjects.Percentage!
+override YAF.Domain.ValueObjects.Percentage.Equals(object? obj) -> bool
+override YAF.Domain.ValueObjects.Percentage.GetHashCode() -> int
+override YAF.Domain.ValueObjects.Percentage.ToString() -> string!
 override sealed YAF.Domain.ValueObjects.Currency.Equals(YAF.Domain.ValueObject? other) -> bool
 override sealed YAF.Domain.ValueObjects.Money.Equals(YAF.Domain.ValueObject? other) -> bool
+override sealed YAF.Domain.ValueObjects.Percentage.Equals(YAF.Domain.ValueObject? other) -> bool
 static YAF.Domain.AggregateVersion.From(System.Guid value) -> YAF.Domain.AggregateVersion
 static YAF.Domain.AggregateVersion.operator !=(YAF.Domain.AggregateVersion left, YAF.Domain.AggregateVersion right) -> bool
 static YAF.Domain.AggregateVersion.operator ==(YAF.Domain.AggregateVersion left, YAF.Domain.AggregateVersion right) -> bool
@@ -143,8 +153,12 @@ static YAF.Domain.ValueObjects.Currency.operator !=(YAF.Domain.ValueObjects.Curr
 static YAF.Domain.ValueObjects.Currency.operator ==(YAF.Domain.ValueObjects.Currency? left, YAF.Domain.ValueObjects.Currency? right) -> bool
 static YAF.Domain.ValueObjects.Money.operator !=(YAF.Domain.ValueObjects.Money? left, YAF.Domain.ValueObjects.Money? right) -> bool
 static YAF.Domain.ValueObjects.Money.operator ==(YAF.Domain.ValueObjects.Money? left, YAF.Domain.ValueObjects.Money? right) -> bool
+static YAF.Domain.ValueObjects.Percentage.Create(decimal value) -> YAF.Core.Results.Result<YAF.Domain.ValueObjects.Percentage!>
+static YAF.Domain.ValueObjects.Percentage.operator !=(YAF.Domain.ValueObjects.Percentage? left, YAF.Domain.ValueObjects.Percentage? right) -> bool
+static YAF.Domain.ValueObjects.Percentage.operator ==(YAF.Domain.ValueObjects.Percentage? left, YAF.Domain.ValueObjects.Percentage? right) -> bool
 static readonly YAF.Domain.DomainErrors.UnknownEnumerationCode -> YAF.Core.Results.ErrorDescriptor!
 static readonly YAF.Domain.ValueObjects.ValueObjectErrors.CurrencyMismatch -> YAF.Core.Results.ErrorDescriptor!
+static readonly YAF.Domain.ValueObjects.ValueObjectErrors.PercentageOutOfRange -> YAF.Core.Results.ErrorDescriptor!
 static readonly YAF.Domain.ValueObjects.ValueObjectErrors.UnknownCurrency -> YAF.Core.Results.ErrorDescriptor!
 virtual YAF.Domain.Entity<TId, TSelf, TMemento>.CheckInvariants() -> YAF.Core.Results.Result
 virtual YAF.Domain.Enumeration<TSelf>.EqualityContract.get -> System.Type!

@@ -20,6 +20,13 @@ public sealed class ValueObjectErrors : IErrorCatalog
     [ErrorCode("core.money.currency_mismatch")]
     public static readonly ErrorDescriptor CurrencyMismatch = Error.Validation("Amounts in {Left} and {Right} cannot be combined.");
 
+    /// <summary>
+    /// The error of <see cref="Percentage.Create"/> for a value below 0 or above 100: code <c>core.percentage.out_of_range</c>, kind
+    /// <see cref="ErrorKind.Validation"/>. It has no arguments.
+    /// </summary>
+    [ErrorCode("core.percentage.out_of_range")]
+    public static readonly ErrorDescriptor PercentageOutOfRange = Error.Validation("A percentage is between 0 and 100.");
+
     private ValueObjectErrors()
     {
     }
