@@ -27,6 +27,20 @@ public sealed class ValueObjectErrors : IErrorCatalog
     [ErrorCode("core.percentage.out_of_range")]
     public static readonly ErrorDescriptor PercentageOutOfRange = Error.Validation("A percentage is between 0 and 100.");
 
+    /// <summary>
+    /// The error of <see cref="DateRange.Create"/> for a last day before the first: code <c>core.date_range.end_before_start</c>, kind
+    /// <see cref="ErrorKind.Validation"/>. It has no arguments.
+    /// </summary>
+    [ErrorCode("core.date_range.end_before_start")]
+    public static readonly ErrorDescriptor DateRangeEndBeforeStart = Error.Validation("A date range cannot end before it starts.");
+
+    /// <summary>
+    /// The error of <see cref="Period.Create"/> for an end before the start: code <c>core.period.end_before_start</c>, kind
+    /// <see cref="ErrorKind.Validation"/>. It has no arguments.
+    /// </summary>
+    [ErrorCode("core.period.end_before_start")]
+    public static readonly ErrorDescriptor PeriodEndBeforeStart = Error.Validation("A period cannot end before it starts.");
+
     private ValueObjectErrors()
     {
     }
