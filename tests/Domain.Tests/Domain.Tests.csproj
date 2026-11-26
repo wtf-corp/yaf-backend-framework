@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="../../src/Analyzers/Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
     <ProjectReference Include="../../src/Domain/Domain.csproj" />
+    <ProjectReference Include="../../src/Testing/Testing.csproj" />
   </ItemGroup>
 
   <Import Project="../../src/Core/buildTransitive/YAF.Core.props" />
