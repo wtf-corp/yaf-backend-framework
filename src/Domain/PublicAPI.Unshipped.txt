@@ -91,6 +91,9 @@ YAF.Domain.ValueObjects.DateRange.Equals(YAF.Domain.ValueObjects.DateRange? othe
 YAF.Domain.ValueObjects.DateRange.Intersect(YAF.Domain.ValueObjects.DateRange! other) -> YAF.Domain.ValueObjects.DateRange?
 YAF.Domain.ValueObjects.DateRange.Overlaps(YAF.Domain.ValueObjects.DateRange! other) -> bool
 YAF.Domain.ValueObjects.DateRange.Start.get -> System.DateOnly
+YAF.Domain.ValueObjects.EmailAddress
+YAF.Domain.ValueObjects.EmailAddress.Equals(YAF.Domain.ValueObjects.EmailAddress? other) -> bool
+YAF.Domain.ValueObjects.EmailAddress.Value.get -> string!
 YAF.Domain.ValueObjects.Money
 YAF.Domain.ValueObjects.Money.Add(YAF.Domain.ValueObjects.Money! other) -> YAF.Core.Results.Result<YAF.Domain.ValueObjects.Money!>
 YAF.Domain.ValueObjects.Money.Allocate(int parts) -> System.Collections.Generic.IReadOnlyList<YAF.Domain.ValueObjects.Money!>!
@@ -142,6 +145,10 @@ override YAF.Domain.ValueObjects.DateRange.<Clone>$() -> YAF.Domain.ValueObjects
 override YAF.Domain.ValueObjects.DateRange.Equals(object? obj) -> bool
 override YAF.Domain.ValueObjects.DateRange.GetHashCode() -> int
 override YAF.Domain.ValueObjects.DateRange.ToString() -> string!
+override YAF.Domain.ValueObjects.EmailAddress.<Clone>$() -> YAF.Domain.ValueObjects.EmailAddress!
+override YAF.Domain.ValueObjects.EmailAddress.Equals(object? obj) -> bool
+override YAF.Domain.ValueObjects.EmailAddress.GetHashCode() -> int
+override YAF.Domain.ValueObjects.EmailAddress.ToString() -> string!
 override YAF.Domain.ValueObjects.Money.<Clone>$() -> YAF.Domain.ValueObjects.Money!
 override YAF.Domain.ValueObjects.Money.Equals(object? obj) -> bool
 override YAF.Domain.ValueObjects.Money.GetHashCode() -> int
@@ -156,6 +163,7 @@ override YAF.Domain.ValueObjects.Period.GetHashCode() -> int
 override YAF.Domain.ValueObjects.Period.ToString() -> string!
 override sealed YAF.Domain.ValueObjects.Currency.Equals(YAF.Domain.ValueObject? other) -> bool
 override sealed YAF.Domain.ValueObjects.DateRange.Equals(YAF.Domain.ValueObject? other) -> bool
+override sealed YAF.Domain.ValueObjects.EmailAddress.Equals(YAF.Domain.ValueObject? other) -> bool
 override sealed YAF.Domain.ValueObjects.Money.Equals(YAF.Domain.ValueObject? other) -> bool
 override sealed YAF.Domain.ValueObjects.Percentage.Equals(YAF.Domain.ValueObject? other) -> bool
 override sealed YAF.Domain.ValueObjects.Period.Equals(YAF.Domain.ValueObject? other) -> bool
@@ -178,6 +186,9 @@ static YAF.Domain.ValueObjects.Currency.operator ==(YAF.Domain.ValueObjects.Curr
 static YAF.Domain.ValueObjects.DateRange.Create(System.DateOnly start, System.DateOnly end) -> YAF.Core.Results.Result<YAF.Domain.ValueObjects.DateRange!>
 static YAF.Domain.ValueObjects.DateRange.operator !=(YAF.Domain.ValueObjects.DateRange? left, YAF.Domain.ValueObjects.DateRange? right) -> bool
 static YAF.Domain.ValueObjects.DateRange.operator ==(YAF.Domain.ValueObjects.DateRange? left, YAF.Domain.ValueObjects.DateRange? right) -> bool
+static YAF.Domain.ValueObjects.EmailAddress.Create(string! value) -> YAF.Core.Results.Result<YAF.Domain.ValueObjects.EmailAddress!>
+static YAF.Domain.ValueObjects.EmailAddress.operator !=(YAF.Domain.ValueObjects.EmailAddress? left, YAF.Domain.ValueObjects.EmailAddress? right) -> bool
+static YAF.Domain.ValueObjects.EmailAddress.operator ==(YAF.Domain.ValueObjects.EmailAddress? left, YAF.Domain.ValueObjects.EmailAddress? right) -> bool
 static YAF.Domain.ValueObjects.Money.operator !=(YAF.Domain.ValueObjects.Money? left, YAF.Domain.ValueObjects.Money? right) -> bool
 static YAF.Domain.ValueObjects.Money.operator ==(YAF.Domain.ValueObjects.Money? left, YAF.Domain.ValueObjects.Money? right) -> bool
 static YAF.Domain.ValueObjects.Percentage.Create(decimal value) -> YAF.Core.Results.Result<YAF.Domain.ValueObjects.Percentage!>
@@ -189,6 +200,7 @@ static YAF.Domain.ValueObjects.Period.operator ==(YAF.Domain.ValueObjects.Period
 static readonly YAF.Domain.DomainErrors.UnknownEnumerationCode -> YAF.Core.Results.ErrorDescriptor!
 static readonly YAF.Domain.ValueObjects.ValueObjectErrors.CurrencyMismatch -> YAF.Core.Results.ErrorDescriptor!
 static readonly YAF.Domain.ValueObjects.ValueObjectErrors.DateRangeEndBeforeStart -> YAF.Core.Results.ErrorDescriptor!
+static readonly YAF.Domain.ValueObjects.ValueObjectErrors.InvalidEmailAddress -> YAF.Core.Results.ErrorDescriptor!
 static readonly YAF.Domain.ValueObjects.ValueObjectErrors.PercentageOutOfRange -> YAF.Core.Results.ErrorDescriptor!
 static readonly YAF.Domain.ValueObjects.ValueObjectErrors.PeriodEndBeforeStart -> YAF.Core.Results.ErrorDescriptor!
 static readonly YAF.Domain.ValueObjects.ValueObjectErrors.UnknownCurrency -> YAF.Core.Results.ErrorDescriptor!
