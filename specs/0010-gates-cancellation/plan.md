@@ -32,7 +32,7 @@ Only a workflow that cancels runs on the head of an open pull request and owns a
 | Workflow | Starts on `opened` and `labeled`? | Cancels in progress? | Required check? | In this plan |
 |---|---|---|---|---|
 | `factory-gates.yml` | yes | yes | `references`, and the `factory/*` checks posted by its `gates` job | **yes** |
-| `ci.yml` | `opened`, not `labeled` | yes, group `ci-<ref>` | `build-test`, `pr-title`, `security`, `process` | no: `gh pr create --label` starts it once. Its cancelled runs in the last 40 are all pushes to `main`, which no merge waits for (research §3). An `edited` event while a run is going would cancel one on the head; nothing in the factory edits a pull request that soon after opening it. Decision log, open question 1 |
+| `ci.yml` | `opened`, not `labeled` | yes, group `ci-<ref>` | `build-test`, `pr-title`, `security`, `process` | no: `gh pr create --label` starts it once. Its cancelled runs in the last 40 are all pushes to `main`, which no merge waits for (research §3). An `edited` event while a run is going would cancel one on the head; nothing in the factory edits a pull request that soon after opening it. Out of scope by the owner's answer to Q1 (decision log) |
 | `factory-pr-review.yml`, `factory-doc-review.yml` | `opened`, not `labeled` | yes | no: their job checks are `review` and `doc-review`, the required ones are `factory/review` and `factory/doc-review` from the reviewer app; their job is off while the reviews run locally | no |
 | `factory-status.yml`, `factory-tickets.yml` | no (issue and push events) | no | no | no |
 | `factory-automerge.yml`, `factory-digest.yml` | no | no group | no | no |
@@ -48,7 +48,7 @@ Files read to decide: `AGENTS.md` (with the path map, "Running the factory local
 | Remove the `concurrency` block | No cancellation either, but runs of one pull request run side by side: the last check run posted may come from the run that read the older state, and two runs can race on removing a stale `tier:*` label (Approach) |
 | `cancel-in-progress: ${{ github.event.action == 'synchronize' }}` | A push still cancels a run, and the documentation does not say whether that expression may be combined with `queue: max` (research §1, item 4). Without `queue: max`, pending runs are still cancelled. On `synchronize` the cancelled run is mostly the old head's, but not always: a `labeled` or review event on the new head that arrived just before the push is cancelled too. It saves at most half a minute per push |
 | Job-level concurrency on the `gates` job only, so that `references`, `factory-self-test` and `factory/test-evidence` run side by side | More configuration for at most half a minute of waiting; runs are short (research §3) |
-| Also changing `ci.yml` | It cannot meet the opening pair, and no merge has been seen to wait for one of its cancellations (Other workflows; open question 1) |
+| Also changing `ci.yml` | It cannot meet the opening pair, and no merge has been seen to wait for one of its cancellations (Other workflows; Q1 in the decision log) |
 | A line in the kit README, `17` §2.2 or ADR-0029 | None of them describes the concurrency today; the comment in the workflow is where a reader of the block looks |
 | An ADR | `adr/AGENTS.md` rule 3: no dependency, package, contract, security or privacy control or process changes; the gates and their checks stay as they are |
 
@@ -106,7 +106,7 @@ A workflow file has no unit test here. The failing check first is a `grep` that 
 | A stale run fails because the new head is not in its checkout | Low | It fails before it posts anything, and the new head's run follows; the same happens today when a run is not cancelled in time | none needed |
 | More than 100 runs wait in one group | Not seen: a run takes 17 to 39 s | — | — |
 | GitHub counts a stale or duplicate *successful* run instead of the newest | Not a blocker: both are successes | — | — |
-| `ci.yml` cancels a run on a pull request head after an `edited` event | Low | Open question 1 | — |
+| `ci.yml` cancels a run on a pull request head after an `edited` event | Low | Out of scope by the owner's answer to Q1 (decision log) | — |
 
 ## Verification commands
 
@@ -117,7 +117,7 @@ V1: `git diff --name-only $BASE...HEAD` lists only the two workflow files; `node
 V2, the two concurrency blocks are the same and as planned:
 
     for f in .github/workflows/factory-gates.yml docs/spec/factory/.github/workflows/factory-gates.yml; do grep -c -e '^  cancel-in-progress: false$' -e '^  queue: max$' "$f"; done   # prints 2 twice
-    ! grep -q 'cancel-in-progress: true' .github/workflows/factory-gates.yml docs/spec/factory/.github/workflows/factory-gates.yml
+    ! grep -q '^  cancel-in-progress: true$' .github/workflows/factory-gates.yml docs/spec/factory/.github/workflows/factory-gates.yml
     diff <(sed -n '/^concurrency:/,/^jobs:/p' .github/workflows/factory-gates.yml) <(sed -n '/^concurrency:/,/^jobs:/p' docs/spec/factory/.github/workflows/factory-gates.yml)   # exits 0
 
 V3, on T1's pull request after it was opened with `--label factory`, `<head>` the full SHA of its head commit:
@@ -141,8 +141,8 @@ The whole plan, on `main` after T1: V2; the next factory pull requests opened wi
 | 2026-11-26 | No line in the kit README, `docs/spec/spec/`, the ADRs or `AGENTS.md`; a comment in the workflow | None of them describes this concurrency (research §3) | Planner |
 | 2026-11-26 | `ci.yml` and the other workflows stay as they are | Other workflows, table | Planner |
 | 2026-11-26 | Folder `0010-gates-cancellation` | Next free number | Planner |
-| 2026-11-26 | **Open question 1, for the owner:** should `ci.yml` stop cancelling runs of a pull request on `edited` too? Today only a title or body edit while a run is going could leave a cancelled `build-test`, `pr-title`, `security` or `process` on the head; it has not been seen. Not planned; if wanted, it is a second ticket of the same shape | Out of the owner's decision, which names `factory-gates` | Open |
-| 2026-11-26 | **Open question 2, for the owner:** accept that a push no longer cancels the old head's `factory-gates` run, which then completes, at up to about half a minute of latency per push and its Actions minutes | It is the cost of the fix (Approach, "What it costs") | Open |
+| 2026-11-26 | **Q1. `ci.yml` on `edited`.** Should `ci.yml` stop cancelling runs of a pull request on `edited` too? Today only a title or body edit while a run is going could leave a cancelled `build-test`, `pr-title`, `security` or `process` on the head; it has not been seen. Decided: out of scope, no second ticket | Out of the owner's decision, which names `factory-gates`. Owner: as recommended. Answer given to the orchestrator on 2026-11-26 and relayed to the planner | Human owner, 2026-11-26 |
+| 2026-11-26 | **Q2. The cost of queuing.** A push no longer cancels the old head's `factory-gates` run: it completes, costs its Actions minutes and up to about half a minute of latency per push, and may post `factory/*` checks on the new head that the new head's own run then overwrites. Decided: accepted | It is the cost of the fix (Approach, "What it costs"). Owner: as recommended. Answer given to the orchestrator on 2026-11-26 and relayed to the planner | Human owner, 2026-11-26 |
 
 ## Deviations from the specification
 
@@ -154,4 +154,4 @@ One ticket, tier high (`.github/workflows/` and `docs/spec/` are sensitive and c
 
 | Key | Title | Type | Area | Requirements | Depends on | Touches | Tier | Size | Failing test first | Verify |
 |---|---|---|---|---|---|---|---|---|---|---|
-| T1 | ci: queue the factory gates runs instead of cancelling them | chore | ci | Issue #265; decision log 2026-11-26; Approach, "The fix"; research §1 | — | `.github/workflows/factory-gates.yml`, `docs/spec/factory/.github/workflows/factory-gates.yml` | high | 10 | `grep -q '^  queue: max$' .github/workflows/factory-gates.yml` exits 1 and `grep -q 'cancel-in-progress: true' .github/workflows/factory-gates.yml docs/spec/factory/.github/workflows/factory-gates.yml` exits 0: the gates still cancel. **The owner pushes this branch** | V2 (both files print 2, no `cancel-in-progress: true`, the two blocks equal); V3 on the pull request (at least two `factory-gates` runs on the head, each succeeded at its first attempt; no `CANCELLED` in `statusCheckRollup`); V1 |
+| T1 | ci: queue the factory gates runs instead of cancelling them | chore | ci | Issue #265; decision log 2026-11-26; Approach, "The fix"; research §1 | — | `.github/workflows/factory-gates.yml`, `docs/spec/factory/.github/workflows/factory-gates.yml` | high | 10 | `grep -q '^  queue: max$' .github/workflows/factory-gates.yml` exits 1 and `grep -q '^  cancel-in-progress: true$' .github/workflows/factory-gates.yml docs/spec/factory/.github/workflows/factory-gates.yml` exits 0: the gates still cancel. **The owner pushes this branch** | V2 (both files print 2, no `cancel-in-progress: true`, the two blocks equal); V3 on the pull request (at least two `factory-gates` runs on the head, each succeeded at its first attempt; no `CANCELLED` in `statusCheckRollup`); V1 |

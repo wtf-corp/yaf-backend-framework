@@ -16,7 +16,7 @@ What they say:
 2. **`queue`.** `single` (the default): "At most one job or workflow run can be `pending` in the concurrency group." `max`: "Up to 100 jobs or workflow runs can be `pending` in the concurrency group." When the queue is full, further runs are cancelled. The changelog: queuing "can be enabled by adding `queue: max` to the concurrency block in YAML when `cancel-in-progress` is `false` or not set". The syntax reference: "The combination of `queue: max` and `cancel-in-progress: true` is not allowed", a validation error.
 3. **Order.** Waiting runs are processed first in, first out, but "since the actual start time of a job or run may vary, ordering is not guaranteed".
 4. **`cancel-in-progress` as an expression** is allowed ("you can specify `cancel-in-progress` as an expression with any of the allowed expression contexts"); the example is `cancel-in-progress: ${{ !contains(github.ref, 'release/')}}`. The documentation does not say whether `queue: max` together with an expression that evaluates to `true` for some events is rejected when the file is validated, accepted, or rejected only for those runs.
-5. **Not documented:** whether a run that is cancelled while it is still pending in the group leaves cancelled check runs for its jobs on the head commit. The plan does not depend on the answer: with `queue: max` no run of `factory-gates` is cancelled (§4).
+5. **Not documented:** whether a run that is cancelled while it is still pending in the group leaves cancelled check runs for its jobs on the head commit. The plan does not depend on the answer: with `queue: max` no run of `factory-gates` is cancelled (items 1 and 2).
 
 ## 2. Events
 
