@@ -42,7 +42,7 @@ First match wins.
 2. **REQUIRED** Aggregate constructors are `private` or `internal`. Creation goes through `static Result<T> Create(...)` or an `AggregateBuilder<T>` whose `Build()` returns `Result<T>`.
 3. **REQUIRED** No public setters. Collections are exposed as `IReadOnlyCollection<T>` / `IReadOnlyList<T>` (architecture test).
 4. **REQUIRED** State changes only through behaviour methods named in the ubiquitous language. A behaviour that can fail returns `Result` / `Result<T>`; it never throws for a business outcome.
-5. **REQUIRED** Every behaviour leaves the aggregate satisfying `CheckInvariants()`. Validate first and mutate after, or use `Apply(...)`.
+5. **REQUIRED** Every behaviour leaves the aggregate satisfying `CheckInvariants()`. Check first with `Check(…)` or `CheckAll(…)`, then mutate in `.Then(…)`; there is no rollback helper.
 6. **REQUIRED** Aggregates reference other aggregates by id only.
 7. **REQUIRED** The aggregate knows no dispatcher, repository or unit of work. It queues events with `Raise(...)`; persistence collects them.
 8. **REQUIRED** Domain events are immutable past-tense records carrying ids and facts. They never carry the aggregate instance.
