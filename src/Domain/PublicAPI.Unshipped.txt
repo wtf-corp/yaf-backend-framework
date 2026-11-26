@@ -1,4 +1,9 @@
 #nullable enable
+YAF.Domain.Entity<TId, TSelf, TMemento>
+YAF.Domain.Entity<TId, TSelf, TMemento>.Entity(TId id) -> void
+YAF.Domain.Entity<TId, TSelf, TMemento>.Id.get -> TId
+YAF.Domain.Entity<TId, TSelf, TMemento>.RestoreFrom(TMemento memento) -> void
+YAF.Domain.Entity<TId, TSelf, TMemento>.Snapshot(TMemento memento) -> void
 YAF.Domain.Events.DomainEvent
 YAF.Domain.Events.DomainEvent.DomainEvent() -> void
 YAF.Domain.Events.DomainEvent.DomainEvent(YAF.Domain.Events.DomainEvent! original) -> void
@@ -9,6 +14,8 @@ YAF.Domain.Events.DomainEvent.OccurredAt.init -> void
 YAF.Domain.Events.IDomainEvent
 YAF.Domain.Events.IDomainEvent.EventId.get -> System.Guid
 YAF.Domain.Events.IDomainEvent.OccurredAt.get -> System.DateTimeOffset
+YAF.Domain.IOriginator<TSelf, TMemento>
+YAF.Domain.IOriginator<TSelf, TMemento>.Restore(TMemento memento) -> TSelf
 YAF.Domain.Mementos.CorruptStateException
 YAF.Domain.Mementos.CorruptStateException.CorruptStateException() -> void
 YAF.Domain.Mementos.CorruptStateException.CorruptStateException(string! message) -> void
@@ -46,12 +53,17 @@ YAF.Domain.Rules.IBusinessRule.Error.get -> YAF.Core.Results.ErrorDescriptor!
 YAF.Domain.Rules.IBusinessRule.IsSatisfied() -> bool
 YAF.Domain.Rules.IPolicy<TInput, TDecision>
 YAF.Domain.Rules.IPolicy<TInput, TDecision>.Decide(TInput input) -> TDecision
+abstract YAF.Domain.Entity<TId, TSelf, TMemento>.RestoreCore(TMemento memento) -> void
+abstract YAF.Domain.Entity<TId, TSelf, TMemento>.SnapshotCore(TMemento memento) -> void
 abstract YAF.Domain.Events.DomainEvent.<Clone>$() -> YAF.Domain.Events.DomainEvent!
 override YAF.Domain.Events.DomainEvent.Equals(object? obj) -> bool
 override YAF.Domain.Events.DomainEvent.GetHashCode() -> int
 override YAF.Domain.Events.DomainEvent.ToString() -> string!
+static YAF.Domain.Entity<TId, TSelf, TMemento>.Check(params YAF.Domain.Rules.IBusinessRule![]! rules) -> YAF.Core.Results.Result
+static YAF.Domain.Entity<TId, TSelf, TMemento>.CheckAll(params YAF.Domain.Rules.IBusinessRule![]! rules) -> YAF.Core.Results.Result
 static YAF.Domain.Events.DomainEvent.operator !=(YAF.Domain.Events.DomainEvent? left, YAF.Domain.Events.DomainEvent? right) -> bool
 static YAF.Domain.Events.DomainEvent.operator ==(YAF.Domain.Events.DomainEvent? left, YAF.Domain.Events.DomainEvent? right) -> bool
+virtual YAF.Domain.Entity<TId, TSelf, TMemento>.CheckInvariants() -> YAF.Core.Results.Result
 virtual YAF.Domain.Events.DomainEvent.EqualityContract.get -> System.Type!
 virtual YAF.Domain.Events.DomainEvent.Equals(YAF.Domain.Events.DomainEvent? other) -> bool
 virtual YAF.Domain.Events.DomainEvent.PrintMembers(System.Text.StringBuilder! builder) -> bool
