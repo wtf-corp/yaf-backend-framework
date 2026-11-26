@@ -13,9 +13,12 @@ on:
 
 permissions: {}
 
+# Runs of one pull request queue, never cancel: a cancelled run on the head can count as the required
+# `references` check and hold the pull request (issue #265). Without `queue: max` a pending run is still cancelled.
 concurrency:
   group: factory-gates-${{ github.event.pull_request.number || github.sha }}
-  cancel-in-progress: true
+  cancel-in-progress: false
+  queue: max
 
 jobs:
   gates:
