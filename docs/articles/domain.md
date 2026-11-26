@@ -26,7 +26,7 @@ An aggregate root derives from <xref:YAF.Domain.AggregateRoot%603> and implement
 
 [!code-csharp[](../../tests/Domain.Tests/Fixtures/Order.cs#aggregate)]
 
-- The constructor is `private`. An aggregate is created through a `static Result<T> Create(...)` factory or a builder, and restored through the static `Restore` of `IOriginator`, which creates the instance and calls `RestoreFrom`.
+- The constructor is `private` or `internal`. An aggregate is created through a `static Result<T> Create(...)` factory or a builder, and restored through the static `Restore` of `IOriginator`, which creates the instance and calls `RestoreFrom`.
 - There are no public setters. Collections are exposed as `IReadOnlyList<T>` or `IReadOnlyCollection<T>`.
 - State changes only through behaviour methods named in the ubiquitous language. A behaviour that can fail returns `Result` or `Result<T>`; one that cannot returns `void`.
 - An aggregate references another aggregate by its id only, as `Order` holds a `CustomerId`.
