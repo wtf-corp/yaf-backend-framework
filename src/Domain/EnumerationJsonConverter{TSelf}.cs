@@ -22,10 +22,5 @@ internal sealed class EnumerationJsonConverter<TSelf> : JsonConverter<TSelf>
     }
 
     /// <inheritdoc/>
-    public override void Write(Utf8JsonWriter writer, TSelf value, JsonSerializerOptions options)
-    {
-        ArgumentNullException.ThrowIfNull(writer);
-        ArgumentNullException.ThrowIfNull(value);
-        writer.WriteStringValue(value.Code);
-    }
+    public override void Write(Utf8JsonWriter writer, TSelf value, JsonSerializerOptions options) => writer.WriteStringValue(value.Code);
 }

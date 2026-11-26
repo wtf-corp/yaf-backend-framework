@@ -64,15 +64,10 @@ public abstract record Enumeration<TSelf>
     public static Result<TSelf> FromCode(string code)
     {
         ArgumentNullException.ThrowIfNull(code);
-        foreach (var instance in All)
-        {
-            if (string.Equals(instance.Code, code, StringComparison.Ordinal))
-            {
-                return instance;
-            }
-        }
-
-        return DomainErrors.UnknownEnumerationCode.With(("Code", code), ("Enumeration", typeof(TSelf).Name));
+        var instance = All.FirstOrDefault(candidate => string.Equals(candidate.Code, code, StringComparison.Ordinal));
+        return instance is not null
+            ? instance
+            : DomainErrors.UnknownEnumerationCode.With(("Code", code), ("Enumeration", typeof(TSelf).Name));
     }
 
     private static ReadOnlyCollection<TSelf> ReadFields() =>
