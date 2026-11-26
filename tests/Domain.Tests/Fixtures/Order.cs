@@ -55,17 +55,13 @@ internal sealed class Order : AggregateRoot<OrderId, Order, Order.IMemento>, IOr
 
     protected override Result CheckInvariants() => CheckAll([.. _lines.Select(line => new QuantityPositive(line.Quantity))]);
 
+    #region sync-children
     protected override void SnapshotCore(IMemento memento)
     {
         memento.Title = Title;
-        memento.Lines.Clear();
-        foreach (var line in _lines)
-        {
-            var lineMemento = memento.NewLine();
-            line.Snapshot(lineMemento);
-            memento.Lines.Add(lineMemento);
-        }
+        MementoCollections.Sync(memento.Lines, _lines, memento.NewLine);
     }
+    #endregion
 
     protected override void RestoreCore(IMemento memento)
     {
