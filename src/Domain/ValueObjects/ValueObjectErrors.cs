@@ -41,6 +41,13 @@ public sealed class ValueObjectErrors : IErrorCatalog
     [ErrorCode("core.period.end_before_start")]
     public static readonly ErrorDescriptor PeriodEndBeforeStart = Error.Validation("A period cannot end before it starts.");
 
+    /// <summary>
+    /// The error of <see cref="EmailAddress.Create"/> for a value that is not an email address: code <c>core.email_address.invalid</c>,
+    /// kind <see cref="ErrorKind.Validation"/>. It has no arguments, so that the address never reaches a log or a response.
+    /// </summary>
+    [ErrorCode("core.email_address.invalid")]
+    public static readonly ErrorDescriptor InvalidEmailAddress = Error.Validation("The email address is not valid.");
+
     private ValueObjectErrors()
     {
     }
