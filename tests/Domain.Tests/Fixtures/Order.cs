@@ -97,6 +97,20 @@ internal sealed class Order : AggregateRoot<OrderId, Order, Order.IMemento>, IOr
     }
     #endregion
 
+    #region state-machine-fire
+    public Result Cancel()
+    {
+        var next = OrderLifecycle.Machine.Fire(Status, OrderTrigger.Cancel);
+        if (next.IsFailure)
+        {
+            return Result.Failure(next.Errors);
+        }
+
+        Status = next.Value;
+        return Result.Success();
+    }
+    #endregion
+
     public void RemoveLine(OrderLineId lineId) => _lines.RemoveAll(line => line.Id == lineId);
 
     // Sets the members that the memento round trip covers.
