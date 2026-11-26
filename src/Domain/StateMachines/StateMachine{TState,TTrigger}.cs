@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
+using System.Text;
 using YAF.Core.Results;
 
 namespace YAF.Domain.StateMachines;
@@ -31,6 +33,7 @@ public sealed class StateMachine<TState, TTrigger>
     private readonly Dictionary<(TState From, TTrigger Trigger), TState> _targets = [];
     private readonly Dictionary<TState, List<TTrigger>> _triggers = [];
     private readonly List<TState> _states = [];
+    private readonly List<(TState From, TTrigger Trigger, TState To)> _transitions = [];
     private readonly ErrorDescriptor _otherwise;
 
     internal StateMachine(IEnumerable<(TState From, TTrigger Trigger, TState To)> transitions, ErrorDescriptor otherwise)
@@ -39,6 +42,7 @@ public sealed class StateMachine<TState, TTrigger>
         foreach (var (from, trigger, to) in transitions)
         {
             _targets.Add((from, trigger), to);
+            _transitions.Add((from, trigger, to));
             if (!_triggers.TryGetValue(from, out var triggers))
             {
                 _triggers.Add(from, triggers = []);
@@ -88,6 +92,25 @@ public sealed class StateMachine<TState, TTrigger>
     /// <returns>The triggers in definition order; empty when the state has no outgoing transition.</returns>
     public IReadOnlyList<TTrigger> PermittedTriggers(TState current) =>
         _triggers.TryGetValue(current, out var triggers) ? triggers.AsReadOnly() : ReadOnlyCollection<TTrigger>.Empty;
+
+    /// <summary>Renders the definition as a Mermaid state diagram, for example to embed it in documentation.</summary>
+    /// <remarks>
+    /// The diagram has no start or end pseudo-state (<c>[*]</c>): the definition knows neither its initial nor its final states.
+    /// </remarks>
+    /// <returns>
+    /// The header <c>stateDiagram-v2</c>, then one line <c>    from --&gt; to: trigger</c> per transition in definition order, self-transitions
+    /// included; every line ends with <c>\n</c>.
+    /// </returns>
+    public string ToMermaid()
+    {
+        var diagram = new StringBuilder("stateDiagram-v2\n");
+        foreach (var (from, trigger, to) in _transitions)
+        {
+            diagram.Append(CultureInfo.InvariantCulture, $"    {from} --> {to}: {trigger}\n");
+        }
+
+        return diagram.ToString();
+    }
 
     private void AddState(TState state)
     {
