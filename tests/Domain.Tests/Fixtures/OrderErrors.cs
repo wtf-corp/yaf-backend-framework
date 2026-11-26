@@ -9,4 +9,6 @@ internal abstract class OrderErrors : IErrorCatalog
     public static readonly ErrorDescriptor QuantityAboveLimit = Error.Validation("Quantity must not exceed the limit.");
 
     public static readonly ErrorDescriptor TitleMissing = Error.Validation("An order needs a title.");
+
+    public static readonly ErrorDescriptor TransitionNotAllowed = Error.Conflict("An order in state {From} cannot take the trigger {Trigger}.");
 }
