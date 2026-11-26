@@ -18,7 +18,7 @@ internal sealed class Order : AggregateRoot<OrderId, Order, Order.IMemento>, IOr
     {
     }
 
-    internal interface IMemento : IAggregateMemento
+    internal interface IMemento : IAggregateMemento, IDataSubjectOwnedMemento
     {
         [PublicData]
         string Title { get; set; }
@@ -133,6 +133,7 @@ internal sealed class Order : AggregateRoot<OrderId, Order, Order.IMemento>, IOr
     {
         memento.Title = Title;
         memento.CustomerId = CustomerId;
+        memento.DataSubjectId = CustomerId.Value;
         memento.Status = Status;
         memento.Channel = Channel;
         memento.Discount = Discount;

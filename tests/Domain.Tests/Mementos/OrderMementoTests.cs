@@ -51,6 +51,28 @@ public sealed class OrderMementoTests
     }
 
     [Fact]
+    public void Snapshot_WritesTheCustomerAsDataSubject()
+    {
+        var order = Order.Create(OrderId.New(), "Books").Value;
+        var customer = CustomerId.New();
+        order.Amend(
+            customerId: customer,
+            status: OrderStatus.Placed,
+            channel: Channel.Web,
+            discount: Percentage.Create(0m).Value,
+            contactEmail: EmailAddress.Create("customer-0001@example.test").Value,
+            deposit: new Money(0m, s_euro),
+            deliveryWindow: null,
+            confirmedAt: null,
+            referredBy: null);
+        var memento = new OrderData();
+
+        order.Snapshot(memento);
+
+        memento.DataSubjectId.Should().Be(customer.Value);
+    }
+
+    [Fact]
     public void Snapshot_OntoAUsedMemento_AddsKeepsAndRemovesChildren()
     {
         var order = Order.Create(OrderId.New(), "Books").Value;
