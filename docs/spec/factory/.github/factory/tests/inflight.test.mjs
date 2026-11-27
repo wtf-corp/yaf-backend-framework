@@ -269,6 +269,57 @@ test('a pushed head with an open pull request is in flight', () => {
   assert.deepEqual(state(), { state: 'in-flight', round: null, findings: null, exhausted: false, notified: false });
 });
 
+const ONTO = 'e'.repeat(40);
+const DEPENDENCY = { open: { merged: false, open: true }, merged: { merged: true, open: false }, closed: { merged: false, open: false } };
+/** A worktree stacked on its dependency's commit ONTO, unpushed and without a pull request; contains: the head still has ONTO. */
+const stacked = (dependency, extra = {}, contains = true) => state({ pr: null, originHead: null, stack: { onto: ONTO, contains, dependency }, ...extra });
+
+test('a reviewed stacked worktree whose dependency is open is stacked', () => {
+  assert.deepEqual(stacked(DEPENDENCY.open), { state: 'stacked', round: null, findings: null, exhausted: false, notified: false });
+  assert.equal(stacked(DEPENDENCY.open, { worktree: { head: HEAD, locked: true } }).state, 'working');
+  assert.equal(stacked(DEPENDENCY.open, { ticketLabels: ['factory', 'needs-human'] }).state, 'human');
+});
+
+test('a stacked worktree whose dependency merged is owed a restack onto its commit', () => {
+  assert.deepEqual(stacked(DEPENDENCY.merged), { state: 'restack', round: null, findings: null, exhausted: false, notified: false, onto: ONTO });
+  assert.equal(stacked(DEPENDENCY.merged, { worktree: { head: HEAD, locked: true } }).state, 'working');
+  // a restack that conflicted is recorded as changes-required on the same head: a local fix, not the restack again
+  const conflict = stacked(DEPENDENCY.merged, { review: verdict('changes-required', 0, 'conflict: inflight.mjs') });
+  assert.deepEqual([conflict.state, conflict.findings], ['local-fix', 'conflict: inflight.mjs']);
+});
+
+test('a stacked worktree whose dependency closed unmerged is a human\'s', () => {
+  assert.equal(stacked(DEPENDENCY.closed).state, 'human');
+  assert.equal(stacked(DEPENDENCY.closed, { review: NO_REVIEW }).state, 'human');
+  assert.equal(stacked(null).state, 'human'); // no dependency to be found
+  assert.equal(stacked(DEPENDENCY.closed, { worktree: { head: HEAD, locked: true } }).state, 'working');
+});
+
+test('a stacked worktree without a local review gets one first', () => {
+  assert.equal(stacked(DEPENDENCY.open, { review: NO_REVIEW }).state, 'local-review');
+  assert.equal(stacked(DEPENDENCY.merged, { review: NO_REVIEW }).state, 'local-review');
+  assert.deepEqual([stacked(DEPENDENCY.open, { review: verdict('changes-required', 1, 'Major') }).state], ['local-fix']);
+});
+
+test('a restacked worktree follows the ordinary states', () => {
+  // the head no longer contains the dependency's commit: the stacked-on marker is history
+  for (const dependency of Object.values(DEPENDENCY)) {
+    assert.equal(stacked(dependency, {}, false).state, 'push-owed');
+    assert.equal(stacked(dependency, { review: NO_REVIEW }, false).state, 'local-review');
+    assert.equal(stacked(dependency, { originHead: HEAD }, false).state, 'open-pr');
+    assert.deepEqual(stacked(dependency, { originHead: HEAD, pr: OPEN }, false), state());
+  }
+});
+
+test('a fix round on a dependency waits while a ticket stacked on it is being written', () => {
+  const written = act({ 'factory/review': failed() }, { rounds: 1, stackedWriting: true });
+  assert.deepEqual([written.action, written.reason], ['wait', 'a ticket stacked on it is being written']);
+  assert.equal(act({ 'factory/review': failed() }, { rounds: 1, stackedWriting: false }).action, 'fix');
+  assert.equal(act({ references: failed() }, { stackedWriting: true }).action, 'wait'); // a references fix is a fix too
+  assert.equal(act({ 'factory/review': failed() }, { rounds: 3, stackedWriting: true }).action, 'human'); // the limit still applies
+  assert.equal(row({ stackedWriting: true }).action, 'wait');
+});
+
 const by = (login, body) => ({ user: { login }, body });
 const SUMMARY = '<!-- factory:review-summary factory/review -->\n<!-- factory:rounds=2 -->\n### Review\n**F1 · Major** — `inflight.mjs:3`\nthe cap fails open';
 /** A check run as the REST API gives it, from the app the ruleset accepts that name from unless `slug` says otherwise. */
@@ -475,4 +526,59 @@ test('the command lists the pull requests and the ticket worktrees, and writes n
     if (tool === 'gh') assert.ok(args[0] === 'api' && !args.some((a) => ['--method', '-X', '--input', '-f', '-F'].includes(a)), `a write: gh ${args.join(' ')}`);
     else assert.ok(['worktree list --porcelain', 'ls-remote --heads origin'].includes(args.join(' ')) || args[0] === 'merge-base', `not a read: git ${args.join(' ')}`);
   }
+});
+
+test('the command reads the stacked-on marker and the dependency\'s pull request', () => {
+  // #61 (ci/39-inflight-list, review failed) is the dependency of #41 (being written) and #42 (reviewed); #44 is stacked
+  // on #59, which merged; #43 was stacked on #60 and is restacked; #45's marker was written by somebody else.
+  const repo = 'acme/yaf';
+  const [S1, S2, S3, S4, S5, OLD] = ['1', '2', '3', '4', '5', '6'].map((c) => c.repeat(40));
+  const at = (name, head, branch, locked = '') => `worktree C:/dev/yaf/.claude/worktrees/${name}\nHEAD ${head}\nbranch refs/heads/${branch}\n${locked}\n`;
+  const porcelain = at('agent-a1', S1, 'ci/41-stacked-a', 'locked\n') + at('agent-a2', S2, 'ci/42-stacked-b') + at('agent-a3', S3, 'ci/43-restacked')
+    + at('agent-a4', S4, 'ci/44-stacked-c') + at('agent-a5', S5, 'ci/45-forged');
+  const on = (sha, pr, login = policy.bots.factory) => by(login, marker('stacked-on', sha, `pr=${pr}`));
+  const ready = (sha) => by(policy.bots.factory, marker('local-review', sha, 'ready round=0'));
+  const tickets = { 41: [on(HEAD, 61)], 42: [on(HEAD, 61), ready(S2)], 43: [on(OLD, 60), ready(S3)], 44: [on(OLD, 59), ready(S4)], 45: [on(HEAD, 61, 'somebody'), ready(S5)] };
+  const answers = {
+    [`repos/${repo}/pulls?state=open&per_page=100`]: [[PULL]],
+    [`repos/${repo}/pulls/61/files?per_page=100`]: [[{ filename: 'docs/spec/factory/.github/factory/inflight.mjs' }]],
+    [`repos/${repo}/pulls/61/reviews?per_page=100`]: [[]],
+    [`repos/${repo}/commits/${HEAD}/check-runs?filter=all&per_page=100`]: [{ check_runs: REVIEW_FAILED }],
+    [`repos/${repo}/commits/${HEAD}/statuses?per_page=100`]: [[]],
+    [`repos/${repo}/issues/61/comments?per_page=100`]: [[by('yaf-reviewer[bot]', SUMMARY)]],
+    [`repos/${repo}/issues/39/comments?per_page=100`]: [[]],
+    [`repos/${repo}/pulls/61`]: PULL,
+    [`repos/${repo}/pulls/59`]: { ...PULL, number: 59, state: 'closed', merged_at: '2026-11-27T08:00:00Z' },
+  };
+  for (const [issue, comments] of Object.entries(tickets)) {
+    const branch = porcelain.match(new RegExp(`ci/${issue}-[a-z-]+`))[0];
+    Object.assign(answers, { [`repos/${repo}/issues/${issue}/comments?per_page=100`]: [comments], [`repos/${repo}/issues/${issue}`]: { labels: [{ name: 'factory' }] },
+      [`repos/${repo}/pulls?state=all&head=acme:${branch}&per_page=100`]: [[]] });
+  }
+  const calls = [];
+  const gh = (...args) => {
+    calls.push(args[1]);
+    if (args[1] in answers) return JSON.stringify(answers[args[1]]);
+    throw new Error(`gh: not expected: ${args[1]}`);
+  };
+  const contained = [`${HEAD} ${S1}`, `${HEAD} ${S2}`, `${OLD} ${S4}`];
+  const git = (...args) => {
+    if (args[0] === 'worktree') return porcelain;
+    if (args[0] === 'ls-remote') return '';
+    if (args[1] === '--is-ancestor' && contained.includes(args.slice(2).join(' '))) return '';
+    if (args.join(' ') === `merge-base --is-ancestor ${OLD} ${S3}`) throw Object.assign(new Error('exit 1'), { status: 1 });
+    throw new Error(`not expected: git ${args.join(' ')}`);
+  };
+  const out = inflight({ repo, policy, gh, git, isHuman: () => false, now });
+  assert.deepEqual([out.pullRequests[0].action, out.pullRequests[0].reason], ['wait', 'a ticket stacked on it is being written']);
+  assert.deepEqual(out.worktrees.map((w) => [w.issue, w.state, w.onto]),
+    [[41, 'working', undefined], [42, 'stacked', undefined], [43, 'push-owed', undefined], [44, 'restack', OLD], [45, 'push-owed', undefined]]);
+  assert.equal(calls.filter((c) => c === `repos/${repo}/issues/41/comments?per_page=100`).length, 1); // read once for both lists
+  assert.ok(!calls.includes(`repos/${repo}/pulls/60`)); // a restacked worktree's dependency is not read
+  // a containment check that fails is the worktree's failed row, not an unstacked worktree
+  const broken = inflight({ repo, policy, gh, git: (...args) => (args[0] === 'merge-base' && args[3] === S3 ? (() => { throw new Error('fatal: bad object'); })() : git(...args)), isHuman: () => false, now });
+  assert.deepEqual([broken.worktrees[2].state, broken.worktrees[2].reason], ['failed', 'fatal: bad object']);
+  // without the locked stacked worktree, the dependency's fix round goes ahead
+  const free = inflight({ repo, policy, gh, git: (...args) => (args[0] === 'worktree' ? porcelain.replace('locked\n', '') : git(...args)), isHuman: () => false, now });
+  assert.equal(free.pullRequests[0].action, 'fix');
 });
