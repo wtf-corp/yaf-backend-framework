@@ -44,3 +44,22 @@ YAF.Application.Pipeline.PipelineStep.Middleware.get -> System.Type!
 YAF.Application.Pipeline.PipelineStep.Middleware.init -> void
 YAF.Application.Pipeline.PipelineStep.PipelineStep(System.Type! Middleware, YAF.Application.Pipeline.PipelineScope AppliesTo) -> void
 YAF.Application.Pipeline.RequestDelegate<TResult>
+static YAF.Application.YafApplicationServiceCollectionExtensions.AddYafApplication(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<YAF.Application.YafApplicationBuilder!>! configure) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+YAF.Application.Registration.IHandlerRegistry
+YAF.Application.Registration.IHandlerRegistry.DeclaredRequests.get -> System.Collections.Generic.IReadOnlyCollection<System.Type!>!
+YAF.Application.Registration.IHandlerRegistry.HandledRequests.get -> System.Collections.Generic.IReadOnlyCollection<System.Type!>!
+YAF.Application.Registration.IHandlerRegistry.Register(Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> void
+YAF.Application.Registration.IHandlerRegistry.TryPublish(YAF.Domain.Events.IDomainEvent! domainEvent, YAF.Application.Registration.IRequestRunner! runner, System.Threading.CancellationToken ct, out System.Threading.Tasks.ValueTask<YAF.Core.Results.Result> result) -> bool
+YAF.Application.Registration.IHandlerRegistry.TrySend<TResult>(YAF.Application.IRequest<TResult>! request, YAF.Application.Registration.IRequestRunner! runner, System.Threading.CancellationToken ct, out System.Threading.Tasks.ValueTask<TResult> result) -> bool
+YAF.Application.Registration.IHandlerRegistry.TryStream<TItem>(YAF.Application.IStreamQuery<TItem>! query, YAF.Application.Registration.IRequestRunner! runner, System.Threading.CancellationToken ct, out System.Collections.Generic.IAsyncEnumerable<TItem>! items) -> bool
+YAF.Application.Registration.IRequestRunner
+YAF.Application.Registration.IRequestRunner.PublishAsync<TEvent>(TEvent domainEvent, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<YAF.Core.Results.Result>
+YAF.Application.Registration.IRequestRunner.SendAsync<TRequest, TResult>(TRequest request, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<TResult>
+YAF.Application.Registration.IRequestRunner.StreamAsync<TQuery, TItem>(TQuery query, System.Threading.CancellationToken ct) -> System.Collections.Generic.IAsyncEnumerable<TItem>!
+YAF.Application.Registration.YafHandlersAttribute
+YAF.Application.Registration.YafHandlersAttribute.Registry.get -> System.Type!
+YAF.Application.Registration.YafHandlersAttribute.YafHandlersAttribute(System.Type! registry) -> void
+YAF.Application.YafApplicationBuilder
+YAF.Application.YafApplicationBuilder.AddHandlersFrom<TMarker>() -> YAF.Application.YafApplicationBuilder!
+YAF.Application.YafApplicationBuilder.UsePipeline(System.Action<YAF.Application.Pipeline.PipelineBuilder!>! configure) -> YAF.Application.YafApplicationBuilder!
+YAF.Application.YafApplicationServiceCollectionExtensions
