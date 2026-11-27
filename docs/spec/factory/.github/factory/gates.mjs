@@ -3,7 +3,7 @@
 // checked out in a sub-directory and is only read, never executed.
 //
 //   node .github/factory/gates.mjs --pr-dir pr
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { loadPolicy, git, api, repoSlug, readEvent, setCheck, setStatus, writeSummary, setOutput, parseNumstat, parseDiff, makeHumanCheck, lastLabelActor, matchesAny } from './lib.mjs';
 import { countSize, sizeVerdict } from './size.mjs';
@@ -11,7 +11,8 @@ import { actualDelta, compareDelta, deltaVerdict, isEmptyDelta } from './delta.m
 import { findGuardChanges, dropMovedTests, guardVerdict } from './guards.mjs';
 import { classify, prKind, TIERS } from './classify.mjs';
 import { parseBody, ticketVerdict, planOnBase } from './ticket.mjs';
-import { parseDelta, planFlags, parseTickets, ticketProblems } from './plan.mjs';
+import { parseDelta, planFlags } from './plan.mjs';
+import { planCheck } from './plan-check.mjs';
 import { approvingHuman, approvalTier, humanApprovalVerdict } from './human-approval.mjs';
 import { editorconfigVerdict, packagesVerdict } from './declared.mjs';
 
@@ -148,19 +149,25 @@ if (path.basename(process.argv[1] ?? '') === 'gates.mjs') {
     const approver = approvingHuman(reviews, { author: pr.user.login, headSha: sha, isHuman });
     const reasons = [];
     const problems = [];
+    const notes = [];
+    const exists = (p) => existsSync(path.join(baseDir, p)); // the base checkout
+    const text = (rev, f) => { try { return git(prDir, 'show', `${rev}:${f}`); } catch { return undefined; } };
     for (const f of files.filter((f) => f.endsWith('/plan.md'))) {
-      const text = readFileSync(path.join(prDir, f), 'utf8'); // read as data
+      const markdown = readFileSync(path.join(prDir, f), 'utf8'); // read as data
       try {
-        const flags = planFlags(text, policy);
+        const flags = planFlags(markdown, policy);
         reasons.push(...flags.reasons.map((r) => `${f}: ${r}`));
-        problems.push(...ticketProblems(parseTickets(text), policy).map((p) => `${f}: ${p}`));
-      } catch (e) {
-        problems.push(`${f}: ${e.message}`);
+      } catch {
+        // a block or table that does not parse: planCheck reports the same error as a problem
       }
+      const found = planCheck(markdown, { policy, exists, research: text(sha, path.posix.join(path.posix.dirname(f), 'research.md')), previous: text(`${sha}^`, f), base: text(mergeBase, f) });
+      problems.push(...found.problems.map((p) => `${f}: ${p}`));
+      notes.push(...found.notes.map((n) => `${f}: ${n}`));
     }
-    if (problems.length) setStatus(sha, 'factory/plan-gate', 'failure', `${problems.length} problem(s) in the ticket list`, problems.map((p) => `- ${p}`).join('\n'));
-    else if (reasons.length === 0) setStatus(sha, 'factory/plan-gate', 'success', 'not flagged: merges after the plan review passes');
-    else setStatus(sha, 'factory/plan-gate', approver ? 'success' : 'failure', approver ? `flagged, approved by ${approver}` : 'flagged: needs a human maintainer\'s approving review', reasons.map((r) => `- ${r}`).join('\n'));
+    const noted = notes.length ? `\n\n${notes.length} note(s), reported only:\n${notes.map((n) => `- ${n}`).join('\n')}` : '';
+    if (problems.length) setStatus(sha, 'factory/plan-gate', 'failure', `${problems.length} problem(s) in the plan`, problems.map((p) => `- ${p}`).join('\n') + noted);
+    else if (reasons.length === 0) setStatus(sha, 'factory/plan-gate', 'success', 'not flagged: merges after the plan review passes', noted.trim());
+    else setStatus(sha, 'factory/plan-gate', approver ? 'success' : 'failure', approver ? `flagged, approved by ${approver}` : 'flagged: needs a human maintainer\'s approving review', reasons.map((r) => `- ${r}`).join('\n') + noted);
   } else {
     setStatus(sha, 'factory/plan-gate', 'success', 'not a plan pull request');
   }
