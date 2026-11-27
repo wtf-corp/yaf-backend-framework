@@ -3,7 +3,7 @@
 > **Status** Proposed
 > **Date** 2026-11
 > **Deciders** maintainers
-> **Amends** ADR-0029 §4 (risk tiers)
+> **Supersedes** 0029 §4 (in part: the tier of declared guard changes)
 
 ## Context
 
@@ -11,7 +11,9 @@ ADR-0029 §4 puts every pull request with "a guard file change" or "a new depend
 
 In plan 0013 the owner approved a plan whose tickets T1 and T2 declared new `.editorconfig` sections and new package pins. The pull requests that carried them, #388 (eight file-scoped `.editorconfig` sections) and #389 (seven `PackageVersion` lines in `Directory.Packages.props`), did only what the plan declared and were still tier high: the owner approved the same change twice, and applied `guard-change` to #388. Only a patch update of an existing package is exempt today (`classify.mjs`, `isPatchBumpOnly`).
 
-On 2026-11-26 the owner chose to remove this double approval (idea 2 of `specs/0015-factory-throughput/plan.md`). On 2026-11-27 the owner accepted this record as proposed, with the `neverLowered` list below, on condition that a plan declaring `editorconfig` entries is always flagged (plan 0015, Q3, Q4 and decision log).
+On 2026-11-26 the owner chose to remove this double approval (idea 2 of `specs/0015-factory-throughput/plan.md`). On 2026-11-27 the owner agreed to the decision, with the `neverLowered` list below, on condition that a plan declaring `editorconfig` entries is always flagged (plan 0015, Q3, Q4 and decision log). Acceptance of this record is a code owner's approving review of its pull request.
+
+This record supersedes ADR-0029 §4 in part, under rule 2 of the template, as plan 0013 T69 does for one row of ADR-0003; the rest of §4 stands.
 
 ## Drivers
 
@@ -36,7 +38,7 @@ Keeping `.editorconfig` in `CODEOWNERS` was also considered: a declared section 
 This amends ADR-0029 §4. A change to `.editorconfig` or `Directory.Packages.props` whose every added line the merged plan declares exactly is approved by the owner's approval of that plan:
 
 1. **Declared files.** `policy.declaredGuards.files` lists `.editorconfig` and `Directory.Packages.props`. No other guard file is covered.
-2. **`.editorconfig`.** The `factory:delta` block has the category `editorconfig`, one entry per setting: the section header, a space, and the setting line exactly as the file will hold it, for example `"[src/Application/IRequest\\{TResult\\}.cs] dotnet_diagnostic.CA1040.severity = <level>"`. The change is declared when, with comments and blank lines ignored, every section of the base is unchanged in the head, every new section names one file (no unescaped `*`, `?`, `[`, `{`), every setting in a new section is a declared entry, and the named file matches none of `policy.declaredGuards.neverLowered`.
+2. **`.editorconfig`.** The `factory:delta` block has the category `editorconfig`, one entry per setting: the section header, a space, and the setting line exactly as the file will hold it, for example `"[src/Application/IRequest\\{TResult\\}.cs] dotnet_diagnostic.CA1040.severity = <level>"`. The change is declared when, with comments and blank lines ignored, every section of the base is unchanged in the head, every new section names one file, every setting in a new section is a declared entry, and the named file matches none of `policy.declaredGuards.neverLowered`. A section names one file when its header is a repository-relative path with at least one `/`, no unescaped glob character (`*`, `?`, `[`, `{`), no `..` segment, and no `\` except as the escape of a character. A leading `/` is removed: EditorConfig reads a header that contains a `/` relative to the directory of the file, here the repository root, with or without it. A header without a `/`, such as `[Principal.cs]`, matches that file name in every directory and is not declared. That path, with the escapes and a leading `/` removed, is what `neverLowered` is matched against. This is stricter than the "one file" condition of plan 0015 (Approach, "Idea 2"), as the review of this record's pull request asked (finding F1), and loosens nothing.
 3. **`Directory.Packages.props`.** A `dependencies` entry may carry its version, `Id@Version`. The change is declared when every `PackageVersion` of the base is unchanged in the head, every new one is a declared `Id@Version`, and the rest of the file, with comments and `PackageVersion` elements taken out, is unchanged. An entry without a version flags the plan, as before, and lowers nothing.
 4. **Tier.** A declared change is tier medium for that file, and its guard findings in that file are reported as declared, not counted by `factory/guards`. Any other reason for tier high in the pull request (another sensitive path, an undeclared delta, oversize, `needs-human`) keeps it high. A change that is not declared exactly is tier high, as ADR-0029 §4 says.
 5. **Declarations come from the base.** The declared entries are read only from the plan named by the `Plan:` line, as it is on the base branch. A pull request that edits the plan and the guard file together declares nothing and stays tier high.
@@ -65,7 +67,7 @@ Everything else in ADR-0029, and the dependency rules of ADR-0003, stand.
 
 | Mechanism | What it checks |
 |---|---|
-| `declared.mjs` and its tests (`tests/declared.test.mjs`, plan 0015 T6) | Sections and pins match the declaration exactly; base sections and pins unchanged; one file per section; `neverLowered` files refused |
+| `declared.mjs` and its tests (`tests/declared.test.mjs`, plan 0015 T6) | Sections and pins match the declaration exactly; base sections and pins unchanged; one file per section by the path rule of Decision 2 (test `editorconfigVerdict_SectionWithoutSlash_IsNotDeclared`: `[Principal.cs]`, a `..` segment and a `\` separator are not declared; a leading `/` matches as without it); `neverLowered` files refused |
 | `classify.mjs` and `gates.mjs` `declaredGuardFiles` (T7) | Tier medium only for declared files and only with no other high reason; declarations read from the base plan (test `declaredGuardFiles_DeclarationOnlyInTheHeadPlan_IsNone`) |
 | `guards.mjs` `guardVerdict` (T7) | Findings in a declared file are reported, not counted |
 | `policy.json` `declaredGuards`, `delta.flaggingCategories` (T7) | The covered files and `neverLowered`; a plan with `editorconfig` or `dependencies` entries is flagged (test `planFlags_EditorconfigEntry_IsFlagged`) |

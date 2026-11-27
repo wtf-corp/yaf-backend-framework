@@ -1,6 +1,6 @@
 # ADR-0029 — Software factory: tickets, risk tiers and automatic merge
 
-> **Status** Accepted; §4 amended by ADR-0034 · **Date** 2026-11 · **Deciders** maintainers
+> **Status** Accepted; §4 superseded in part by ADR-0034 · **Date** 2026-11 · **Deciders** maintainers
 
 ## Context
 

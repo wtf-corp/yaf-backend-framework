@@ -55,6 +55,6 @@ Every ADR has the sections Context, Drivers, Options considered, Decision, Conse
 | [0027](0027-review.md) | Review: local code review and the pull-request review in CI |
 | [0028](0028-agent-instructions-and-skills.md) | Agent instructions (`AGENTS.md`), skills and agent definitions |
 | [0029](0029-software-factory.md) | Software factory: tickets, risk tiers and automatic merge |
-| [0034](0034-guard-changes-declared-by-a-plan.md) | Guard changes declared by a merged plan: exact `.editorconfig` sections and package pins are tier medium, except on `neverLowered` paths; amends 0029 §4 (Proposed) |
+| [0034](0034-guard-changes-declared-by-a-plan.md) | Guard changes declared by a merged plan: exact `.editorconfig` sections and package pins are tier medium, except on `neverLowered` paths; supersedes 0029 §4 in part (Proposed) |
 
 Normative detail for each building block is in `../spec/`; the ADRs hold the decision and its reasons.
