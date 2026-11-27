@@ -343,6 +343,24 @@ P5, the sample's model is in step with its migrations (T81 and every later sampl
 
 The whole milestone, on `main` after the last ticket: V2 and V3; P3 for the seven new packages and P4; P5; `dotnet pack YAF.slnx -c Release` produces exactly `YAF.Core`, `YAF.Domain`, `YAF.Application`, `YAF.Infrastructure`, `YAF.Persistence.EfCore`, `YAF.Persistence.EfCore.PostgreSql`, `YAF.Http`, `YAF.Http.MinimalApis`, `YAF.Testing` and `YAF.Testing.Integration` (no sample, fixture or test project); `dotnet test --solution YAF.slnx -c Release --no-build --filter-query "/*/*/SessionEndpointsTests/*"` and `"/*/*/ConcurrencyTests/*"` pass (the two exit tests); the latest `ci.yml` run on `main` is green; every row of the test strategy is covered or carried to a named milestone.
 
+```factory:exit
+{
+  "criteria": [
+    { "text": "An HTTP test creates and reads a session on PostgreSQL (Exit 1)", "checks": ["V2", "E1"] },
+    { "text": "Two concurrent commands that each change only a child of one aggregate do not both commit (Exit 2)", "checks": ["V2", "E2"] },
+    { "text": "Acceptance items 3 and 5 of `03` §5 (Exit 3 and Exit 4)", "checks": ["E3", "E4", "E5"] }
+  ],
+  "checks": [
+    { "id": "V2", "title": "restore, build and all tests, with Docker", "run": "dotnet restore YAF.slnx && dotnet build YAF.slnx -c Release --no-restore && dotnet test --solution YAF.slnx -c Release --no-build", "expect": 0 },
+    { "id": "E1", "title": "exit test SessionEndpointsTests", "run": "dotnet test --solution YAF.slnx -c Release --no-build --filter-query \"/*/*/SessionEndpointsTests/*\"", "expect": 0 },
+    { "id": "E2", "title": "exit test ConcurrencyTests", "run": "dotnet test --solution YAF.slnx -c Release --no-build --filter-query \"/*/*/ConcurrencyTests/*\"", "expect": 0 },
+    { "id": "E3", "title": "Exit 3, startup half (T25)", "run": "dotnet test --project tests/Application.Tests -c Release", "expect": 0 },
+    { "id": "E4", "title": "Exit 3, approval half (T68)", "run": "dotnet test --project tests/Testing.Tests -c Release", "expect": 0 },
+    { "id": "E5", "title": "Exit 4, problem details mapper (T53)", "run": "dotnet test --project tests/Http.Tests -c Release", "expect": 0 }
+  ]
+}
+```
+
 ## Research
 
 [`research.md`](./research.md): package versions, licences and dependencies; the `Microsoft.Extensions` abstractions in `Microsoft.NETCore.App` 11; the analyzer findings on `YAF.Application`'s skeleton; static abstract members in EF expression trees; complex types for the shipped value objects; child collections of a data class; PostgreSQL read-only transactions; `WebApplicationFactory` and Testcontainers; what is left to the tickets.
