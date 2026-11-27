@@ -72,7 +72,7 @@ services.AddYafApplication(app => app
     .AddHandlersFrom<ApplicationModule>()
     .UsePipeline(p => p
         .UseDefaults()                                   // the list below
-        .InsertAfter<ValidationMiddleware, MyMiddleware>()
+        .InsertAfter(typeof(ValidationMiddleware<,>), typeof(MyMiddleware<,>))
         .ForCommands(c => c.Use<AnotherMiddleware>())));
 ```
 
@@ -90,6 +90,10 @@ Default pipeline, outermost first:
 | 7 | `QueryTransactionMiddleware` | queries | Runs the handler in one `READ ONLY` transaction (below) |
 | 8 | `IdempotencyMiddleware` | `[Idempotent]` commands | Inside the unit of work's transaction: claims the idempotency key in `yaf_idempotency`; replays the stored result, or stores the handler's result so it commits with the change (§6) |
 | — | handler | | |
+
+> **Amended 2026-11-27**, by the owner's decisions of 2026-11-26 (`specs/0013-thin-slice/plan.md`, decision log Q4): a middleware that applies to every request is an open generic type, which C# does not accept as a type argument, so the builder names a step by `Type`. `Use(Type)`, `InsertAfter(Type existing, Type middleware)` and `InsertBefore(Type existing, Type middleware)` accept open generic middleware (`typeof(ValidationMiddleware<,>)`); `Use<TMiddleware>()` adds a closed, request-specific middleware.
+
+> **Amended 2026-11-27**, by the owner's decisions of 2026-11-26 (`specs/0013-thin-slice/plan.md`, decision log Q1): the default pipeline of M3 is steps 1, 2, 6 and both steps 7. `AuthorizationMiddleware` and `InputGuardMiddleware` join it in M4, `TimeoutMiddleware` and `[LogPayload]` in M5, `IdempotencyMiddleware` in M9; `[NoTransaction]` comes with M8 (`18-build-plan.md` §2).
 
 Rules:
 
@@ -211,7 +215,9 @@ internal interface IExecutionContextScopeFactory        // framework entry point
 }
 ```
 
-- The context is established **once per scope** by the entry point and is read-only afterwards. Application code cannot create or replace one: `IExecutionContextScopeFactory` is internal to the framework (visible to YAF's own entry-point packages), and analyzer `YAF4004` (error) flags creating or replacing an execution context outside framework entry points, including an own implementation of `IExecutionContext` or `IExecutionContextAccessor` in a service.
+- The context is established **once per scope** by the entry point and is read-only afterwards. Application code cannot create or replace one: `IExecutionContextScopeFactory` is internal to the framework (visible to YAF's own entry-point packages and to `YAF.Testing.Integration`), and analyzer `YAF4004` (error) flags creating or replacing an execution context outside framework entry points, including an own implementation of `IExecutionContext` or `IExecutionContextAccessor` in a service.
+
+  > **Amended 2026-11-27**, by the owner's decisions of 2026-11-26 (`specs/0013-thin-slice/plan.md`, decision log Q2): the scope factory is visible to `YAF.Testing.Integration`, against `01` §2's "only the package's own test project". Until M4 replaces it with `TestAuth`, the test host begins each in-process request's scope with the seed a test sets by `ActAs`, without an authentication handler; a request without one gets no context and fails closed (`15-testing.md` §3.2).
 - **Actor and initiator.** `Actor` is the principal that authorization, row-level security and rate limits are decided on. `Initiator` names the user on whose behalf asynchronous work happens; it grants nothing and is never consulted for a permission.
 
 | Entry point | `Actor` | `Initiator` |
@@ -224,6 +230,9 @@ internal interface IExecutionContextScopeFactory        // framework entry point
 - Stamps (`CreatedBy`, `ModifiedBy`) record the initiator when there is one, otherwise the actor; audit rows record both. A handler of asynchronous work that needs the user's **present** rights asks `IPrivilegeSource` for the initiator explicitly; a user deactivated in the meantime then simply has none.
 - A cron job that works tenant by tenant uses `CronContext.ForEachTenantAsync(tenants, async (tenant, ct) => …)`, which the framework runs with one scope per tenant under the cron's system principal. That is the only way application code obtains a context for another tenant besides elevation.
 - Running without a context throws `MissingExecutionContextException`. `Principal.System("cron:purge-retention")` always carries a reason and is audited.
+- `Principal` is one sealed class: `PrincipalKind Kind` (`Anonymous`, `User`, `Service`, `System`), `UserId? UserId`, `string? Name`, and the factories `Principal.Anonymous`, `Principal.User(UserId id)`, `Principal.Service(string name)` and `Principal.System(string reason)`; a name or reason is required. `PrincipalRef` is `sealed record PrincipalRef(PrincipalKind Kind, UserId Id)`.
+
+  > **Amended 2026-11-27**, by the owner's decisions of 2026-11-26 (`specs/0013-thin-slice/plan.md`, decision log): the shapes of `Principal` and `PrincipalRef`. Nested cases named `System` would hide the namespace, and `YAF2009` refuses a raw `Guid` id.
 - Elevation is explicit and scoped: `await using (elevation.CrossTenant("reason"))` (`ITenantElevation`, injected) returns a scope that widens tenant visibility until disposed, requires the permission `yaf.cross-tenant` (or a `System` principal), writes a security event with the reason, and cannot be nested silently. This replaces a flag that had to be switched back by hand.
 - Every outbox row, job row and message carries tenant, initiator (the producing operation's user, if any), correlation id and trace context. The consumer or runner builds its context from them as in the table above: tenant and correlation are taken over, the initiator is kept for audit, the actor is always its own system principal. The broker is thus trusted for the tenant id and the initiator, and a forged envelope cannot obtain a user's rights (`09-security.md`).
 

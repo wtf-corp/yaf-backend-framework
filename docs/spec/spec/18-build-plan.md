@@ -49,6 +49,16 @@ This file orders the work for the software factory (ADR-0029) building the frame
 
 > **Amended 2026-11-25**, by the owner's decisions of 2026-11-25 (`specs/0009-domain/plan.md`, decision log Q4 and Q5). `YafArchitectureRules`, `TestIds` and the synthetic data generators of `15` §3.1 come with M3, `[Control]` with M4, `LogAssert` with M5. The markers of `02` §11 ship in `YAF.Domain` with their readers: `[NoDataSubject]` in M6, `[Retention]` and its enumerations in M10, `[OnErasure]` in M12.
 
+> **Amended 2026-11-27**, by the owner's decisions of 2026-11-26 (`specs/0013-thin-slice/plan.md`, decision log Q1). Of the sections row M3 cites, M3 builds the pipeline with telemetry, exception boundary, validation, unit of work and query transaction, the execution context of `04` §7 with the test host's seed (Q2), stamping, the tenant set-and-check on save, root versioning, the repository base without field protection, the connection checks of `05` §10, and `YAF4001`, `YAF4002`, `YAF4005`. The rest goes to:
+>
+> - **M4:** `AuthorizationMiddleware`, the request markers and `core.authorization.*`; `InputGuardMiddleware` and `[Markup]` (the sanitizer port with M11); `YAF4003`, `YAF4004`; soft delete, the named tenant and soft-delete query filters, row-level security, `TransactionScopeInterceptor` with the tenant settings, the database roles and `MigratorWorker<TDbContext>`; authentication, the execution-context middleware, the startup filter that checks the order of `UseYafHttp` (with M9), the route helpers `MapYaf*<TRequest>`, `.Dispatches<TRequest>()` and `MapYafGroup`; `TestAuth`, `factory.Auth`, `client.As(…)`, `RowLevelSecurityAssert` and the first suites of the security pack, which grows with later milestones.
+> - **M5:** `TimeoutMiddleware` and `[Timeout]`, `[LogPayload]`, `TelemetryCatalog`; `Logs`, `Spans`, `Metrics`, `Eventually`.
+> - **M6:** field protection in the repository base and the read-model helpers; `AuditInterceptor`.
+> - **M7, M8:** `UnitOfWorkScope.RunAsync` and the pipeline of entry points that are not requests; `factory.Messaging`, `Jobs`, `Cron`, `Audit`; `[NoTransaction]` (M8).
+> - **M9:** `IdempotencyMiddleware`, `[Idempotent]` and `yaf_idempotency`; `Cursor` paging; `[JsonColumn]`; strict request JSON; rate limiting, security headers, CORS; the framework endpoints, `GET /errors` among them; OpenAPI; `YAF.Http.Controllers`.
+>
+> The engines of `YAF.Infrastructure` come with M5–M8; M3 creates the package empty. The sample grows with the milestones of the concepts it shows (`16` §3).
+
 Dependencies: M1 → M2 → M3 → {M4, M5} → M6 → M7 → M8; M9 after M4; M10 after M6–M8; M11 after M9; M12 after M10; M13 after M9 and M12; M14 can start after M3 (CI parts and alpha prereleases) and finish last.
 
 Parallelism: within a milestone the orchestrator runs tickets in parallel worktrees when they do not depend on each other and their `touches` do not overlap. Independent packages (the two broker adapters, the two HTTP styles, the three optional adapters of M11) are the natural candidates, each against the conformance or parity suite, whose ticket comes first and blocks them. Tickets that touch a shared file (`Directory.Packages.props`, `PublicAPI.Unshipped.txt`, `errors.approved.txt`, a migration folder) run one after another.
