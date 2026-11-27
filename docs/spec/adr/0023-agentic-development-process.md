@@ -1,6 +1,6 @@
 # ADR-0023 — Agentic development process
 
-> **Status** Accepted · **Date** 2026-11 · **Deciders** maintainers
+> **Status** Accepted; superseded in part by ADR-0034 · **Date** 2026-11 · **Deciders** maintainers
 
 ## Context
 
