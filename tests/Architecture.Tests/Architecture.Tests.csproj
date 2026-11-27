@@ -18,9 +18,16 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/Analyzers/Analyzers.csproj" />
+    <ProjectReference Include="../../src/Application/Application.csproj" />
     <ProjectReference Include="../../src/Core/Core.csproj" />
     <ProjectReference Include="../../src/Domain/Domain.csproj" />
+    <ProjectReference Include="../../src/Http/Http.csproj" />
+    <ProjectReference Include="../../src/Http.MinimalApis/Http.MinimalApis.csproj" />
+    <ProjectReference Include="../../src/Infrastructure/Infrastructure.csproj" />
+    <ProjectReference Include="../../src/Persistence.EfCore/Persistence.EfCore.csproj" />
+    <ProjectReference Include="../../src/Persistence.EfCore.PostgreSql/Persistence.EfCore.PostgreSql.csproj" />
     <ProjectReference Include="../../src/Testing/Testing.csproj" />
+    <ProjectReference Include="../../src/Testing.Integration/Testing.Integration.csproj" />
   </ItemGroup>
 
 </Project>
