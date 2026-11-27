@@ -141,6 +141,8 @@ Then leave the ticket alone until a human answers on it.
 
 ## The report at a milestone end (or at any stop)
 
+At a milestone's end (every ticket of its plan closed), run its exit checks first. `git fetch origin`; the checkout must be clean, on `main`, at `origin/main` (fast-forward a clean `main`; report a dirty checkout, never clean it). Then, as the factory app: `node .github/factory/exit-check.mjs specs/<folder>/plan.md --post`. It posts one comment on the epic; give the owner its link and the exit code. The comment's size is not capped yet: when the post fails, report the failure and the printed output instead. Never close the epic or the milestone; the owner does, after reading the comment. A plan without a `factory:exit` block gets the exit criteria below from you, by hand. The coverage of the test strategy is not a check; it stays the owner's reading.
+
 - Tickets: done, in review, waiting for a human (with the reason each), not started.
 - Merged automatically, by tier; merged by a human.
 - Exit criteria of the milestone, each with the evidence you ran, or "not met: why".

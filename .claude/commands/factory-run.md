@@ -12,6 +12,7 @@ allowed-tools:
   - Bash(node .github/scripts/factory-token.mjs --app factory -- gh issue edit * --add-label blocked)
   - Bash(node .github/scripts/factory-token.mjs --app factory -- gh issue edit * --remove-label blocked)
   - Bash(node .github/scripts/factory-token.mjs --app reviewer -- node .github/scripts/local-review.mjs *)
+  - Bash(node .github/scripts/factory-token.mjs --app factory -- node docs/spec/factory/.github/factory/exit-check.mjs specs/*/plan.md --post)
   - Bash(git worktree unlock *)
   - Bash(git worktree remove *)
   - Bash(git branch -D *)
@@ -26,6 +27,7 @@ allowed-tools:
   - PowerShell(node .github/scripts/factory-token.mjs --app factory -- gh issue edit * --add-label blocked)
   - PowerShell(node .github/scripts/factory-token.mjs --app factory -- gh issue edit * --remove-label blocked)
   - PowerShell(node .github/scripts/factory-token.mjs --app reviewer -- node .github/scripts/local-review.mjs *)
+  - PowerShell(node .github/scripts/factory-token.mjs --app factory -- node docs/spec/factory/.github/factory/exit-check.mjs specs/*/plan.md --post)
   - PowerShell(git worktree unlock *)
   - PowerShell(git worktree remove *)
   - PowerShell(git branch -D *)
@@ -56,6 +58,6 @@ Do these steps in order.
 4. **Next tick.** Schedule it with `ScheduleWakeup`:
    - about 5 minutes while a review or a writer runs, or checks are pending;
    - 60 minutes when only the owner's decisions and pushes remain, after one `PushNotification` that lists them. Send it again only when the list changes;
-   - `stop: true`, with the skill's report, at a stop condition of the skill.
+   - `stop: true`, with the skill's report, at a stop condition of the skill. At a milestone's end, run the exit check first, as the skill's report says: `node .github/scripts/factory-token.mjs --app factory -- node docs/spec/factory/.github/factory/exit-check.mjs specs/<folder>/plan.md --post`.
 
 5. **Outside a tick.** When the session is woken by a writer's report or a finished command between ticks, start a tick by invoking `/factory-run` again, and do nothing else first. Outside a tick your commands are not pre-approved; a permission prompt there is the safe failure.

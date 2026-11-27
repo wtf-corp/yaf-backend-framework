@@ -195,6 +195,10 @@ The skill is the instruction; in short the session reads the Project, checks `FA
 
 To pause everything: set repository variable `FACTORY_PAUSED` to `true`. Auto-merge stops being enabled and the orchestrator picks up nothing; checks keep running. Pull requests that already have auto-merge enabled still merge when green: disable it on them by hand if you need a hard stop. The workflow does that itself for a tier-high pull request that is not approved, paused or not.
 
+### The exit check at a milestone's end
+
+A milestone plan declares its exit criteria and their commands in a `factory:exit` block (`yaf-writing-plans`). A plan with such a block is always flagged, so you approve every command before it can run. When every ticket of the plan is closed, the orchestrator runs, as the app, from a clean checkout at `origin/main`: `node .github/factory/exit-check.mjs specs/<folder>/plan.md --post`. It reads the plan only from `origin/main`, runs each check without the app's token, and posts one comment on the epic: each criterion with its checks and verdict, the tickets still open, the CI run of that commit. `--list` runs nothing; `--dry-run` posts nothing. You read the comment and close the epic and the milestone; the orchestrator does neither. Whether the test strategy covers the milestone is not a check: it stays your reading. `factory-run.md` pre-approves only the form `exit-check.mjs specs/*/plan.md --post`; to have every run prompt you, remove that entry.
+
 ## Tuning the policy
 
 `policy.json` is validated by `policy.schema.json`. A change to it is tier high and code-owned.

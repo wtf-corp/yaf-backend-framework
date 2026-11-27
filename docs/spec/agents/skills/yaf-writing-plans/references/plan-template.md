@@ -74,6 +74,20 @@ New dependency: no / yes — agreed with the human owner on yyyy-MM-dd.
 
 <!-- Add the specific commands that prove the whole change: a filtered test run, the docs build, a pending-model-changes check, package validation. State the expected result of each. -->
 
+<!-- A milestone plan only (delete otherwise): its exit criteria and the checks that prove them, read by exit-check.mjs at the milestone's end. Each criterion names one or more check ids; "expect" is the exit code, 0 by default. A plan with this block is always flagged for the owner. -->
+
+```factory:exit
+{
+  "criteria": [
+    {"text":"<exit criterion, as the build plan states it> (Exit 1)","checks":["V2","E1"]}
+  ],
+  "checks": [
+    {"id":"V2","title":"restore, build and all tests","run":"dotnet restore YAF.slnx && dotnet build YAF.slnx -c Release --no-restore && dotnet test --solution YAF.slnx -c Release --no-build","expect":0},
+    {"id":"E1","title":"exit test <Name>Tests","run":"dotnet test --solution YAF.slnx -c Release --no-build --filter-query \"/*/*/<Name>Tests/*\"","expect":0}
+  ]
+}
+```
+
 ## Research
 
 <!-- Link ./research.md when third-party behaviour was checked. -->
