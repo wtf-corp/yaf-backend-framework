@@ -1,0 +1,118 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using YAF.Application;
+using YAF.Application.Pipeline;
+using YAF.Application.Registration;
+using YAF.Core.Results;
+
+namespace Application.Tests.Registration;
+
+public sealed class RegistrationTests
+{
+    [Fact]
+    public void AddHandlersFrom_ReadsTheAssemblysRegistry()
+    {
+        var services = new ServiceCollection();
+
+        services.AddYafApplication(app => app.AddHandlersFrom<RegistrationTests>());
+
+        services.Should().ContainSingle(descriptor => descriptor.ServiceType == typeof(PingHandlerStandIn));
+    }
+
+    [Fact]
+    public void AddHandlersFrom_AssemblyWithoutRegistry_ThrowsNamingIt()
+    {
+        var services = new ServiceCollection();
+
+        var act = () => services.AddYafApplication(app => app.AddHandlersFrom<Result>());
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*YAF.Core*YafHandlers*");
+    }
+
+    [Fact]
+    public void AddYafApplication_CalledTwice_RegistersOnce()
+    {
+        var once = new ServiceCollection();
+        once.AddYafApplication(app => app.AddHandlersFrom<RegistrationTests>());
+        var twice = new ServiceCollection();
+
+        twice.AddYafApplication(app => app.AddHandlersFrom<RegistrationTests>());
+        twice.AddYafApplication(app => app.AddHandlersFrom<RegistrationTests>());
+
+        twice.Select(descriptor => descriptor.ServiceType).Should().Equal(once.Select(descriptor => descriptor.ServiceType));
+    }
+
+    [Fact]
+    public void UsePipeline_RegistersTheConfiguredOrder()
+    {
+        var services = new ServiceCollection();
+        var middleware = new PingMiddleware().GetType();
+
+        services.AddYafApplication(app => app.UsePipeline(pipeline => pipeline.Use(middleware)));
+
+        Descriptor(services).Steps.Should().Equal(new PipelineStep(middleware, PipelineScope.All));
+    }
+
+    [Fact]
+    public async Task Startup_RequestHandledTwice_FailsNamingIt()
+    {
+        var check = StartupCheck(new StubHandlerRegistry([], [typeof(PingQuery)]), new StubHandlerRegistry([], [typeof(PingQuery)]));
+
+        var act = () => check.StartAsync(TestContext.Current.CancellationToken);
+
+        (await act.Should().ThrowAsync<InvalidOperationException>()).WithMessage($"*{typeof(PingQuery).FullName}*more than one*");
+    }
+
+    [Fact]
+    public async Task Startup_DeclaredRequestWithoutHandler_FailsNamingIt()
+    {
+        var check = StartupCheck(new StubHandlerRegistry([typeof(PingQuery), typeof(PongQuery)], [typeof(PingQuery)]));
+
+        var act = () => check.StartAsync(TestContext.Current.CancellationToken);
+
+        (await act.Should().ThrowAsync<InvalidOperationException>()).WithMessage($"*{typeof(PongQuery).FullName}*no handler*");
+    }
+
+    [Fact]
+    public async Task Startup_EachRequestHandledOnce_Starts()
+    {
+        var check = StartupCheck(new StubHandlerRegistry([typeof(PingQuery)], []), new StubHandlerRegistry([], [typeof(PingQuery)]));
+
+        var act = () => check.StartAsync(TestContext.Current.CancellationToken);
+
+        await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public void AddYafApplication_RegistersTheStartupCheck()
+    {
+        var services = new ServiceCollection();
+
+        services.AddYafApplication(_ => { });
+
+        services.Should().ContainSingle(descriptor => descriptor.ServiceType == typeof(IHostedService))
+            .Which.ImplementationInstance.Should().BeOfType<HandlerStartupCheck>();
+    }
+
+    private static HandlerStartupCheck StartupCheck(params IHandlerRegistry[] registries)
+    {
+        var registrations = new ApplicationRegistrations();
+        foreach (var registry in registries)
+        {
+            registrations.Add(registry);
+        }
+
+        return new HandlerStartupCheck(registrations);
+    }
+
+    private static IPipelineDescriptor Descriptor(ServiceCollection services)
+    {
+        var descriptor = services.Single(service => service.ServiceType == typeof(IPipelineDescriptor));
+        return (IPipelineDescriptor)descriptor.ImplementationFactory!(null!);
+    }
+
+    private sealed class PingMiddleware : IRequestMiddleware<PingQuery, Result>
+    {
+        public ValueTask<Result> InvokeAsync(PingQuery request, RequestDelegate<Result> next, CancellationToken ct) => next(ct);
+    }
+}
