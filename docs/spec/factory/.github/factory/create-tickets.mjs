@@ -1,12 +1,13 @@
 // Creates the issues of a merged plan. Idempotent: every issue carries a hidden marker, and an
-// existing marker is never created again.
+// existing marker is never created again, so a run that stopped is resumed by running it again.
 //   node .github/factory/create-tickets.mjs specs/0003-typed-ids/plan.md [more plans…]
 // Needs the factory app's token (GH_TOKEN): the default workflow token cannot write Projects.
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { api, repoSlug, loadPolicy } from './lib.mjs';
+import { run as runCommand, repoSlug, loadPolicy } from './lib.mjs';
 import { parseTickets, ticketProblems } from './plan.mjs';
 import { addItem, setStatus, statuses } from './project.mjs';
+import { ghApi } from './ratelimit.mjs';
 
 export const ticketMarker = (folder, key) => `<!-- factory:ticket ${folder}#${key} -->`;
 export const epicMarker = (folder) => `<!-- factory:epic ${folder} -->`;
@@ -43,31 +44,55 @@ export function firstStatus(issue, blockedBy, current) {
   return blockedBy.length ? 'Backlog' : 'Ready';
 }
 
-function findByMarker(repo, marker) {
-  const q = encodeURIComponent(`repo:${repo} is:issue in:body "${marker.replace(/<!--\s*|\s*-->/g, '')}"`);
-  const hits = api(`search/issues?q=${q}&per_page=5`).items ?? [];
-  return hits.find((i) => (i.body ?? '').includes(marker)) ?? null;
+/**
+ * The plan's epic and tickets among listed issues: Map<marker, issue>. Pull requests and the markers
+ * of other plans are left out; of two issues with one marker the older one counts.
+ */
+export function indexByMarker(issues, folder) {
+  const index = new Map();
+  const ticketPrefix = `<!-- factory:ticket ${folder}#`;
+  for (const i of [...issues].sort((a, b) => a.number - b.number)) {
+    if (i.pull_request) continue;
+    for (const [marker] of (i.body ?? '').matchAll(/<!-- factory:(?:ticket|epic) \S+ -->/g)) {
+      const ours = marker === epicMarker(folder) || marker.startsWith(ticketPrefix);
+      if (ours && !index.has(marker)) index.set(marker, i);
+    }
+  }
+  return index;
 }
 
-function ensureLabel(repo, name) {
-  try { api(`repos/${repo}/labels/${encodeURIComponent(name)}`); }
-  catch { api(`repos/${repo}/labels`, { method: 'POST', body: { name, color: 'ededed' } }); }
+/** The REST calls of one run, each with the retry of ratelimit.mjs. `body` is sent as JSON. */
+function client(run, retry) {
+  return (endpoint, { method = 'GET', body } = {}) => {
+    const args = [endpoint, '--method', method, '-H', 'Accept: application/vnd.github+json'];
+    if (body !== undefined) args.push('--input', '-');
+    const input = body !== undefined ? { input: JSON.stringify(body) } : {};
+    return ghApi(args, { ...retry, run: (cmd, a) => run(cmd, a, input) });
+  };
+}
+
+/** Every issue and pull request of the repository, page by page (`--paginate` does not combine with `-i`). */
+function listIssues(call, repo) {
+  const all = [];
+  for (let page = 1; ; page++) {
+    const items = call(`repos/${repo}/issues?state=all&per_page=100&page=${page}`) ?? [];
+    all.push(...items);
+    if (items.length < 100) return all;
+  }
+}
+
+function ensureLabel(call, repo, name) {
+  try { call(`repos/${repo}/labels/${encodeURIComponent(name)}`); }
+  catch { call(`repos/${repo}/labels`, { method: 'POST', body: { name, color: 'ededed' } }); }
 }
 
 function titleOf(markdown, folder) {
   return (markdown.match(/^#\s+(.+?)(?::\s*plan)?\s*$/m)?.[1] ?? folder).trim();
 }
 
-function createFromPlan(planFile, policy) {
-  const repo = repoSlug();
-  const folder = path.posix.dirname(planFile.replaceAll('\\', '/'));
-  const markdown = readFileSync(planFile, 'utf8');
-  const tickets = parseTickets(markdown);
-  if (tickets.length === 0) { console.log(`${planFile}: no Tickets table`); return; }
-  const problems = ticketProblems(tickets, policy).filter((p) => /unknown ticket|comes later|duplicate/.test(p));
-  if (problems.length) throw new Error(`${planFile}: ${problems.join('; ')}`);
-
-  let epic = findByMarker(repo, epicMarker(folder));
+function createTickets(planFile, folder, markdown, tickets, { repo, api, project: { addItem, setStatus, statuses }, at }) {
+  const existing = indexByMarker(listIssues(api, repo), folder);
+  let epic = existing.get(epicMarker(folder));
   if (!epic) {
     epic = api(`repos/${repo}/issues`, { method: 'POST', body: { title: titleOf(markdown, folder), labels: ['factory', 'epic'], body: `${epicMarker(folder)}\nPlan: \`${planFile}\`\n\nTickets are the sub-issues of this issue.` } });
     console.log(`epic #${epic.number} created`);
@@ -77,11 +102,12 @@ function createFromPlan(planFile, policy) {
   const numbers = new Map();
   let current = null; // the Project's statuses: read once per plan, and only when a ticket exists
   for (const t of tickets) {
-    let issue = findByMarker(repo, ticketMarker(folder, t.key));
+    at.key = t.key;
+    let issue = existing.get(ticketMarker(folder, t.key));
     const blockedBy = t.dependsOn.map((k) => numbers.get(k)).filter(Boolean);
     if (!issue) {
       const labels = ['factory', `tier:${t.tier}`, `type:${t.type}`];
-      if (t.area) { ensureLabel(repo, `area:${t.area}`); labels.push(`area:${t.area}`); }
+      if (t.area) { ensureLabel(api, repo, `area:${t.area}`); labels.push(`area:${t.area}`); }
       issue = api(`repos/${repo}/issues`, { method: 'POST', body: { title: t.title, labels, body: ticketBody(folder, t, blockedBy, epic.number) } });
       console.log(`${t.key} → #${issue.number}`);
       // Native links are a convenience for people; the automation reads the "Blocked by:" line.
@@ -100,6 +126,29 @@ function createFromPlan(planFile, policy) {
     }
     numbers.set(t.key, issue.number);
     numbers.set(t.key + ':id', issue.id);
+  }
+}
+
+/**
+ * Creates the plan's epic and the tickets that do not exist yet. `run` (the `gh` runner), `repo`, `read`,
+ * `project` and `retry` (options of ratelimit.mjs) are parameters so that a test passes fakes. A failure,
+ * such as a rate limit that outlasts the retry's budget, names the ticket it stopped at and how to resume.
+ */
+export function createFromPlan(planFile, policy, {
+  run = runCommand, repo = repoSlug(), read = (f) => readFileSync(f, 'utf8'),
+  project = { addItem, setStatus, statuses }, retry = {},
+} = {}) {
+  const folder = path.posix.dirname(planFile.replaceAll('\\', '/'));
+  const markdown = read(planFile);
+  const tickets = parseTickets(markdown);
+  if (tickets.length === 0) { console.log(`${planFile}: no Tickets table`); return; }
+  const problems = ticketProblems(tickets, policy).filter((p) => /unknown ticket|comes later|duplicate/.test(p));
+  if (problems.length) throw new Error(`${planFile}: ${problems.join('; ')}`);
+  const at = { key: tickets[0].key };
+  try {
+    createTickets(planFile, folder, markdown, tickets, { repo, api: client(run, retry), project, at });
+  } catch (e) {
+    throw new Error(`${planFile}: stopped at ${at.key}: ${e.message.split('\n')[0]}\nResume later with: gh workflow run factory-tickets.yml -f plan=${planFile}`, { cause: e });
   }
 }
 
