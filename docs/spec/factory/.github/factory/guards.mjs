@@ -23,11 +23,14 @@ const REMOVED_PATTERNS = [
 
 const APPROVED = ['**/*.approved.*'];
 const BANNED = ['**/BannedSymbols.txt', 'BannedSymbols.txt'];
+// The prose of specs and plans configures nothing; it may quote a setting (plan 0015, T22).
+const PROSE = ['specs/**/*.md'];
 
 /** diff: Map<file, { added, removed }> → [{ file, what, line }] */
 export function findGuardChanges(diff) {
   const findings = [];
   for (const [file, change] of diff) {
+    if (matchesAny(file, PROSE)) continue;
     for (const line of change.added) for (const [re, what] of ADDED_PATTERNS) if (re.test(line)) findings.push({ file, what, line: line.trim() });
     const isTest = /(^|\/)tests\//.test(file);
     for (const line of change.removed) {
