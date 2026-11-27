@@ -45,10 +45,10 @@
 Breaking: no / yes — matches the spec's impact checklist.
 New dependency: no / yes — agreed with the human owner on yyyy-MM-dd.
 
-<!-- The same delta, machine-readable. factory/delta compares it with the approved files each pull request changes. JSON with exactly these seven keys; [] for an empty list; an entry ending in * matches by prefix. -->
+<!-- The same delta, machine-readable. factory/delta compares it with the approved files each pull request changes. JSON with these eight keys; [] for an empty list; an entry ending in * matches by prefix. A new package pin is "Id@Version"; an .editorconfig setting is "[<repository/relative/path>] <setting>" (ADR-0034); either flags the plan. -->
 
 ```factory:delta
-{ "publicApi": [], "schema": [], "errorCodes": [], "contracts": [], "configuration": [], "telemetry": [], "dependencies": [] }
+{ "publicApi": [], "schema": [], "errorCodes": [], "contracts": [], "configuration": [], "telemetry": [], "dependencies": [], "editorconfig": [] }
 ```
 
 ## Schema and migration plan

@@ -40,7 +40,7 @@ Do not plan against a spec that is not on `main`. If it is not merged, go back (
 7. **REQUIRED** — Every row of the Tickets table has: key `T1…`, title, requirements or sections, depends on, `touches` (paths or areas), expected tier, size estimate, the **failing test to write first**, and a verification command with the expected result.
 8. **REQUIRED** — One ticket is one concern, one pull request, and at most the soft size limit (`size.soft` in the policy file, 200 changed hand-written lines by default; this repository uses 400 during the initial build, until `1.0.0`). A ticket that cannot fit is split; the plan reviewer rejects one estimated above the limit.
 9. **REQUIRED** — No ticket depends on a later one. Dependencies are stated, never implied by order.
-10. **REQUIRED** — The plan goes to `main` in a pull request of its own (`docs(specs): NNNN <title> — plan`). The plan reviewer reports check `factory/doc-review`. The plan then merges automatically **unless it is flagged**: a public API change, a schema change, a new dependency, a deviation from the spec, or any ticket in tier high makes `factory/plan-gate` require a human maintainer's approving review. Never approve a pull request yourself; the `Status` line is informative.
+10. **REQUIRED** — The plan goes to `main` in a pull request of its own (`docs(specs): NNNN <title> — plan`). The plan reviewer reports check `factory/doc-review`. The plan then merges automatically **unless it is flagged**: a public API change, a schema change, a new dependency, an `editorconfig` entry, a deviation from the spec, or any ticket in tier high makes `factory/plan-gate` require a human maintainer's approving review. Never approve a pull request yourself; the `Status` line is informative.
 11. **REQUIRED** — A new dependency is not planned in silently; it is raised with the human owner first (ADR-0003) and flags the plan.
 12. **REQUIRED** — Deviating from a merged plan: comment on the ticket; when the approach, the delta or the ticket list changes, open a plan update pull request, which passes the plan gate again. A deviation that changes scope or requirements goes back to the human owner.
 13. **RECOMMENDED** — Put what you verified about third-party behaviour in `research.md`, with sources and versions.
@@ -103,6 +103,13 @@ A fenced block in `plan.md`, read by `delta.mjs`. It lists what the tickets toge
 ````
 
 Write `[]` for an empty list. A plan whose block is entirely empty promises tier low for every ticket outside the sensitive paths.
+
+**Declared guard changes** (ADR-0034). Two guard files, `policy.declaredGuards.files`, can be declared line by line; a pull request that adds exactly what the plan declares is then tier medium for that file, with no `guard-change` label:
+
+- `.editorconfig`: key `editorconfig`, one entry per setting, `"[<repository/relative/path>] <setting>"`, the header and the setting line exactly as the file will hold them, for example `"[src/Messaging/Outbox/OutboxParking.cs] dotnet_diagnostic.CA1040.severity = <level>"`. The header names one file: it contains a `/`, no glob character, no `..` segment, no `\` except as an escape; a leading `/` is dropped. The lines before the first section stay unchanged, every section of the base stays unchanged, and every added line is a setting in a new, declared section.
+- `Directory.Packages.props`: a `dependencies` entry written `Id@Version` declares one new `PackageVersion` with exactly `Include` and `Version` and no child. Existing pins and the rest of the file stay unchanged. An entry without a version declares nothing.
+
+A section naming a file under a `policy.declaredGuards.neverLowered` path (security, privacy, factory and instruction paths, matched without regard to case) stays tier high whatever is declared. Entries count only in the plan as merged on the base branch: a pull request that edits the plan too declares nothing. A plan that declares any `editorconfig` or `dependencies` entry is always flagged for the owner.
 
 ## Deviations
 
