@@ -10,8 +10,8 @@
 #
 # Keep this list in step with `sensitivePaths` in docs/spec/factory/.github/factory/policy.json. The policy is
 # wider on purpose: it also makes paths tier high that need a human review without needing a code OWNER
-# (Directory.Packages.props, where a patch update must be able to merge automatically, and .editorconfig,
-# where a change the plan declared merges at tier medium; an undeclared change to either is tier high, ADR-0034).
+# (Directory.Packages.props and .editorconfig: a change the plan declared is tier medium, a patch update to
+# Directory.Packages.props must be able to merge automatically, and any other change to either is tier high; ADR-0034).
 
 # What is to be built, and the decisions: the specification bundle (spec, ADRs, agent guidance,
 # the factory kit with its live policy and gate scripts) and feature specs
