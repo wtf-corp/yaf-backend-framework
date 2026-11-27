@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadPolicy } from '../lib.mjs';
 import { renderSummary } from '../post-review.mjs';
-import { marker, findMarker, localReview, reviewSummary } from '../markers.mjs';
+import { marker, findMarker, localReview, reviewSummary, stackedOn } from '../markers.mjs';
 
 const policy = loadPolicy();
 const BOT = policy.bots.factory;
@@ -118,4 +118,20 @@ test('the rounds and the findings come from the marked comment', () => {
   assert.match(reviewSummary(comments, 'factory/review', AUTHORS).body, /the author is not checked/);
   assert.deepEqual(reviewSummary(comments, 'factory/doc-review', AUTHORS), { rounds: 0, body: other });
   assert.equal(reviewSummary([by(REVIEWER, 'a remark')], 'factory/review', AUTHORS), null);
+});
+
+test('stackedOn_NewestFactoryMarker_GivesTheCommitAndThePullRequest', () => {
+  const text = marker('stacked-on', A, 'pr=61');
+  assert.equal(text, `<!-- factory:stacked-on ${A} pr=61 -->`);
+  for (const value of [undefined, '', 'pr=', 'pr=x', '61', 'pr=61 -->']) assert.throws(() => marker('stacked-on', A, value), /not a pull request/);
+  const comments = [by(BOT, marker('stacked-on', B, 'pr=60')), by(BOT, `${text}\nStacked on #61.`), by('someone', marker('stacked-on', B, 'pr=7'))];
+  assert.deepEqual(stackedOn(comments, BOT), { sha: A, pr: 61 }); // a marker by someone else does not count
+  assert.deepEqual(stackedOn(comments.slice(0, 1), BOT), { sha: B, pr: 60 });
+  assert.equal(stackedOn([by('someone', text)], BOT), null);
+  assert.equal(stackedOn([by(BOT, text)], undefined), null);
+  // a quoted marker, or one of another form, is text
+  for (const body of [`Evidence:\n${text}`, `<!-- factory:stacked-on ${A} -->`, `<!-- factory:stacked-on ${A.slice(0, 7)} pr=61 -->`, `<!-- factory:stacked-on ${A} pr=x -->`]) {
+    assert.equal(stackedOn([by(BOT, body)], BOT), null, body);
+  }
+  assert.equal(stackedOn([], BOT), null);
 });

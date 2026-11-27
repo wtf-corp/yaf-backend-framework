@@ -3,6 +3,8 @@
 //   <!-- factory:local-review <sha> ready|changes-required round=<n> -->   then the findings, in the same comment
 //   <!-- factory:awaiting-push <sha> -->                                    the owner was told the push is theirs
 //   <!-- factory:references-fix <sha> -->                                   a references fix was handed out
+//   <!-- factory:stacked-on <sha> pr=<n> -->                                the ticket was started on its dependency's
+//                                                                           pull request <n> at its head commit <sha>
 // round=<n> is the number of local fix rounds already used on the ticket when the verdict was given: 0 for the
 // first local review. It is apart from `factory:rounds`, which post-review.mjs counts for the pull-request review.
 // A marker counts only as the first thing in its comment: every writer puts it there, and a marker quoted further
@@ -12,18 +14,21 @@
 const SHA = /^[0-9a-f]{40}$/;
 const VERDICT = /^(ready|changes-required) round=\d+$/;
 const LOCAL_REVIEW = /^<!-- factory:local-review (\S+) (ready|changes-required) round=(\d+) -->/;
-const ROUNDS = /^\r?\n<!-- factory:rounds=(\d+) -->/; // the line after the summary marker, where renderSummary puts it
+const STACKED_ON = /^<!-- factory:stacked-on ([0-9a-f]{40}) pr=(\d+) -->/;
+const ROUNDS =/^\r?\n<!-- factory:rounds=(\d+) -->/; // the line after the summary marker, where renderSummary puts it
 
 /** A comment counts only when one of the named logins wrote it; with no login named, nothing counts. */
 const writtenBy = (comment, logins) => logins.some((login) => login && comment.user?.login === login);
 
 /**
- * The marker's text. value: `ready round=0` or `changes-required round=1` for local-review, nothing otherwise.
- * Throws on a commit that is not 40 lower-case hex characters, and on a local-review value of another form.
+ * The marker's text. value: `ready round=0` or `changes-required round=1` for local-review, `pr=<n>` for
+ * stacked-on, nothing otherwise.
+ * Throws on a commit that is not 40 lower-case hex characters, and on a local-review or stacked-on value of another form.
  */
 export function marker(kind, sha, value = '') {
   if (!SHA.test(sha)) throw new Error(`marker: not a full commit sha: ${sha}`);
   if (kind === 'local-review' && !VERDICT.test(value)) throw new Error(`marker: not a local-review verdict and round: ${value}`);
+  if (kind === 'stacked-on' && !/^pr=\d+$/.test(value ?? '')) throw new Error(`marker: not a pull request: ${value}`);
   return `<!-- factory:${kind} ${sha}${value ? ` ${value}` : ''} -->`;
 }
 
@@ -52,6 +57,15 @@ export function localReview(comments, sha, author) {
     if (m[1] === sha) Object.assign(result, { verdict: m[2], round, findings: c.body.slice(m[0].length).trim() });
   }
   return result;
+}
+
+/**
+ * → { sha, pr }: the commit and the pull request of the newest stacked-on marker by `author` (the factory bot of the
+ * policy) on the ticket, or null. A marker of another form is text.
+ */
+export function stackedOn(comments, author) {
+  const m = comments.findLast((c) => writtenBy(c, [author]) && STACKED_ON.test(c.body ?? ''))?.body.match(STACKED_ON);
+  return m ? { sha: m[1], pr: Number(m[2]) } : null;
 }
 
 /**

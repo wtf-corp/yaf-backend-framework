@@ -6,7 +6,7 @@ import { loadPolicy, run, repoSlug, makeHumanCheck } from './lib.mjs';
 import { prKind } from './classify.mjs';
 import { approvingHuman } from './human-approval.mjs';
 import { parseBody } from './ticket.mjs';
-import { findMarker, localReview, reviewSummary } from './markers.mjs';
+import { findMarker, localReview, reviewSummary, stackedOn } from './markers.mjs';
 
 const REVIEWS = ['factory/review', 'factory/doc-review'];
 const GATES = ['factory/tier', 'factory/ticket', 'factory/size', 'factory/delta', 'factory/guards'];
@@ -19,11 +19,13 @@ const PASSED = ['success', 'neutral', 'skipped'];
  * pr: { labels, draft, kind ('code' | 'plan' | 'spec'), approved (a human maintainer approved the head commit),
  *       checks (the newest check run per name on the head commit: { name, status, conclusion, title, startedAt }),
  *       rounds (the rounds number of the review's summary comment), referencesFixTried,
- *       worktree (the one that holds the branch: { locked, ahead (of the pull request's head) }, or null) }
+ *       worktree (the one that holds the branch: { locked, ahead (of the pull request's head) }, or null),
+ *       stackedWriting (a worktree stacked on this pull request is being written) }
  * policy: the factory policy (limits.fixRounds). now: a Date or milliseconds.
  * → { action: 'none' | 'wait' | 'review' | 'fix' | 'human' | 'gate-failed', reason, round, cause }
  *   round: the fix round, for a failed review. cause: the failed check or checks; for `fix`, 'references' or the review.
- * Beyond the table: a references fix in the making is waited for; a review that ended without a verdict (cancelled,
+ * Beyond the table: a references fix in the making is waited for; a fix waits while a ticket stacked on the pull
+ * request is being written (their touches may overlap); a review that ended without a verdict (cancelled,
  * timed out) is owed again; a failed review with the fix rounds used up is a human's.
  */
 export function nextAction(pr, policy, now) {
@@ -35,6 +37,7 @@ export function nextAction(pr, policy, now) {
   const reviewed = (name) => completed(name) && [...PASSED, 'failure'].includes(checks.get(name).conclusion);
   const writing = pr.worktree?.locked ? 'is being written' : pr.worktree?.ahead ? 'is committed and not pushed' : null;
   const fresh = (name) => now - Date.parse(checks.get(name).startedAt) < STALE_MS;
+  const fix = (reason, extra) => (pr.stackedWriting ? result('wait', 'a ticket stacked on it is being written') : result('fix', reason, extra));
   const flagged = failed('factory/plan-gate') && (checks.get('factory/plan-gate').title ?? '').startsWith('flagged');
 
   if (pr.labels.includes('needs-human')) return result('human', 'the label needs-human is set');
@@ -43,7 +46,7 @@ export function nextAction(pr, policy, now) {
 
   if (pr.kind === 'code' && failed('references') && writing) return result('wait', `a references fix ${writing}`);
   if (pr.kind === 'code' && failed('references') && !pr.referencesFixTried) {
-    return result('fix', 'the references are out of step: regenerate them with sync-references.mjs and commit the result', { cause: 'references' });
+    return fix('the references are out of step: regenerate them with sync-references.mjs and commit the result', { cause: 'references' });
   }
   const broken = [...GATES, ...JOBS].filter(failed);
   if (failed('factory/plan-gate') && !flagged) broken.push('factory/plan-gate');
@@ -64,7 +67,7 @@ export function nextAction(pr, policy, now) {
     if (!Number.isInteger(pr.rounds) || pr.rounds < 1) return result('human', 'no counted review summary');
     if (pr.rounds > policy.limits.fixRounds) return result('human', 'fix rounds used up');
     if (writing) return result('wait', `a fix ${writing}`);
-    return result('fix', `${review} failed`, { round: pr.rounds, cause: review });
+    return fix(`${review} failed`, { round: pr.rounds, cause: review });
   }
 
   if (pr.labels.includes('tier:high') && !pr.approved) return result('human', 'tier high: waiting for a human maintainer\'s approval of the head commit');
@@ -96,11 +99,17 @@ export function parseWorktrees(porcelain) {
  *      pr (the branch's pull request: { labels, merged, open }, or null),
  *      review (markers.mjs localReview for the ticket's comments and the worktree's head),
  *      awaitingPush (markers.mjs findMarker 'awaiting-push' for that head: the comment or null),
- *      originHead (the branch's commit on origin, or null) }
+ *      originHead (the branch's commit on origin, or null),
+ *      stack (from the stacked-on marker: { onto (its commit), contains (the head still contains it),
+ *             dependency (its pull request: { merged, open }, or null) }, or null) }
  * policy: the factory policy (limits.fixRounds).
- * → { state: 'human' | 'working' | 'remove' | 'local-review' | 'local-fix' | 'push-owed' | 'open-pr' | 'in-flight',
+ * → { state: 'human' | 'working' | 'remove' | 'local-review' | 'local-fix' | 'stacked' | 'restack' | 'push-owed'
+ *       | 'open-pr' | 'in-flight',
  *     round, findings (the marker's, for local-fix), exhausted (local-fix at the limit: needs-human, no further fix),
- *     notified (push-owed: the owner was told about this head) }
+ *     notified (push-owed: the owner was told about this head), onto (restack only: the commit to rebase off) }
+ * A stacked worktree (its head still contains the marker's commit) gets the local review first, so a restack that
+ * conflicted is a local fix; reviewed, it waits while its dependency is open and is owed a restack once that merged.
+ * A dependency closed unmerged is a human's. After the restack the head lacks the commit: the ordinary states apply.
  */
 export function worktreeState(w, policy) {
   const result = (state, extra = {}) => ({ state, round: null, findings: null, exhausted: false, notified: false, ...extra });
@@ -108,8 +117,11 @@ export function worktreeState(w, policy) {
   if ([...w.ticketLabels, ...(w.pr?.labels ?? [])].includes('needs-human')) return result('human');
   if (w.worktree.locked) return result('working');
   if (w.pr?.merged) return result('remove');
+  const stack = w.stack?.contains ? w.stack : null;
+  if (stack && !stack.dependency?.open && !stack.dependency?.merged) return result('human');
   if (verdict === 'changes-required') return result('local-fix', { round, findings, exhausted: round >= policy.limits.fixRounds });
   if (verdict !== 'ready') return result('local-review');
+  if (stack) return stack.dependency.merged ? result('restack', { onto: stack.onto }) : result('stacked');
   if (w.originHead !== w.worktree.head) return result('push-owed', { notified: Boolean(w.awaitingPush) });
   return result(w.pr?.open ? 'in-flight' : 'open-pr');
 }
@@ -154,13 +166,14 @@ function newestChecks(checkRuns, policy, statuses = []) {
  * One open pull request's row, from what was fetched (U5c). As the REST API gives them: pr, files (the changed
  * paths), reviews, checkRuns and statuses (of the head commit), comments (the pull request's) and ticketComments (those of the
  * issue it closes). worktree: the one that holds the branch ({ locked, ahead }), or null. isHuman: (user) => boolean.
+ * stackedWriting: a locked worktree is stacked on this pull request.
  * → { number, branch, issue (the closed one, or null), kind, action, reason, round, cause (as nextAction gives them),
  *     fixRounds, findings (for a fix after a failed review: the review's summary comment, verbatim) }
  * The summary counts from the reviewer app or the gates bot only, a references-fix marker from the factory bot only;
  * a references fix handed out for any commit of the ticket is the one try, and a pull request that closes no single
  * issue has no ticket to mark the try on, so it gets none.
  */
-export function pullRequestRow({ pr, files, reviews, checkRuns, statuses = [], comments, ticketComments, worktree, isHuman }, policy, now) {
+export function pullRequestRow({ pr, files, reviews, checkRuns, statuses = [], comments, ticketComments, worktree, isHuman, stackedWriting = false }, policy, now) {
   const kind = prKind(files, policy);
   const issue = closedIssue(pr);
   // The marker's syntax is markers.mjs's: the first thing in its comment, `<!-- factory:references-fix <sha> -->`.
@@ -176,6 +189,7 @@ export function pullRequestRow({ pr, files, reviews, checkRuns, statuses = [], c
     rounds: summary?.rounds,
     referencesFixTried: issue === null || fixTried,
     worktree,
+    stackedWriting,
   }, policy, now);
   return { number: pr.number, branch: pr.head.ref, issue, kind, ...next, fixRounds: policy.limits.fixRounds,
     findings: next.action === 'fix' && next.cause !== 'references' ? summary.body : null };
@@ -185,9 +199,11 @@ export function pullRequestRow({ pr, files, reviews, checkRuns, statuses = [], c
  * One ticket worktree's row. worktree: as parseWorktrees gives it, on a branch <type>/<issue>-<slug>. ticketLabels:
  * the label names of that issue; ticketComments: its comments. pr: the branch's pull request as the REST API gives
  * it, or null. originHead: the branch's commit on origin, or null. The markers are read for the worktree's head.
+ * stack: { sha (the stacked-on marker's commit), contains (the head still contains it), pr (the dependency's pull
+ * request as the REST API gives it, or null) }, or null for a ticket without the marker.
  * → { path, branch, head, issue, pullRequest (its number, or null), …worktreeState }
  */
-export function worktreeRow({ worktree, ticketLabels, ticketComments, pr, originHead }, policy) {
+export function worktreeRow({ worktree, ticketLabels, ticketComments, pr, originHead, stack = null }, policy) {
   const state = worktreeState({
     worktree,
     ticketLabels,
@@ -195,6 +211,7 @@ export function worktreeRow({ worktree, ticketLabels, ticketComments, pr, origin
     review: localReview(ticketComments, worktree.head, policy.bots.factory),
     awaitingPush: findMarker(ticketComments, 'awaiting-push', worktree.head, policy.bots.factory),
     originHead,
+    stack: stack && { onto: stack.sha, contains: stack.contains, dependency: stack.pr && { merged: Boolean(stack.pr.merged_at), open: stack.pr.state === 'open' } },
   }, policy);
   return { path: worktree.path, branch: worktree.branch, head: worktree.head, issue: Number(worktree.branch.match(TICKET_BRANCH)[1]), pullRequest: pr?.number ?? null, ...state };
 }
@@ -208,8 +225,19 @@ export function worktreeRow({ worktree, ticketLabels, ticketComments, pr, origin
  */
 export function inflight({ repo, policy, gh, git, isHuman, now }) {
   const list = (endpoint) => JSON.parse(gh('api', endpoint, '--paginate', '--slurp')).flat();
-  const comments = (issue) => list(`repos/${repo}/issues/${issue}/comments?per_page=100`);
+  const once = (fn, cache = new Map()) => (key) => (cache.has(key) ? cache.get(key) : cache.set(key, fn(key)).get(key));
+  const read = once((issue) => list(`repos/${repo}/issues/${issue}/comments?per_page=100`));
+  const comments = (issue) => read(String(issue));
   const worktrees = parseWorktrees(git('worktree', 'list', '--porcelain'));
+  const ticketWorktrees = worktrees.filter((w) => TICKET_BRANCH.test(w.branch ?? ''));
+  // The ticket's newest stacked-on marker ({ sha, pr }) and whether the worktree's head still contains its commit, or
+  // null. git exits 1 for "not an ancestor"; any other failure is thrown, so the row fails rather than read unstacked.
+  const stackOf = once((worktree) => {
+    const on = stackedOn(comments(worktree.branch.match(TICKET_BRANCH)[1]), policy.bots.factory);
+    if (!on) return null;
+    try { git('merge-base', '--is-ancestor', on.sha, worktree.head); return { ...on, contains: true }; }
+    catch (e) { if (e.status === 1) return { ...on, contains: false }; throw e; }
+  });
   const origin = new Map(git('ls-remote', '--heads', 'origin').split(/\r?\n/).filter(Boolean)
     .map((line) => line.split('\t')).map(([sha, ref]) => [ref.replace(/^refs\/heads\//, ''), sha]));
   // Ahead: another head that contains the pull request's. A pull request head this repository does not have is not contained.
@@ -234,19 +262,24 @@ export function inflight({ repo, policy, gh, git, isHuman, now }) {
         ticketComments: issue ? comments(issue) : [],
         worktree: held ? { locked: held.locked, ahead: ahead(held.head, pr.head.sha) } : null,
         isHuman,
+        stackedWriting: ticketWorktrees.some((w) => w.locked && stackOf(w)?.contains && stackOf(w).pr === pr.number),
       }, policy, now);
     }));
 
-  const rows = worktrees.filter((w) => TICKET_BRANCH.test(w.branch ?? '')).map((worktree) => attempt({ path: worktree.path, branch: worktree.branch }, 'state', () => {
+  const rows = ticketWorktrees.map((worktree) => attempt({ path: worktree.path, branch: worktree.branch }, 'state', () => {
     const issue = worktree.branch.match(TICKET_BRANCH)[1];
     // The branch's pull requests, newest first: the open one, else the merged one, else the newest closed one.
     const pulls = list(`repos/${repo}/pulls?state=all&head=${repo.split('/')[0]}:${worktree.branch}&per_page=100`);
+    const ticketLabels = labelNames(JSON.parse(gh('api', `repos/${repo}/issues/${issue}`)).labels);
+    const ticketComments = comments(issue);
+    const on = stackOf(worktree); // the dependency's pull request is read only while the head is stacked on it
     return worktreeRow({
       worktree,
-      ticketLabels: labelNames(JSON.parse(gh('api', `repos/${repo}/issues/${issue}`)).labels),
-      ticketComments: comments(issue),
+      ticketLabels,
+      ticketComments,
       pr: pulls.find((p) => p.state === 'open') ?? pulls.find((p) => p.merged_at) ?? pulls[0] ?? null,
       originHead: origin.get(worktree.branch) ?? null,
+      stack: on && { sha: on.sha, contains: on.contains, pr: on.contains ? JSON.parse(gh('api', `repos/${repo}/pulls/${on.pr}`)) : null },
     }, policy);
   }));
   return { pullRequests, worktrees: rows };
