@@ -10,6 +10,7 @@
     <Project Path="src/Persistence.EfCore/Persistence.EfCore.csproj" />
     <Project Path="src/Persistence.EfCore.PostgreSql/Persistence.EfCore.PostgreSql.csproj" />
     <Project Path="src/Testing/Testing.csproj" />
+    <Project Path="src/Testing.Integration/Testing.Integration.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Analyzers.Tests/Analyzers.Tests.csproj" />
@@ -26,6 +27,7 @@
     <Project Path="tests/Infrastructure.Tests/Infrastructure.Tests.csproj" />
     <Project Path="tests/Persistence.EfCore.PostgreSql.Tests/Persistence.EfCore.PostgreSql.Tests.csproj" />
     <Project Path="tests/Persistence.EfCore.Tests/Persistence.EfCore.Tests.csproj" />
+    <Project Path="tests/Testing.Integration.Tests/Testing.Integration.Tests.csproj" />
     <Project Path="tests/Testing.Tests/Testing.Tests.csproj" />
   </Folder>
 </Solution>
