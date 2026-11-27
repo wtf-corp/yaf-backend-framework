@@ -51,12 +51,25 @@ Also fail a spec that contradicts an ADR without adding or superseding one in th
 | P-2 | Delta declared, in prose and in `factory:delta` | Public API, schema, error codes, configuration keys, contracts, dependencies. The block equals the prose. Compare with what the tickets would have to add: nothing public is missing |
 | P-3 | Every requirement and scenario is mapped to a ticket and a test level | Build the table; an unmapped requirement fails. Initial build: every acceptance item of the cited sections |
 | P-4 | Every ticket has one concern | No "and" in the title; no behaviour mixed with refactoring or a dependency bump; sensitive paths not mixed with ordinary code where a split is possible |
-| P-5 | Every ticket has a failing test to write first and a verification command | Named test, the reason it fails today, a command with its expected result. Docs tickets name the docs build |
-| P-6 | Every ticket's estimate is within the soft size limit | `size.soft` (200 changed hand-written lines by default; this repository uses 400 during the initial build, until `1.0.0`). Sanity-check the estimate against the files in `touches`; reject an optimistic one |
-| P-7 | Dependencies and `touches` are declared, and no ticket depends on a later one | Every key in "depends on" is earlier; `touches` names folders or files, including shared ones (`Directory.Packages.props`, `PublicAPI.Unshipped.txt`, `errors.approved.txt`, a migration folder); two tickets that must change one file are not presented as parallel |
+| P-5 | Every ticket has a failing test to write first and a verification command | The gate fails a missing one. Judge the content: named test, the reason it fails today, a command with its expected result. Docs tickets name the docs build |
+| P-6 | Every ticket's estimate is within the soft size limit | The gate fails an estimate above `size.soft`. Sanity-check the estimate against the files in `touches`; reject an optimistic one |
+| P-7 | Dependencies and `touches` are honest | The gate fails what it can match (below). Judge the rest: a ticket that relies on another's behaviour depends on it; `touches` names every file the ticket must change, shared ones included (`Directory.Packages.props`, `PublicAPI.Unshipped.txt`, `errors.approved.txt`, a migration folder), so that two tickets that must change one file are not presented as parallel |
 | P-8 | Risks with rollback | Each risk has a mitigation and a rollback; a schema change follows expand/contract |
 | P-9 | Layers and completeness | Affected packages by layer, every row filled; sample, templates and docs have tickets when the public surface changes; nothing planned that the specification marks as a later release |
 | P-10 | Third-party assumptions are checked | `research.md` cites documentation or source for the pinned version wherever the plan relies on a library's behaviour |
+
+### What `factory/plan-gate` checks
+
+The model review runs after `factory/plan-gate` passed, and its script `plan-check.mjs` fails a plan on these. Rely on its result; do not hunt for them:
+
+- the delta block or the Tickets table does not parse; a duplicate key; a dependency on an unknown or later ticket; no touches, no verify command, no failing test (except `docs`), an estimate above `size.soft`;
+- overlapping touches (the same path, a folder and a path inside it, a glob and a match, one `Migrations/` folder) between tickets neither of which is an ancestor of the other;
+- a non-`docs` ticket naming, in a code span of its title, failing test or verify, a type or file that a non-ancestor creates (a new `.cs` file, "`X` does not exist", a new ADR);
+- delta entries of the wrong form; a `YAF.X.*` prefix without all sixteen PublicAPI line forms;
+- a declared tier below `classify.mjs`'s floor for the touches and title: high for a sensitive path or a `!` title; medium for a changed approved file, declared `.editorconfig` or `Directory.Packages.props` entries, or a type not listed as low unless every touch is in the low paths;
+- a Test strategy key not in the Tickets table; a key of the base version that is gone.
+
+Judge yourself what it only notes: a `docs` ticket using what a non-ancestor creates, a tier above the floor (the plan says why), a folder touch holding a sensitive subfolder, a `T<n>` in prose that is no key, a retitled key.
 
 ### Is the plan flagged?
 
@@ -66,7 +79,7 @@ State it in the summary. A plan is flagged — and `factory/plan-gate` requires 
 - a schema change;
 - a new dependency;
 - a deviation from the spec;
-- a ticket in tier high (check each ticket's `touches` against the sensitive paths of the policy file yourself; do not trust the tier column).
+- a ticket in tier high (the gate fails a declared tier below the floor of the `touches`; check that the `touches` hide no sensitive path from it).
 
 A plan that should be flagged and says otherwise fails P-2 or P-7 as a Blocker.
 
@@ -126,7 +139,7 @@ Severity is `Blocker` (a failed item that would let a wrong or unsafe change thr
 | The spec writer or the planner reviewing its own document | It reads what it meant to write | A different agent, fresh context |
 | "Looks complete" without the coverage table | The unmapped requirement is exactly what a skim misses | Build the table first |
 | Passing a plan because every row has a size under 200 | Estimates are claims | Check them against `touches` and comparable changes |
-| Trusting the tier column | A ticket marked low that touches a sensitive path merges without a human if nobody notices at plan time, and surprises everyone at the pull request | Check `touches` against the policy's sensitive paths |
+| Trusting the tier column | A ticket marked low that touches a sensitive path merges without a human if nobody notices at plan time, and surprises everyone at the pull request | The gate checks the tier against `touches`; check that `touches` name what the ticket really changes |
 | Rewriting requirements or re-slicing tickets yourself | The writer no longer owns the document; the review is no longer independent | Report; suggest a direction |
 | Arguing that the feature should not be built | Scope is the human owner's | Review the document; raise the doubt as a Question |
 | Submitting an approving review after a pass | An agent reports a check; a code owner approves a spec | Give the verdict |

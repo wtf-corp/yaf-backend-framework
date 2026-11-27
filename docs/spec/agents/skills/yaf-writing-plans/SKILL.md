@@ -59,9 +59,10 @@ Do not plan against a spec that is not on `main`. If it is not merged, go back (
 9. **Map scenarios to tickets and tests.**
 10. **List risks**, each with mitigation and rollback.
 11. **List the verification commands** for the whole change.
-12. **Open a pull request with `plan.md`** (and `research.md`), nothing else, on branch `spec/NNNN-<slug>`. Do not brief the plan reviewer on why the plan is right.
-13. **Answer the plan reviewer's findings** until `factory/doc-review` passes; after `limits.fixRounds` rounds (default 2) stop and let the pull request go to `needs-human`.
-14. **Implementation starts after the merge.** `factory-tickets.yml` creates the issues; you create none by hand.
+12. **Run the plan gate's check** before handing the plan over: `node .github/factory/plan-check.mjs specs/NNNN-slug/plan.md` (`--base <rev>`, default `origin/main`). It prints problems and notes and exits 1 on a problem; `factory/plan-gate` fails on the same problems. Fix every problem. Weigh each note: fix it, or say in the plan why it stands (a tier raised on purpose, a `T<n>` of another plan).
+13. **Open a pull request with `plan.md`** (and `research.md`), nothing else, on branch `spec/NNNN-<slug>`. Do not brief the plan reviewer on why the plan is right.
+14. **Answer the plan reviewer's findings** until `factory/doc-review` passes; after `limits.fixRounds` rounds (default 2) stop and let the pull request go to `needs-human`.
+15. **Implementation starts after the merge.** `factory-tickets.yml` creates the issues; you create none by hand.
 
 Template: `references/plan-template.md`.
 
@@ -147,5 +148,6 @@ When implementation shows the plan is wrong:
 - [ ] Every requirement and acceptance scenario is mapped to a ticket and a test.
 - [ ] Every ticket has one concern, its failing test, a verification command, an estimate within the soft limit, `depends on` and `touches`; none depends on a later one.
 - [ ] Third-party assumptions are checked and recorded.
+- [ ] `plan-check.mjs` reports no problem, and every note is fixed or explained.
 - [ ] Initial-build milestone: decision log and deviations sections are filled; no `spec.md` was written.
 - [ ] `factory/doc-review` passed; the pull request is merged (after a human maintainer's review when flagged); the issues exist.
