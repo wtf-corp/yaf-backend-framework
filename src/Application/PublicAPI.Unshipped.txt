@@ -44,6 +44,9 @@ YAF.Application.Pipeline.PipelineStep.Middleware.get -> System.Type!
 YAF.Application.Pipeline.PipelineStep.Middleware.init -> void
 YAF.Application.Pipeline.PipelineStep.PipelineStep(System.Type! Middleware, YAF.Application.Pipeline.PipelineScope AppliesTo) -> void
 YAF.Application.Pipeline.RequestDelegate<TResult>
+YAF.Application.Pipeline.TelemetryMiddleware<TRequest, TResult>
+YAF.Application.Pipeline.TelemetryMiddleware<TRequest, TResult>.InvokeAsync(TRequest request, YAF.Application.Pipeline.RequestDelegate<TResult>! next, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<TResult>
+YAF.Application.Pipeline.TelemetryMiddleware<TRequest, TResult>.TelemetryMiddleware(Microsoft.Extensions.Logging.ILogger<YAF.Application.Pipeline.TelemetryMiddleware<TRequest, TResult>!>! logger, System.Diagnostics.Metrics.IMeterFactory! meterFactory) -> void
 static YAF.Application.YafApplicationServiceCollectionExtensions.AddYafApplication(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<YAF.Application.YafApplicationBuilder!>! configure) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 YAF.Application.Registration.IHandlerRegistry
 YAF.Application.Registration.IHandlerRegistry.DeclaredRequests.get -> System.Collections.Generic.IReadOnlyCollection<System.Type!>!
