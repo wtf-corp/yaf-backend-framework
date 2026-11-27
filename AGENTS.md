@@ -132,7 +132,7 @@ The factory can run with nobody at the keyboard. The command is `.claude/command
 - The machine stays awake and the session open. A self-paced loop is not restored by `--resume` and ends after seven days: start it again. Nothing is lost; the state is on GitHub and in git.
 - Each review and each writer is a model session on the local login. Watch the subscription's usage. How many implementers run at once, how many reviews a ticket gets and when a fix round starts are in "Token economy".
 - Tier-high work waits for the owner whatever the loop does.
-- Nothing is stacked: a ticket that depends on an open one waits for its merge.
+- Stacking is one level deep. A ticket whose one open dependency has an open pull request starts on that branch; its own pull request is opened once the dependency has merged and the branch is rebased onto `main` ([plan 0015](specs/0015-factory-throughput/plan.md), Q2). Every pull request targets `main`.
 - The run does not update a branch that is behind `main`: the strict policy is off, and there is no merge queue, until the reviews are back in CI ([plan 0005](specs/0005-repository-skeleton/plan.md#decision-log), Q4).
 
 **Optional.** Set `permissions.denyInsteadOfPrompting` in your own user settings. A call that would prompt is then denied, and the run goes on.
