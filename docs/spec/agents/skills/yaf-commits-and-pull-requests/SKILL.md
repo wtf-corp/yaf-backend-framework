@@ -104,7 +104,7 @@ If you think a change might be breaking and the spec does not say so, **stop and
 ## Branches
 
 - `spec/NNNN-<slug>` for the pull request that carries a spec, and again for the one that carries its plan — `spec/0042-outbox-parking`. Title `docs(specs): 0042 outbox parking — spec` / `… — plan`.
-- `<type>/<issue>-<slug>` for a ticket — `feat/123-typed-id-generator`, where `123` is the issue number. Cut it from a `main` that contains the merged plan, in a worktree of its own. A ticket that depends on an unmerged one is **stacked**: its branch is cut from that ticket's branch, its pull request targets that branch until the first merges, and they merge in order.
+- `<type>/<issue>-<slug>` for a ticket — `feat/123-typed-id-generator`, where `123` is the issue number. Cut it from a `main` that contains the merged plan, in a worktree of its own. A ticket that depends on an unmerged one may be **stacked**, one level deep: its branch is cut from the head of that ticket's branch, and its own pull request targets `main` and is opened only after the dependency has merged and the branch is rebased onto `main` (`git rebase --onto origin/main <the dependency's head>`). `Stacked on` names the dependency's pull request.
 - `<type>/<slug>` for trivial work. Types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`.
 - Long-lived branches belong to the maintainers and the pipeline: `main`, `next` (after `1.0.0`), and `stable` (listed in the release configuration as the release branch until `1.0.0` is cut).
 
