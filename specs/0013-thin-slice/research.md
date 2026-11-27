@@ -103,3 +103,13 @@ EF maps navigations to entity types; an interface such as `Seat.IMemento` is not
 | `Database.CreateExecutionStrategy()` with Npgsql's retrying strategy re-runs the delegate and the unit of work can clear the change tracker between attempts | T47, T52 |
 | Analyzer findings in `YAF.Http` and `YAF.Http.MinimalApis` | T53–T58; a new exception is a plan update and the owner's `guard-change` |
 | Typed results (`Results<Ok<T>, ProblemHttpResult>`, `Created<T>`, `Accepted<T>`, `NoContent`) in `Microsoft.AspNetCore.Http.HttpResults` for .NET 11 | T58, against the [typed results documentation](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/minimal-apis/responses) |
+
+## 11. A file-local error registry named by an assembly attribute (T94, #337)
+
+Checked on 2026-11-27 with SDK 11.0.100, compiler 5.12.0-1.26529.118 (C# `latest`, the default for `net11.0`), `TreatWarningsAsErrors` on. The analyzers compile against `Microsoft.CodeAnalysis.CSharp` 5.0.0 (`Directory.Packages.props`), which knows file-local types (C# 11).
+
+- [The `file` keyword](https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/file) (C# reference, updated 2026-09-22): a file-local type is visible only in the file that declares it; "Source generators most often apply the `file` modifier to types they generate"; other types may use the same name without a collision. It cannot be the return or parameter type of a member, or the type of a field, of a type that is not file-local. The page says nothing about attribute arguments, so the probe below decided it.
+- Probe: two projects, `A` (with `InternalsVisibleTo B`) and `B` (referencing `A`), each with the file the generator writes: `[assembly: Svc("<code>", typeof(global::YAF.Generated.YafErrorRegistry))]` above `namespace YAF.Generated { file sealed class YafErrorRegistry : IReg { … } }`.
+  - With `internal sealed class` in both: `B` fails with **CS0436** ("The type 'YafErrorRegistry' … conflicts with the imported type 'YafErrorRegistry' in 'A'"), the error of #337.
+  - With `file sealed class` in both: both build with no warning. `typeof` of the file-local type in an assembly-level attribute of the same file is accepted. At run time each assembly's attribute returns its own type, `Activator.CreateInstance` creates it, and `Assembly.GetType("YAF.Generated.YafErrorRegistry")` returns `null`. The metadata names were `YAF.Generated.<YAF_ErrorRegistry_g>F<64 hex digits>__YafErrorRegistry`, with a different hash per assembly; `IsPublic` was false.
+- Not checked: trimming and native AOT with the file-local registry. `YafServiceAttribute.ErrorRegistry` keeps its `DynamicallyAccessedMembers(PublicParameterlessConstructor)` annotation, which does not depend on the type's name or accessibility.
