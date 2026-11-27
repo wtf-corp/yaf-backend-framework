@@ -4,6 +4,8 @@
     <Project Path="src/Application/Application.csproj" />
     <Project Path="src/Core/Core.csproj" />
     <Project Path="src/Domain/Domain.csproj" />
+    <Project Path="src/Http/Http.csproj" />
+    <Project Path="src/Http.MinimalApis/Http.MinimalApis.csproj" />
     <Project Path="src/Infrastructure/Infrastructure.csproj" />
     <Project Path="src/Persistence.EfCore/Persistence.EfCore.csproj" />
     <Project Path="src/Persistence.EfCore.PostgreSql/Persistence.EfCore.PostgreSql.csproj" />
@@ -19,6 +21,8 @@
     <Project Path="tests/Domain.Tests/Domain.Tests.csproj" />
     <Project Path="tests/Fixtures/ErrorsAlpha/ErrorsAlpha.csproj" />
     <Project Path="tests/Fixtures/ErrorsBeta/ErrorsBeta.csproj" />
+    <Project Path="tests/Http.MinimalApis.Tests/Http.MinimalApis.Tests.csproj" />
+    <Project Path="tests/Http.Tests/Http.Tests.csproj" />
     <Project Path="tests/Infrastructure.Tests/Infrastructure.Tests.csproj" />
     <Project Path="tests/Persistence.EfCore.PostgreSql.Tests/Persistence.EfCore.PostgreSql.Tests.csproj" />
     <Project Path="tests/Persistence.EfCore.Tests/Persistence.EfCore.Tests.csproj" />
