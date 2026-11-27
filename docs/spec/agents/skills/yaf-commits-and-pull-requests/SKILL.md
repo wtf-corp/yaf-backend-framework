@@ -28,7 +28,7 @@ Pull requests are squash-merged, so **the pull request title becomes the commit 
 7. **REQUIRED** — After `1.0.0`, a pull request to `main` is `fix`, `feat` or a non-releasing type. A breaking change targets `next`; the title check rejects `!` or a `BREAKING CHANGE:` footer on a pull request to `main`. The one exception is the planned merge of `next` into `main`, which a human maintainer marks with the `major-release` label.
 8. **REQUIRED** — A spec and a plan each travel in a pull request of their own, titled `docs(specs): …`, containing nothing but the files under `specs/` (and an ADR the spec needs).
 9. **REQUIRED** — No secrets, personal data or internal hostnames in messages, titles, descriptions, issues or comments.
-10. **REQUIRED** — Tier labels (`tier:low`, `tier:medium`, `tier:high`) are set by the classifier from the policy file and the diff. Do not set them. You may ask for a **higher** tier; nothing lowers the computed one.
+10. **REQUIRED** — Tier labels (`tier:low`, `tier:medium`, `tier:high`) are set by the classifier from the policy file and the diff. Do not set them. You may ask for a **higher** tier; nothing lowers the computed one. A guard file change that the merged plan on the base branch declares exactly (`.editorconfig`, `Directory.Packages.props`, ADR-0034) is tier medium, with the reason "guard change declared by the plan", and needs no `guard-change` label; any other reason for tier high keeps it high.
 11. **REQUIRED** — Merging is a workflow's job or a human's: `factory-automerge.yml` enables auto-merge (squash) for tier low and medium once the required checks are green; a tier-high pull request waits for a human maintainer's approving review. Green checks are not your cue to merge.
 12. **REQUIRED** — Small pull requests: one ticket each. By default, above 200 changed hand-written lines (`size.soft`) the reviewer asks why it was not split; above 400 (`size.hard`) check `factory/size` fails and a human decides. This repository uses 400 and 1000 during the initial build, until `1.0.0`. Generated code, lock files, approved files, public API files, migration designer files and snapshots do not count.
 13. **REQUIRED** — Commits made by agents are authored by the `yaf-factory` app identity, never by the human owner's account: a human cannot approve a pull request that carries their own name as author.
@@ -145,7 +145,7 @@ Size: n changed hand-written lines. Could not run: <what and why, or "nothing">
 - [ ] Migration: none / expand-contract described
 - [ ] Approved files changed: none / each one explained below, and every addition is in the plan's `factory:delta` block
 - [ ] Sensitive paths touched: none / listed (the classifier decides the tier)
-- [ ] Guards weakened: none / guard file changed — explained, `guard-change` label requested from a maintainer
+- [ ] Guards weakened: none / guard change declared by the plan / guard file changed — explained, `guard-change` label requested from a maintainer
 - [ ] Breaking: no / yes — title has `!`, footer explains; after `1.0.0` the pull request targets `next`
 
 ## Reviewer notes
