@@ -1,17 +1,21 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Analyzers/Analyzers.csproj" />
+    <Project Path="src/Application/Application.csproj" />
     <Project Path="src/Core/Core.csproj" />
     <Project Path="src/Domain/Domain.csproj" />
     <Project Path="src/Testing/Testing.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Analyzers.Tests/Analyzers.Tests.csproj" />
+    <Project Path="tests/Application.Tests/Application.Tests.csproj" />
     <Project Path="tests/Architecture.Tests/Architecture.Tests.csproj" />
     <Project Path="tests/Benchmarks/Benchmarks.csproj" />
     <Project Path="tests/Benchmarks/Cases/Benchmarks.Cases.csproj" />
     <Project Path="tests/Core.Tests/Core.Tests.csproj" />
     <Project Path="tests/Domain.Tests/Domain.Tests.csproj" />
+    <Project Path="tests/Fixtures/ErrorsAlpha/ErrorsAlpha.csproj" />
+    <Project Path="tests/Fixtures/ErrorsBeta/ErrorsBeta.csproj" />
     <Project Path="tests/Testing.Tests/Testing.Tests.csproj" />
   </Folder>
 </Solution>

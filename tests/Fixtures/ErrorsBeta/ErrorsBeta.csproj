@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The second of two libraries that declare the same error code under service code "dup", for the duplicate check of the error catalogue
+       (specs/0013-thin-slice/plan.md, T25 and T68). Never packed. -->
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <YafServiceCode>dup</YafServiceCode>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../../src/Analyzers/Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
+    <ProjectReference Include="../../../src/Core/Core.csproj" />
+  </ItemGroup>
+
+  <Import Project="../../../src/Core/buildTransitive/YAF.Core.props" />
+
+</Project>
