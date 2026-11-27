@@ -50,7 +50,7 @@ Every ADR has the sections Context, Drivers, Options considered, Decision, Conse
 |---|---|
 | [0023](0023-agentic-development-process.md) | Agentic development process: spec → plan → tickets → code → review, separate writing and reviewing agents, human approval placed by risk (superseded in part by 0034) |
 | [0024](0024-specifications.md) | Specifications, reviewed by an agent and approved by a human |
-| [0025](0025-implementation-plans.md) | Implementation plans: approach, declared delta and ticket list |
+| [0025](0025-implementation-plans.md) | Implementation plans: approach, declared delta and ticket list (superseded in part by 0034) |
 | [0026](0026-coding-rules-for-agents-and-humans.md) | Coding rules for agents and humans (superseded in part by 0034) |
 | [0027](0027-review.md) | Review: local code review and the pull-request review in CI (superseded in part by 0034) |
 | [0028](0028-agent-instructions-and-skills.md) | Agent instructions (`AGENTS.md`), skills and agent definitions |
