@@ -94,6 +94,30 @@
     "Directory.Packages.props",
     "package-lock.json"
   ],
+  "declaredGuards": {
+    "files": [
+      ".editorconfig",
+      "Directory.Packages.props"
+    ],
+    "neverLowered": [
+      "src/Http/Authentication/**",
+      "src/Application/Authorization/**",
+      "src/Application/Context/**",
+      "src/Persistence.EfCore*/Tenancy/**",
+      "src/Infrastructure/Cryptography/**",
+      "src/Persistence.EfCore/Protection/**",
+      "src/Persistence.EfCore*/Audit/**",
+      "src/Privacy*/**",
+      "src/Infrastructure/Redaction/**",
+      ".github/**",
+      ".claude/**",
+      ".agents/**",
+      "AGENTS.md",
+      "**/AGENTS.md",
+      "CLAUDE.md",
+      "docs/spec/**"
+    ]
+  },
   "sharedFiles": [
     "Directory.Packages.props",
     "**/PublicAPI.Unshipped.txt",
@@ -147,7 +171,8 @@
     "flaggingCategories": [
       "publicApi",
       "schema",
-      "dependencies"
+      "dependencies",
+      "editorconfig"
     ]
   },
   "roles": {

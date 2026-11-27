@@ -53,8 +53,11 @@ export function dropMovedTests(findings, diff) {
   return findings.filter((f) => (f.what === 'removed test' && budget-- > 0 ? false : true));
 }
 
-export function guardVerdict(findings, labelAppliedByHuman) {
-  if (findings.length === 0) return { pass: true, title: 'no weakened guard' };
+/** declaredFiles: guard files whose change the base plan declares exactly (ADR-0034); their findings are reported, not counted. */
+export function guardVerdict(allFindings, labelAppliedByHuman, declaredFiles = []) {
+  const findings = allFindings.filter((f) => !declaredFiles.includes(f.file));
+  if (allFindings.length === 0) return { pass: true, title: 'no weakened guard' };
+  if (findings.length === 0) return { pass: true, title: `${allFindings.length} guard change(s), all in files whose change is declared by the plan (ADR-0034)` };
   return labelAppliedByHuman
     ? { pass: true, title: `${findings.length} guard change(s), accepted by a maintainer (guard-change)` }
     : { pass: false, title: `${findings.length} guard change(s): fix the cause, or a maintainer applies guard-change` };

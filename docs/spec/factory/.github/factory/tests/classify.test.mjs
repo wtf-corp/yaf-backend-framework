@@ -67,6 +67,26 @@ test('a dependency patch update is low, anything else in the package file is hig
   assert.equal(classify({ ...base, files, title: 'chore(deps): add Evil', diff: new Map([['Directory.Packages.props', added]]) }).tier, 'high');
 });
 
+const pin = { removed: [], added: ['    <PackageVersion Include="Npgsql" Version="10.0.1" />'] };
+
+test('classify_DeclaredPackagePins_IsMedium', () => {
+  const r = classify({ ...base, files: ['Directory.Packages.props'], title: 'build: pin Npgsql', diff: new Map([['Directory.Packages.props', pin]]), declaredFiles: ['Directory.Packages.props'] });
+  assert.equal(r.tier, 'medium');
+  assert.deepEqual(r.reasons, ['guard change declared by the plan: Directory.Packages.props']);
+});
+
+test('classify_DeclaredFileAndAnotherSensitivePath_IsHigh', () => {
+  const r = classify({ ...base, files: ['.editorconfig', 'src/Application/Context/Principal.cs'], title: 'build: relax CA1040', declaredFiles: ['.editorconfig'] });
+  assert.equal(r.tier, 'high');
+  assert.deepEqual(r.reasons, ['sensitive path: src/Application/Context/Principal.cs']);
+});
+
+test('classify_UndeclaredPackageChange_IsHigh', () => {
+  const r = classify({ ...base, files: ['Directory.Packages.props'], title: 'build: pin Npgsql', diff: new Map([['Directory.Packages.props', pin]]) });
+  assert.equal(r.tier, 'high');
+  assert.equal(classify({ ...base, files: ['.editorconfig'], title: 'build: x', declaredFiles: ['Directory.Packages.props'] }).tier, 'high');
+});
+
 test('pull request kind', () => {
   assert.equal(prKind(['specs/0003-typed-ids/plan.md'], policy), 'plan');
   assert.equal(prKind(['specs/0003-typed-ids/plan.md', 'specs/0003-typed-ids/research.md'], policy), 'plan');

@@ -6,6 +6,8 @@ import { parseBody, ticketVerdict } from '../ticket.mjs';
 import { approvingHuman, humanApprovalVerdict } from '../human-approval.mjs';
 import { verdictOf } from '../post-review.mjs';
 import { plannedChanges, blockers } from '../status.mjs';
+import { classify } from '../classify.mjs';
+import { declaredGuardFiles } from '../gates.mjs';
 
 const policy = { ...loadPolicy(), humans: { team: 'maintainers', logins: ['alice'] } };
 const isHuman = makeHumanCheck(policy);
@@ -40,6 +42,31 @@ test('guard-change counts only from a human maintainer', () => {
   timeline.push({ event: 'labeled', label: { name: 'guard-change' }, actor: { login: 'alice', type: 'User' } });
   assert.equal(isHuman(lastLabelActor(timeline, 'guard-change')), true);
   assert.equal(isHuman({ login: 'mallory', type: 'User' }), false);
+});
+
+test('guardVerdict_OnlyDeclaredFindings_Passes', () => {
+  const declared = { file: '.editorconfig', what: 'analyzer severity lowered', line: 'x' };
+  const other = { file: 'src/Core/A.cs', what: 'pragma warning disable', line: 'y' };
+  const v = guardVerdict([declared], false, ['.editorconfig']);
+  assert.equal(v.pass, true);
+  assert.match(v.title, /declared by the plan/);
+  assert.equal(guardVerdict([declared, other], false, ['.editorconfig']).pass, false);
+  assert.equal(guardVerdict([declared], false).pass, false);
+});
+
+const planWith = (entries) => `# plan\n\n\`\`\`factory:delta\n${JSON.stringify({ editorconfig: entries })}\n\`\`\`\n`;
+const config = 'root = true\n\n[*.cs]\nindent_style = space\n';
+const setting = 'dotnet_diagnostic.CA1040.severity = warning';
+const editorconfigChange = new Map([['.editorconfig', { base: config, head: `${config}\n[src/Core/A.cs]\n${setting}\n` }]]);
+
+test('declaredGuardFiles_DeclarationOnlyInTheHeadPlan_IsNone', () => {
+  const basePlan = planWith([]);
+  assert.deepEqual(declaredGuardFiles(basePlan, editorconfigChange, policy), []);
+  assert.deepEqual(declaredGuardFiles(null, editorconfigChange, policy), []);
+  const r = classify({ files: ['.editorconfig', 'specs/0015-x/plan.md'], diff: new Map(), title: 'build: relax CA1040', policy, declaredFiles: [] });
+  assert.equal(r.tier, 'high');
+  // the same entry on the base plan declares the file
+  assert.deepEqual(declaredGuardFiles(planWith([`[src/Core/A.cs] ${setting}`]), editorconfigChange, policy), ['.editorconfig']);
 });
 
 test('pull request body', () => {

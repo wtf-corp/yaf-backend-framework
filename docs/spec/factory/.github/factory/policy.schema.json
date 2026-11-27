@@ -64,6 +64,16 @@
     },
     "sensitivePaths": { "$ref": "#/$defs/globs" },
     "dependencyPatchFiles": { "$ref": "#/$defs/globs" },
+    "declaredGuards": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["files", "neverLowered"],
+      "description": "Guard files whose change the merged plan can declare exactly, which makes it tier medium (ADR-0034).",
+      "properties": {
+        "files": { "type": "array", "items": { "enum": [".editorconfig", "Directory.Packages.props"] }, "uniqueItems": true, "description": "The files covered; declared.mjs has a parser for these two only." },
+        "neverLowered": { "$ref": "#/$defs/globs", "description": "An .editorconfig section naming a file under one of these paths keeps the pull request tier high. Matched without regard to case." }
+      }
+    },
     "sharedFiles": { "$ref": "#/$defs/globs" },
     "tiers": {
       "type": "object",

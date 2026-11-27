@@ -87,6 +87,14 @@ test('plan flags: public API, high tickets, deviations', () => {
   assert.equal(planFlags(quiet.replace(/```factory:delta[\s\S]*?```/, ''), policy).flagged, true);
 });
 
+test('planFlags_EditorconfigEntry_IsFlagged', () => {
+  const entry = '"[src/Core/A.cs] dotnet_diagnostic.CA1040.severity = warning"';
+  const only = plan.replace(/\{ "publicApi".*\}/, `{ "editorconfig": [${entry}] }`).replace('| high |', '| medium |');
+  const flags = planFlags(only, policy);
+  assert.equal(flags.flagged, true);
+  assert.deepEqual(flags.reasons, ['declares editorconfig: 1 entry']);
+});
+
 test('ticket list problems a script can decide', () => {
   const tickets = parseTickets(plan);
   assert.deepEqual(ticketProblems(tickets, policy), []);
