@@ -19,7 +19,7 @@
     "size-accepted"
   ],
   "limits": {
-    "parallelImplementers": 2,
+    "parallelImplementers": 3,
     "fixRounds": 2
   },
   "size": {
