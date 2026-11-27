@@ -13,9 +13,6 @@ allowed-tools:
   - Bash(node .github/scripts/factory-token.mjs --app factory -- gh issue edit * --remove-label blocked)
   - Bash(node .github/scripts/factory-token.mjs --app reviewer -- node .github/scripts/local-review.mjs *)
   - Bash(node .github/scripts/factory-token.mjs --app factory -- node docs/spec/factory/.github/factory/exit-check.mjs specs/*/plan.md --post)
-  - Bash(node .github/scripts/factory-token.mjs --app factory -- git -C * fetch origin main)
-  - Bash(node .github/scripts/factory-token.mjs --app factory -- git -C * rebase --onto origin/main *)
-  - Bash(node .github/scripts/factory-token.mjs --app factory -- git -C * rebase --abort)
   - Bash(git worktree unlock *)
   - Bash(git worktree remove *)
   - Bash(git branch -D *)
@@ -31,9 +28,6 @@ allowed-tools:
   - PowerShell(node .github/scripts/factory-token.mjs --app factory -- gh issue edit * --remove-label blocked)
   - PowerShell(node .github/scripts/factory-token.mjs --app reviewer -- node .github/scripts/local-review.mjs *)
   - PowerShell(node .github/scripts/factory-token.mjs --app factory -- node docs/spec/factory/.github/factory/exit-check.mjs specs/*/plan.md --post)
-  - PowerShell(node .github/scripts/factory-token.mjs --app factory -- git -C * fetch origin main)
-  - PowerShell(node .github/scripts/factory-token.mjs --app factory -- git -C * rebase --onto origin/main *)
-  - PowerShell(node .github/scripts/factory-token.mjs --app factory -- git -C * rebase --abort)
   - PowerShell(git worktree unlock *)
   - PowerShell(git worktree remove *)
   - PowerShell(git branch -D *)
@@ -51,7 +45,7 @@ Do these steps in order.
      - `fix` → resume the implementer of that pull request, or start a new one, with the review's summary comment verbatim and "round N of M". For the cause `references`: post the references-fix marker on the ticket first, then give the one instruction to regenerate the references and commit them.
      - `gate-failed` → a comment, and `needs-human` on the pull request and on the ticket.
      - `human` → collect it for the report, with its reason. A plan or spec pull request whose review failed is one of them.
-   - Every pull request row `failed` with the error of one worktree row: `needs-human` on that worktree's ticket with the error.
+   - Every pull request row `failed` with the error of one worktree row, on two passes in a row: `needs-human` on that worktree's ticket with the error.
    - For each worktree:
      - `remove` → remove it ("Worktrees" in the skill).
      - `human` → collect it for the report. A stacked worktree whose dependency closed unmerged gets `needs-human` on its ticket.
@@ -59,7 +53,7 @@ Do these steps in order.
      - `local-fix` → unless `exhausted`, back to the implementer with the marker's findings verbatim, as fix round `round + 1`. When `exhausted`: label the ticket `needs-human` with the skill's summary comment (what was tried, what was observed, the options) and try nothing more.
      - `open-pr` → the skill's step 6.
      - `stacked` → nothing: it waits for its dependency's merge and takes no implementer slot.
-     - `restack` → as the app: `node .github/scripts/factory-token.mjs --app factory -- git -C <worktree> fetch origin main`, then `node .github/scripts/factory-token.mjs --app factory -- git -C <worktree> rebase --onto origin/main <onto> <branch>`. On a conflict, `node .github/scripts/factory-token.mjs --app factory -- git -C <worktree> rebase --abort` and the `factory:local-review` marker `changes-required` for the head, naming the conflicting files. The next tick gives the rebased worktree `local-review`.
+     - `restack` → as the app: `node .github/scripts/factory-token.mjs --app factory -- git -C <worktree> fetch origin main`, then `node .github/scripts/factory-token.mjs --app factory -- git -C <worktree> rebase --onto origin/main <onto> <branch>`. On a conflict, `node .github/scripts/factory-token.mjs --app factory -- git -C <worktree> rebase --abort` and the marker `factory:local-review <head> changes-required round=<n>`, with `n` the round of the head's last `ready` marker, naming the conflicting files: fix round `n + 1` under the usual cap. The next tick gives the rebased worktree `local-review`. These three commands are not pre-approved and prompt for now.
      - `push-owed` → when the ticket's `touches` name `.github/workflows/`, collect "waiting for the owner's push" with the branch and the worktree path, and post the awaiting-push marker unless `notified`. Otherwise push as the app: `node .github/scripts/factory-token.mjs --app factory -- git -C <worktree> push -u origin <branch>`.
 
 3. **Pick.** Label `blocked`, or remove the label, for tickets that wait for another plan's issues (the skill's rule 16). Pick `Ready` tickets within the skill's rule 5 and the parallel limit of the policy (`limits.parallelImplementers`), none that depends on an open ticket. A `Backlog` ticket may also start stacked, as the skill's step 3 says: one open dependency D whose pull request targets `main`, D's worktree not `working`, the stacked-on marker posted first. Start each implementer in the background, with the role and model the policy gives it and the base `origin/main`, or for a stacked ticket `origin/<D's branch>` at D's head.
