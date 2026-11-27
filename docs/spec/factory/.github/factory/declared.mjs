@@ -24,7 +24,7 @@ const same = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
  * The one file a section header names, or null (ADR-0034 Decision 2): a repository-relative path with a `/`,
  * no unescaped glob character, no `..` segment, `\` only as an escape. A leading `/` is removed.
  */
-export function sectionFile(header) {
+function sectionFile(header) {
   let file = '';
   let slash = false;
   for (let i = 0; i < header.length; i++) {
