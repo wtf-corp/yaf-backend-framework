@@ -7,7 +7,8 @@
 #
 # Keep this list in step with `sensitivePaths` in .github/factory/policy.json. The policy is wider on
 # purpose: it also makes paths tier high that need a human review without needing a code OWNER
-# (for example Directory.Packages.props, where a patch update must be able to merge automatically).
+# (Directory.Packages.props, where a patch update must be able to merge automatically, and .editorconfig,
+# where a change the plan declared merges at tier medium; an undeclared change to either is tier high, ADR-0034).
 
 # What is to be built, and the decisions
 /specs/**/spec.md                          @yaf/maintainers
@@ -23,7 +24,6 @@ AGENTS.md                                  @yaf/maintainers
 
 # Guards
 BannedSymbols.txt                          @yaf/maintainers
-.editorconfig                              @yaf/maintainers
 /tests/Architecture.Tests/                 @yaf/maintainers
 /src/Analyzers/                            @yaf/maintainers
 /Directory.Build.props                     @yaf/maintainers

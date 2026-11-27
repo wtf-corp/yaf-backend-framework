@@ -10,7 +10,8 @@
 #
 # Keep this list in step with `sensitivePaths` in docs/spec/factory/.github/factory/policy.json. The policy is
 # wider on purpose: it also makes paths tier high that need a human review without needing a code OWNER
-# (for example Directory.Packages.props, where a patch update must be able to merge automatically).
+# (Directory.Packages.props, where a patch update must be able to merge automatically, and .editorconfig,
+# where a change the plan declared merges at tier medium; an undeclared change to either is tier high, ADR-0034).
 
 # What is to be built, and the decisions: the specification bundle (spec, ADRs, agent guidance,
 # the factory kit with its live policy and gate scripts) and feature specs
@@ -28,7 +29,6 @@ AGENTS.md                                  @wtf-corp/admins
 
 # Guards
 BannedSymbols.txt                          @wtf-corp/admins
-.editorconfig                              @wtf-corp/admins
 /tests/Architecture.Tests/                 @wtf-corp/admins
 /src/Analyzers/                            @wtf-corp/admins
 /Directory.Build.props                     @wtf-corp/admins
