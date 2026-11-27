@@ -167,7 +167,7 @@ This overrides the bundle (ADR-0027 decision 4, ADR-0029, the kit README, `yaf-o
 
 **Lean orchestration.**
 
-- At most two implementers at once (`limits.parallelImplementers`).
+- At most three implementers at once (`limits.parallelImplementers`). A stacked ticket that waits for its dependency's merge is not one of them.
 - Agent reports are at most 15 lines: branch, head commit, commands with exit codes and counts, size, deviations.
 - A fresh session, or `/compact`, after each batch of tickets. The Project, the tickets and their marker comments are the handover, nothing in the session.
 
