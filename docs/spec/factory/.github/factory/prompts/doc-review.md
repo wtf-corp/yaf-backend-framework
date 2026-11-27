@@ -24,14 +24,25 @@ For an ADR in the pull request: the template's sections are present, options are
 
 ## Kind `plan` — the plan quality checklist
 
+The model review runs after check `factory/plan-gate` passed. Its script, `plan-check.mjs`, fails a plan on the following, so do not hunt for them; rely on its result and judge the design:
+
+- the `factory:delta` block or the Tickets table does not parse; a duplicate key; a `Depends on` that names an unknown or a later ticket; a ticket without touches or a verification command, without a failing test (except type `docs`), or estimated above `size.soft`;
+- two tickets whose touches overlap (the same path, a folder and a path inside it, a glob and a path it matches, one `Migrations/` folder) while neither is an ancestor of the other through `Depends on`;
+- a ticket of a type other than `docs` whose title, failing test or verify names, in a code span, a type or file that a ticket outside its ancestors creates (a new `.cs` file in its touches, "`X` does not exist" in its failing test, a new ADR);
+- a `factory:delta` entry of the wrong form, and a `YAF.X.*` public API prefix without all sixteen line forms;
+- a declared tier below the floor `classify.mjs` gives the touches and the title: high for a sensitive path or a `!` title; medium for an approved file of the delta sources (not a new `PublicAPI.*.txt`), for `.editorconfig` or `Directory.Packages.props` with declared entries, and for a title type not listed as low unless every touch is in the low paths;
+- a key in the Test strategy table that is not in the Tickets table, and a key of the base branch's version that is gone.
+
+The gate only reports, without failing, a `docs` ticket that uses what a non-ancestor creates, a tier above the floor, a folder touch that holds a sensitive subfolder, a `T<n>` in the prose that is not a key, and a key whose title changed. Judge those cases yourself.
+
 1. The approach is described and the rejected alternatives are named with reasons.
 2. The public API, schema, error-code, contract and dependency delta is declared in the `factory:delta` block, and it matches what the prose says. An empty category is written as `[]`.
 3. Every requirement and scenario of the spec (or every cited section of `specs/0000-framework/`) maps to at least one ticket and a test level.
 4. Every ticket has one concern. A title with "and" is two tickets.
 5. Every ticket names the failing test to write first and a verification command with its expected result.
 6. Every ticket's estimate is within the soft size limit of `.github/factory/policy.json`; a ticket that cannot be is split, or the plan says why it is indivisible.
-7. Every ticket declares its dependencies and its `touches`; no ticket depends on a later one; tickets meant to run in parallel do not overlap in `touches` or in the policy's `sharedFiles`.
-8. The expected tier of each ticket is plausible against the policy's sensitive paths.
+7. Dependencies and `touches` are honest beyond what the gate matches: a ticket that relies on another's behaviour depends on it; `touches` names every file the ticket must change, the policy's `sharedFiles` included, so that tickets meant to run in parallel do not in fact share one.
+8. The expected tier of each ticket is plausible: no vague touch hides a sensitive path from the gate, and a tier raised above the floor says why.
 9. Risks have a rollback. A schema change follows expand/contract.
 10. Deviations from the spec are listed, or the section says "none". A deviation that changes scope, security or a public contract is a question for the human owner: report it as a finding with `for: "owner"` and the severity that describes it.
 
