@@ -21,7 +21,7 @@ namespace YAF.Core.Results;
 /// }
 /// </code>
 /// </example>
-public readonly struct Result : IResult
+public readonly struct Result : IResult, IFailureFactory
 {
     private readonly ReadOnlyCollection<Error>? _errors;
     private readonly bool _isSuccess;
@@ -214,6 +214,9 @@ public readonly struct Result : IResult
         ArgumentNullException.ThrowIfNull(continuation);
         return _isSuccess ? continuation() : new ValueTask<Result<T>>(new Result<T>(_errors ?? ResultErrors.Uninitialised));
     }
+
+    /// <inheritdoc/>
+    IResult IFailureFactory.CreateFailure(IReadOnlyList<Error> errors) => Failure(errors);
 
     private static async Task<Result> KeepAfterAsync(Task pending, Result result)
     {
