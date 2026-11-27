@@ -26,6 +26,9 @@ public sealed class CoreAssemblyTests
 
         service.Should().NotBeNull();
         service!.ServiceCode.Should().Be("core");
-        service.ErrorRegistry.FullName.Should().Be("YAF.Generated.YafErrorRegistry");
+        service.ErrorRegistry.Should().Implement<IErrorRegistry>();
+        service.ErrorRegistry.IsPublic.Should().BeFalse();
+        service.ErrorRegistry.IsNestedPublic.Should().BeFalse();
+        service.ErrorRegistry.Name.Should().EndWith("YafErrorRegistry");
     }
 }

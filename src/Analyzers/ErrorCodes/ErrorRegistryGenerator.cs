@@ -8,9 +8,11 @@ namespace YAF.Analyzers.ErrorCodes;
 
 /// <summary>
 /// Emits, in a compilation with a valid <c>YafServiceCode</c> and at least one error catalogue field, the assembly's
-/// <c>[assembly: YafService(…)]</c> and the <c>YAF.Generated.YafErrorRegistry</c> it names, which lists every catalogue field in
-/// declaration order (03 §2.1), so that the catalogue is read without a scan. The descriptors are read from the fields at run time.
-/// A field the registry cannot name (a private catalogue, or one inside a generic type) is left out.
+/// <c>[assembly: YafService(…)]</c> and the file-local <c>YAF.Generated.YafErrorRegistry</c> it names, which lists every catalogue
+/// field in declaration order (03 §2.1), so that the catalogue is read without a scan. The descriptors are read from the fields at run time.
+/// A field the registry cannot name (a private catalogue, or one inside a generic type) is left out. Being file-local, the registry is
+/// reached only through the attribute and is invisible to every other assembly, so that a friend assembly with its own catalogue does not
+/// clash with it.
 /// </summary>
 [Generator(LanguageNames.CSharp)]
 internal sealed class ErrorRegistryGenerator : IIncrementalGenerator
@@ -101,7 +103,7 @@ internal sealed class ErrorRegistryGenerator : IIncrementalGenerator
 
             namespace YAF.Generated
             {
-                internal sealed class YafErrorRegistry : global::YAF.Core.Results.IErrorRegistry
+                file sealed class YafErrorRegistry : global::YAF.Core.Results.IErrorRegistry
                 {
                     public global::System.Collections.Generic.IReadOnlyList<global::YAF.Core.Results.ErrorRegistration> Errors { get; } =
                         new global::YAF.Core.Results.ErrorRegistration[]
