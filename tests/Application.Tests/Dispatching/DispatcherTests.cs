@@ -105,7 +105,7 @@ public sealed class DispatcherTests
     private static IServiceScope Scope(Action<PipelineBuilder> pipeline) => Provider(pipeline).CreateScope();
 
     /// <summary>The services <c>AddYafApplication</c> registers, with the hand-written registry in place of a generated one.</summary>
-    private static TestServiceProvider Provider(Action<PipelineBuilder> pipeline)
+    internal static TestServiceProvider Provider(Action<PipelineBuilder> pipeline)
     {
         var services = new ServiceCollection().AddYafApplication(app => app.UsePipeline(pipeline));
         var registry = new DispatchingRegistry();

@@ -26,7 +26,18 @@ public interface IRequestRunner
     /// <typeparam name="TItem">The type of the streamed items.</typeparam>
     /// <param name="query">The stream query.</param>
     /// <param name="ct">Cancels the enumeration; it reaches the handler.</param>
-    /// <returns>The items.</returns>
+    /// <returns>
+    /// The items, handed over one at a time: the handler is asked for the next item only when the caller asks, and a middleware's code
+    /// after <c>next</c> runs once the caller has asked past the last item.
+    /// </returns>
+    /// <exception cref="InvalidOperationException">
+    /// A middleware returned a failure (a stream has no <see cref="Result"/> to return it in); the message names the error codes. Thrown when
+    /// the enumeration reaches the end of the items the pipeline let through.
+    /// </exception>
+    /// <remarks>
+    /// The middleware are closed over an internal request that wraps the stream query, not over <typeparamref name="TQuery"/>; a closed
+    /// middleware of one request does not run for a stream query.
+    /// </remarks>
     IAsyncEnumerable<TItem> StreamAsync<TQuery, TItem>(TQuery query, CancellationToken ct)
         where TQuery : IStreamQuery<TItem>;
 
