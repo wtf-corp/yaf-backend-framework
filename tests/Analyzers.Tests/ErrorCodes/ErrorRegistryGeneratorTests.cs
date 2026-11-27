@@ -9,6 +9,17 @@ public sealed class ErrorRegistryGeneratorTests
 {
     private static readonly Dictionary<string, string> s_catalog = new() { ["YafServiceCode"] = "catalog" };
 
+    // An assembly with a catalogue that grants its internals to "Second".
+    private const string FriendlyFirst = """
+        using YAF.Core.Results;
+        [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Second")]
+        namespace First;
+        public sealed class SessionErrors : IErrorCatalog
+        {
+            public static readonly ErrorDescriptor Full = Error.Conflict("Session is full.");
+        }
+        """;
+
     [Fact]
     public async Task Catalogue_EmitsServiceAttributeAndRegistry()
     {
@@ -152,15 +163,6 @@ public sealed class ErrorRegistryGeneratorTests
     [Fact]
     public async Task FriendAssemblyWithCatalogue_BuildsWithoutClash()
     {
-        const string first = """
-            using YAF.Core.Results;
-            [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Second")]
-            namespace First;
-            public sealed class SessionErrors : IErrorCatalog
-            {
-                public static readonly ErrorDescriptor Full = Error.Conflict("Session is full.");
-            }
-            """;
         const string second = """
             using YAF.Core.Results;
             namespace Second;
@@ -170,7 +172,7 @@ public sealed class ErrorRegistryGeneratorTests
             }
             """;
 
-        using var firstResult = await RunAsync(first, s_catalog, "First");
+        using var firstResult = await RunAsync(FriendlyFirst, s_catalog, "First");
         using var secondResult = await RunAsync(
             second, new() { ["YafServiceCode"] = "speakers" }, "Second", [MetadataReference.CreateFromImage(firstResult.Image)]);
 
@@ -183,15 +185,6 @@ public sealed class ErrorRegistryGeneratorTests
     [Fact]
     public async Task Catalogue_RegistryIsNotVisibleOutsideItsAssembly()
     {
-        const string first = """
-            using YAF.Core.Results;
-            [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Second")]
-            namespace First;
-            public sealed class SessionErrors : IErrorCatalog
-            {
-                public static readonly ErrorDescriptor Full = Error.Conflict("Session is full.");
-            }
-            """;
         const string second = """
             namespace Second;
             public static class Reader
@@ -200,7 +193,7 @@ public sealed class ErrorRegistryGeneratorTests
             }
             """;
 
-        using var firstResult = await RunAsync(first, s_catalog, "First");
+        using var firstResult = await RunAsync(FriendlyFirst, s_catalog, "First");
         using var secondResult = await RunAsync(
             second, new Dictionary<string, string>(), "Second", [MetadataReference.CreateFromImage(firstResult.Image)]);
 
