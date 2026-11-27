@@ -37,6 +37,8 @@ YAF.Domain.IAggregateRoot
 YAF.Domain.IAggregateRoot.CheckInvariants() -> YAF.Core.Results.Result
 YAF.Domain.IAggregateRoot.DequeueDomainEvents() -> System.Collections.Generic.IReadOnlyList<YAF.Domain.Events.IDomainEvent!>!
 YAF.Domain.IAggregateRoot.DomainEvents.get -> System.Collections.Generic.IReadOnlyList<YAF.Domain.Events.IDomainEvent!>!
+YAF.Domain.IAggregateStateSync
+YAF.Domain.IAggregateStateSync.SyncVersion(YAF.Domain.AggregateVersion version) -> void
 YAF.Domain.IOriginator<TSelf, TMemento>
 YAF.Domain.IOriginator<TSelf, TMemento>.Restore(TMemento memento) -> TSelf
 YAF.Domain.Mementos.CorruptStateException
