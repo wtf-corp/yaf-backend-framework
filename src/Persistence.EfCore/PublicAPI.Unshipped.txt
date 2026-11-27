@@ -1,1 +1,31 @@
 #nullable enable
+YAF.Persistence.EfCore.AggregateData
+YAF.Persistence.EfCore.AggregateData.AggregateData() -> void
+YAF.Persistence.EfCore.AggregateData.CreatedAt.get -> System.DateTimeOffset
+YAF.Persistence.EfCore.AggregateData.CreatedAt.set -> void
+YAF.Persistence.EfCore.AggregateData.CreatedBy.get -> System.Guid
+YAF.Persistence.EfCore.AggregateData.CreatedBy.set -> void
+YAF.Persistence.EfCore.AggregateData.Id.get -> System.Guid
+YAF.Persistence.EfCore.AggregateData.Id.set -> void
+YAF.Persistence.EfCore.AggregateData.ModifiedAt.get -> System.DateTimeOffset
+YAF.Persistence.EfCore.AggregateData.ModifiedAt.set -> void
+YAF.Persistence.EfCore.AggregateData.ModifiedBy.get -> System.Guid
+YAF.Persistence.EfCore.AggregateData.ModifiedBy.set -> void
+YAF.Persistence.EfCore.AggregateData.TenantId.get -> System.Guid
+YAF.Persistence.EfCore.AggregateData.TenantId.set -> void
+YAF.Persistence.EfCore.AggregateData.Version.get -> System.Guid
+YAF.Persistence.EfCore.AggregateData.Version.set -> void
+YAF.Persistence.EfCore.MementoDataAttribute
+YAF.Persistence.EfCore.MementoDataAttribute.MementoDataAttribute() -> void
+YAF.Persistence.EfCore.OwnedEntityData
+YAF.Persistence.EfCore.OwnedEntityData.CreatedAt.get -> System.DateTimeOffset
+YAF.Persistence.EfCore.OwnedEntityData.CreatedAt.set -> void
+YAF.Persistence.EfCore.OwnedEntityData.CreatedBy.get -> System.Guid
+YAF.Persistence.EfCore.OwnedEntityData.CreatedBy.set -> void
+YAF.Persistence.EfCore.OwnedEntityData.Id.get -> System.Guid
+YAF.Persistence.EfCore.OwnedEntityData.Id.set -> void
+YAF.Persistence.EfCore.OwnedEntityData.ModifiedAt.get -> System.DateTimeOffset
+YAF.Persistence.EfCore.OwnedEntityData.ModifiedAt.set -> void
+YAF.Persistence.EfCore.OwnedEntityData.ModifiedBy.get -> System.Guid
+YAF.Persistence.EfCore.OwnedEntityData.ModifiedBy.set -> void
+YAF.Persistence.EfCore.OwnedEntityData.OwnedEntityData() -> void
