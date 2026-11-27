@@ -1,0 +1,8 @@
+#nullable enable
+const YAF.Testing.Integration.YafPostgreSqlFixture.Image = "postgres:19" -> string!
+YAF.Testing.Integration.YafPostgreSqlFixture
+YAF.Testing.Integration.YafPostgreSqlFixture.ConnectionString.get -> string!
+YAF.Testing.Integration.YafPostgreSqlFixture.CreateDatabaseAsync(string! name) -> System.Threading.Tasks.Task<string!>!
+YAF.Testing.Integration.YafPostgreSqlFixture.DisposeAsync() -> System.Threading.Tasks.ValueTask
+YAF.Testing.Integration.YafPostgreSqlFixture.InitializeAsync() -> System.Threading.Tasks.ValueTask
+YAF.Testing.Integration.YafPostgreSqlFixture.YafPostgreSqlFixture() -> void

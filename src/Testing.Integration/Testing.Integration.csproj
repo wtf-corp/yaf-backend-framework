@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Container and host fixtures for integration tests (15 §3.2): xUnit v3 types, Testcontainers, no AOT or trimming claim (01 §4). -->
+  <PropertyGroup>
+    <YafServiceCode>core</YafServiceCode>
+  </PropertyGroup>
+
+  <!-- Testcontainers' PostgreSQL module and xUnit v3's fixture contracts, as ADR-0003's row for YAF.Testing.Integration allows
+       (specs/0013-thin-slice/research.md §2, §9). No Npgsql reference of its own: the database is created with psql inside the container. -->
+  <ItemGroup>
+    <PackageReference Include="Testcontainers.PostgreSql" />
+    <PackageReference Include="xunit.v3.extensibility.core" />
+  </ItemGroup>
+
+  <!-- A project reference carries neither the analyzers nor YAF.Core.props, which an app gets from the YAF.Core package, so both are named
+       here (specs/0009-domain/research.md §6). The analyzers stay out of this package: consumers get them through YAF.Core. The Npgsql
+       assemblies a test connects with come from YAF.Persistence.EfCore.PostgreSql (15 §3). -->
+  <ItemGroup>
+    <ProjectReference Include="../Analyzers/Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
+    <ProjectReference Include="../Persistence.EfCore.PostgreSql/Persistence.EfCore.PostgreSql.csproj" />
+  </ItemGroup>
+
+  <Import Project="../Core/buildTransitive/YAF.Core.props" />
+
+</Project>
