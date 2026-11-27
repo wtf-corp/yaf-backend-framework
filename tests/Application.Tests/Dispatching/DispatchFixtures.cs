@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
 using YAF.Application;
 using YAF.Application.Pipeline;
@@ -13,6 +14,9 @@ internal sealed record PingCommand(bool FailOnce = false) : ICommand<Result>;
 /// <summary>A query.</summary>
 internal sealed record PingQuery : IQuery<Result>;
 
+/// <summary>A stream query whose handler yields the numbers 1 to <see cref="Count"/>.</summary>
+internal sealed record CountQuery(int Count) : IStreamQuery<int>;
+
 /// <summary>What ran, in order, and the token the handler saw; scoped, so it also shows which scope each step resolved from.</summary>
 internal sealed class CallLog
 {
@@ -24,15 +28,16 @@ internal sealed class CallLog
 /// <summary>A hand-written stand-in for the generated registry's switch (the generator is T26); added to the registrations directly.</summary>
 internal sealed class DispatchingRegistry : IHandlerRegistry
 {
-    public IReadOnlyCollection<Type> DeclaredRequests { get; } = [typeof(PingCommand), typeof(PingQuery)];
+    public IReadOnlyCollection<Type> DeclaredRequests { get; } = [typeof(PingCommand), typeof(PingQuery), typeof(CountQuery)];
 
-    public IReadOnlyCollection<Type> HandledRequests { get; } = [typeof(PingCommand), typeof(PingQuery)];
+    public IReadOnlyCollection<Type> HandledRequests { get; } = [typeof(PingCommand), typeof(PingQuery), typeof(CountQuery)];
 
     public void Register(IServiceCollection services)
     {
         services.AddScoped(_ => new CallLog());
         services.AddScoped<IRequestHandler<PingCommand, Result>>(scope => new PingCommandHandler(scope.GetRequiredService<CallLog>()));
         services.AddScoped<IRequestHandler<PingQuery, Result>>(scope => new PingQueryHandler(scope.GetRequiredService<CallLog>()));
+        services.AddScoped<IStreamQueryHandler<CountQuery, int>>(scope => new CountQueryHandler(scope.GetRequiredService<CallLog>()));
     }
 
     /// <summary>Registers the test middleware with factories, so that the dispatcher resolves them from the scope.</summary>
@@ -44,6 +49,7 @@ internal sealed class DispatchingRegistry : IHandlerRegistry
         services.AddScoped(scope => new InnerMiddleware<PingQuery, Result>(scope.GetRequiredService<CallLog>()));
         services.AddScoped(_ => new ShortCircuitMiddleware());
         services.AddScoped(_ => new RetryMiddleware());
+        services.AddScoped(_ => new RefusingMiddleware<PingQuery, Result>());
     }
 
     public bool TrySend<TResult>(IRequest<TResult> request, IRequestRunner runner, CancellationToken ct, out ValueTask<TResult> result)
@@ -61,8 +67,10 @@ internal sealed class DispatchingRegistry : IHandlerRegistry
 
     public bool TryStream<TItem>(IStreamQuery<TItem> query, IRequestRunner runner, CancellationToken ct, out IAsyncEnumerable<TItem> items)
     {
-        items = AsyncEnumerable.Empty<TItem>();
-        return false;
+        items = query is CountQuery count
+            ? (IAsyncEnumerable<TItem>)runner.StreamAsync<CountQuery, int>(count, ct)
+            : AsyncEnumerable.Empty<TItem>();
+        return query is CountQuery;
     }
 
     public bool TryPublish(IDomainEvent domainEvent, IRequestRunner runner, CancellationToken ct, out ValueTask<Result> result)
@@ -90,6 +98,21 @@ internal sealed class PingQueryHandler(CallLog log) : IRequestHandler<PingQuery,
     {
         log.Entries.Add("handler");
         return ValueTask.FromResult(Result.Success());
+    }
+}
+
+internal sealed class CountQueryHandler(CallLog log) : IStreamQueryHandler<CountQuery, int>
+{
+    public async IAsyncEnumerable<int> HandleAsync(CountQuery query, [EnumeratorCancellation] CancellationToken ct)
+    {
+        log.HandlerToken = ct;
+        foreach (var item in Enumerable.Range(1, query.Count))
+        {
+            await Task.Yield();
+            ct.ThrowIfCancellationRequested();
+            log.Entries.Add($"handler:{item}");
+            yield return item;
+        }
     }
 }
 
@@ -133,4 +156,19 @@ internal sealed class RetryMiddleware : IRequestMiddleware<PingCommand, Result>
             return await next(ct).ConfigureAwait(false);
         }
     }
+}
+
+/// <summary>The errors the dispatching fixtures return.</summary>
+internal abstract class DispatchErrors : IErrorCatalog
+{
+    public static readonly ErrorDescriptor Refused = Error.Forbidden("The middleware refused the request.");
+}
+
+/// <summary>Returns a failure without calling the rest of the pipeline, for any request.</summary>
+internal sealed class RefusingMiddleware<TRequest, TResult> : IRequestMiddleware<TRequest, TResult>
+    where TRequest : IRequest<TResult>
+    where TResult : IResult
+{
+    public ValueTask<TResult> InvokeAsync(TRequest request, RequestDelegate<TResult> next, CancellationToken ct) =>
+        ValueTask.FromResult(ResultFactory.Failure<TResult>([DispatchErrors.Refused.ToError()]));
 }
