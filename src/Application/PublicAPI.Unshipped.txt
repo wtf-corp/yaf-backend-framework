@@ -1,1 +1,14 @@
 #nullable enable
+YAF.Application.ICommand<TResult>
+YAF.Application.IDispatcher
+YAF.Application.IDispatcher.SendAsync<TResult>(YAF.Application.IRequest<TResult>! request, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<TResult>
+YAF.Application.IDispatcher.StreamAsync<TItem>(YAF.Application.IStreamQuery<TItem>! query, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<TItem>!
+YAF.Application.IDomainEventHandler<TEvent>
+YAF.Application.IDomainEventHandler<TEvent>.HandleAsync(TEvent domainEvent, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<YAF.Core.Results.Result>
+YAF.Application.IQuery<TResult>
+YAF.Application.IRequest<TResult>
+YAF.Application.IRequestHandler<TRequest, TResult>
+YAF.Application.IRequestHandler<TRequest, TResult>.HandleAsync(TRequest request, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<TResult>
+YAF.Application.IStreamQuery<TItem>
+YAF.Application.IStreamQueryHandler<TQuery, TItem>
+YAF.Application.IStreamQueryHandler<TQuery, TItem>.HandleAsync(TQuery query, System.Threading.CancellationToken ct) -> System.Collections.Generic.IAsyncEnumerable<TItem>!
