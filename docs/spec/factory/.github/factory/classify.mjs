@@ -42,12 +42,13 @@ export function isPatchBumpOnly(change) {
  *   sizeOverHard     boolean
  *   deltaEmpty       boolean   no change in the approved files
  *   deltaClean       boolean   every change in the approved files is declared by the plan and nothing is removed
- *   guardFindings    number
+ *   guardFindings    number    findings outside the declared files
+ *   declaredFiles    string[]  guard files whose change the base plan declares exactly (gates.mjs declaredGuardFiles, ADR-0034)
  *   policy
  * → { tier, floor, reasons: string[] }
  */
 export function classify(input) {
-  const { files, diff, title = '', body = '', labels = [], raisedTo = null, sizeOverHard = false, deltaEmpty = true, deltaClean = true, guardFindings = 0, policy } = input;
+  const { files, diff, title = '', body = '', labels = [], raisedTo = null, sizeOverHard = false, deltaEmpty = true, deltaClean = true, guardFindings = 0, declaredFiles = [], policy } = input;
   const high = [];
   const medium = [];
 
@@ -56,6 +57,10 @@ export function classify(input) {
   const patchOnly = props ? isPatchBumpOnly(props) : true;
 
   for (const f of files) {
+    if (declaredFiles.includes(f)) {
+      medium.push(`guard change declared by the plan: ${f}`);
+      continue;
+    }
     if (matchesAny(f, patchFiles)) {
       if (!patchOnly) high.push(`dependency change beyond a patch update: ${f}`);
       continue;
