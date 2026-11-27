@@ -107,7 +107,20 @@ YAF.Core.Results.ErrorKind.RateLimited = 7 -> YAF.Core.Results.ErrorKind
 YAF.Core.Results.ErrorKind.Unauthenticated = 2 -> YAF.Core.Results.ErrorKind
 YAF.Core.Results.ErrorKind.Unavailable = 8 -> YAF.Core.Results.ErrorKind
 YAF.Core.Results.ErrorKind.Validation = 1 -> YAF.Core.Results.ErrorKind
+YAF.Core.Results.ErrorRegistration
+YAF.Core.Results.ErrorRegistration.<Clone>$() -> YAF.Core.Results.ErrorRegistration!
+YAF.Core.Results.ErrorRegistration.DeclaringType.get -> string!
+YAF.Core.Results.ErrorRegistration.DeclaringType.init -> void
+YAF.Core.Results.ErrorRegistration.Deconstruct(out YAF.Core.Results.ErrorDescriptor! Descriptor, out string! DeclaringType, out string! Field) -> void
+YAF.Core.Results.ErrorRegistration.Descriptor.get -> YAF.Core.Results.ErrorDescriptor!
+YAF.Core.Results.ErrorRegistration.Descriptor.init -> void
+YAF.Core.Results.ErrorRegistration.Equals(YAF.Core.Results.ErrorRegistration? other) -> bool
+YAF.Core.Results.ErrorRegistration.ErrorRegistration(YAF.Core.Results.ErrorDescriptor! Descriptor, string! DeclaringType, string! Field) -> void
+YAF.Core.Results.ErrorRegistration.Field.get -> string!
+YAF.Core.Results.ErrorRegistration.Field.init -> void
 YAF.Core.Results.IErrorCatalog
+YAF.Core.Results.IErrorRegistry
+YAF.Core.Results.IErrorRegistry.Errors.get -> System.Collections.Generic.IReadOnlyList<YAF.Core.Results.ErrorRegistration!>!
 YAF.Core.Results.IResult
 YAF.Core.Results.IResult.Errors.get -> System.Collections.Generic.IReadOnlyList<YAF.Core.Results.Error!>!
 YAF.Core.Results.IResult.IsSuccess.get -> bool
@@ -162,6 +175,10 @@ YAF.Core.Results.Result<T>.ThenAsync<TOut>(System.Func<T, System.Threading.Tasks
 YAF.Core.Results.Result<T>.ThenAsync<TOut>(System.Func<T, System.Threading.Tasks.ValueTask<YAF.Core.Results.Result<TOut>>>! continuation) -> System.Threading.Tasks.ValueTask<YAF.Core.Results.Result<TOut>>
 YAF.Core.Results.Result<T>.Value.get -> T
 YAF.Core.Results.ResultFactory
+YAF.Core.Results.YafServiceAttribute
+YAF.Core.Results.YafServiceAttribute.ErrorRegistry.get -> System.Type!
+YAF.Core.Results.YafServiceAttribute.ServiceCode.get -> string!
+YAF.Core.Results.YafServiceAttribute.YafServiceAttribute(string! serviceCode, System.Type! errorRegistry) -> void
 const YAF.Core.Classification.YafTaxonomy.Name = "YAF" -> string!
 override YAF.Core.Ids.CorrelationId.GetHashCode() -> int
 override YAF.Core.Ids.CorrelationId.ToString() -> string!
@@ -179,6 +196,9 @@ override YAF.Core.Results.Error.ToString() -> string!
 override YAF.Core.Results.ErrorDescriptor.Equals(object? obj) -> bool
 override YAF.Core.Results.ErrorDescriptor.GetHashCode() -> int
 override YAF.Core.Results.ErrorDescriptor.ToString() -> string!
+override YAF.Core.Results.ErrorRegistration.Equals(object? obj) -> bool
+override YAF.Core.Results.ErrorRegistration.GetHashCode() -> int
+override YAF.Core.Results.ErrorRegistration.ToString() -> string!
 static YAF.Core.Guard.NotDefault<T>(T value, string? paramName = null) -> void
 static YAF.Core.Guard.NotNull(object? value, string? paramName = null) -> void
 static YAF.Core.Guard.NotNullOrWhiteSpace(string? value, string? paramName = null) -> void
@@ -222,6 +242,8 @@ static YAF.Core.Results.Error.operator !=(YAF.Core.Results.Error? left, YAF.Core
 static YAF.Core.Results.Error.operator ==(YAF.Core.Results.Error? left, YAF.Core.Results.Error? right) -> bool
 static YAF.Core.Results.ErrorDescriptor.operator !=(YAF.Core.Results.ErrorDescriptor? left, YAF.Core.Results.ErrorDescriptor? right) -> bool
 static YAF.Core.Results.ErrorDescriptor.operator ==(YAF.Core.Results.ErrorDescriptor? left, YAF.Core.Results.ErrorDescriptor? right) -> bool
+static YAF.Core.Results.ErrorRegistration.operator !=(YAF.Core.Results.ErrorRegistration? left, YAF.Core.Results.ErrorRegistration? right) -> bool
+static YAF.Core.Results.ErrorRegistration.operator ==(YAF.Core.Results.ErrorRegistration? left, YAF.Core.Results.ErrorRegistration? right) -> bool
 static YAF.Core.Results.Result.Combine(params System.ReadOnlySpan<YAF.Core.Results.Result> results) -> YAF.Core.Results.Result
 static YAF.Core.Results.Result.Failure(System.Collections.Generic.IEnumerable<YAF.Core.Results.Error!>! errors) -> YAF.Core.Results.Result
 static YAF.Core.Results.Result.Failure(YAF.Core.Results.Error! error) -> YAF.Core.Results.Result
