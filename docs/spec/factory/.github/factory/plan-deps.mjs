@@ -64,3 +64,50 @@ export function overlaps(tickets) {
   });
   return problems;
 }
+
+const spans = (text) => [...(text ?? '').matchAll(/`([^`]+)`/g)].map((m) => m[1]);
+const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * The names a ticket creates: the type of each new `.cs` file in its touches (file name without `{…}`
+ * and extension), each "`X` does not exist" of its failing test (without `<…>` and `()`), and
+ * `ADR-NNNN` for each new `adr/NNNN-…` file. A path that exists on the base creates nothing.
+ */
+function creates(ticket, exists) {
+  const names = [];
+  for (const p of ticket.touches.map(pathOf)) {
+    if (isGlob(p) || exists(p)) continue;
+    const adr = p.match(/(?:^|\/)adr\/(\d{4})-[^/]+\.md$/);
+    if (adr) names.push(`ADR-${adr[1]}`);
+    else if (p.endsWith('.cs')) names.push(p.split('/').pop().slice(0, -3).replace(/\{[^}]*\}/g, ''));
+  }
+  for (const m of (ticket.failingTest ?? '').matchAll(/`([^`]+)` does not exist/g)) {
+    names.push(m[1].replace(/<[^>]*>/g, '').replace(/\(\)$/, ''));
+  }
+  return names.filter(Boolean);
+}
+
+/**
+ * Tickets that name, in a code span of their Title, Failing test first or Verify cell, a name another
+ * ticket creates (`creates`; the first creator counts) while that ticket is not among their ancestors.
+ * A later creator is never an ancestor. A `docs` ticket gives a note, any other a problem. The
+ * Requirements cell is not read: it cites the specification, it does not use code.
+ * `exists(path)` tells whether a repository-relative path is on the base.
+ * → { problems: string[], notes: string[] }
+ */
+export function uses(tickets, { exists }) {
+  const creator = new Map();
+  for (const t of tickets) for (const name of creates(t, exists)) if (!creator.has(name)) creator.set(name, t.key);
+  const of = ancestors(tickets);
+  const problems = [], notes = [];
+  for (const t of tickets) {
+    const text = [t.title, t.failingTest, t.verify].flatMap(spans).join('\n');
+    for (const [name, by] of creator) {
+      if (by === t.key || of.get(t.key)?.has(by)) continue;
+      if (!new RegExp(`(?<![\\w])${escape(name)}(?![\\w])`).test(text)) continue;
+      const later = tickets.findIndex((x) => x.key === by) > tickets.indexOf(t) ? ' later' : '';
+      (t.type === 'docs' ? notes : problems).push(`${t.key}: names \`${name}\`, which ${by} creates${later}, but does not depend on ${by}`);
+    }
+  }
+  return { problems, notes };
+}
