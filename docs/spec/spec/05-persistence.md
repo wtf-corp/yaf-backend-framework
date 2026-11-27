@@ -66,7 +66,7 @@ Behaviour is implemented as **interceptors and conventions registered by `AddYaf
 
 Snake_case names for tables and columns are a convention of `YAF.Persistence.EfCore.PostgreSql`, registered by `AddYafPostgres<TContext>()` (`01-repository-and-packages.md` §2.1).
 
-> **Amended 2026-11-27** (`specs/0013-thin-slice/plan.md`, deviation 8): snake_case naming moves from `ModelConventions` to `YAF.Persistence.EfCore.PostgreSql`. This resolves a contradiction between this section and the package table of `01` §2.1 in favour of the package table; it is not an owner's decision.
+> **Amended 2026-11-27**, by the owner's decision of 2026-11-27 (`specs/0013-thin-slice/plan.md`, deviation 8; recorded on issue #455): snake_case naming moves from `ModelConventions`, registered by `AddYafDbContext<T>()`, to `YAF.Persistence.EfCore.PostgreSql`, registered by `AddYafPostgres<TContext>()`. This resolves a contradiction between this section and ADR-0010 on one side and the package table of `01` §2.1 on the other, in favour of the package table; ADR-0010 is amended to match.
 
 Field protection (§6) is **not** an interceptor; it runs in the repository base and the read-model helpers.
 

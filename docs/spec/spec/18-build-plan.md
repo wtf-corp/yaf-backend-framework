@@ -53,8 +53,8 @@ This file orders the work for the software factory (ADR-0029) building the frame
 >
 > - **M4:** `AuthorizationMiddleware`, the request markers and `core.authorization.*`; `InputGuardMiddleware` and `[Markup]` (the sanitizer port with M11); `YAF4003`, `YAF4004`; soft delete, the named tenant and soft-delete query filters, row-level security, `TransactionScopeInterceptor` with the tenant settings, the database roles and `MigratorWorker<TDbContext>`; authentication, the execution-context middleware, the startup filter that checks the order of `UseYafHttp` (with M9), the route helpers `MapYaf*<TRequest>`, `.Dispatches<TRequest>()` and `MapYafGroup`; `TestAuth`, `factory.Auth`, `client.As(…)`, `RowLevelSecurityAssert` and the first suites of the security pack, which grows with later milestones.
 > - **M5:** `TimeoutMiddleware` and `[Timeout]`, `[LogPayload]`, `TelemetryCatalog`; `Logs`, `Spans`, `Metrics`, `Eventually`.
-> - **M6:** field protection in the repository base and the read-model helpers; `AuditInterceptor`.
-> - **M7, M8:** `UnitOfWorkScope.RunAsync` and the pipeline of entry points that are not requests; `factory.Messaging`, `Jobs`, `Cron`, `Audit`; `[NoTransaction]` (M8).
+> - **M6:** field protection in the repository base and the read-model helpers; `AuditInterceptor` and `factory.Audit`.
+> - **M7, M8:** `UnitOfWorkScope.RunAsync` and the pipeline of entry points that are not requests; `factory.Messaging`, `Jobs`, `Cron`; `[NoTransaction]` (M8).
 > - **M9:** `IdempotencyMiddleware`, `[Idempotent]` and `yaf_idempotency`; `Cursor` paging; `[JsonColumn]`; strict request JSON; rate limiting, security headers, CORS; the framework endpoints, `GET /errors` among them; OpenAPI; `YAF.Http.Controllers`.
 >
 > The engines of `YAF.Infrastructure` come with M5–M8; M3 creates the package empty. The sample grows with the milestones of the concepts it shows (`16` §3).

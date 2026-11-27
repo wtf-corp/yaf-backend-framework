@@ -104,7 +104,9 @@ Rules:
 
 - A core package MUST NOT reference a third-party engine. The allowed third-party dependencies of core packages are listed in ADR-0003 (Cronos in `YAF.Infrastructure` is the one library outside the platform and the ORM); adding one needs an ADR.
 - Only an adapter package may reference its vendor SDK. An architecture test over the built assemblies enforces both rules (`tests/Architecture.Tests`).
-- Implementations are `internal`, exposed through public interfaces and `Add*` / `Use*` / `Map*` extension methods. `InternalsVisibleTo` names only the package's own test project.
+- Implementations are `internal`, exposed through public interfaces and `Add*` / `Use*` / `Map*` extension methods. `InternalsVisibleTo` names only the package's own test project. The one exception is the internal `IExecutionContextScopeFactory` of `YAF.Application`, visible to YAF's own entry-point packages and to `YAF.Testing.Integration` (`04-application.md` §7).
+
+  > **Amended 2026-11-27**, by the owner's decisions of 2026-11-26 (`specs/0013-thin-slice/plan.md`, decision log Q2): the exception for the scope factory, so that the test host can begin a request's execution context until M4.
 
 ## 3. Dependency graph
 

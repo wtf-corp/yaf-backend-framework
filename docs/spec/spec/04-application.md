@@ -73,7 +73,7 @@ services.AddYafApplication(app => app
     .UsePipeline(p => p
         .UseDefaults()                                   // the list below
         .InsertAfter(typeof(ValidationMiddleware<,>), typeof(MyMiddleware<,>))
-        .ForCommands(c => c.Use<AnotherMiddleware>())));
+        .ForCommands(c => c.Use(typeof(AnotherMiddleware<,>)))));
 ```
 
 Default pipeline, outermost first:
@@ -232,7 +232,7 @@ internal interface IExecutionContextScopeFactory        // framework entry point
 - Running without a context throws `MissingExecutionContextException`. `Principal.System("cron:purge-retention")` always carries a reason and is audited.
 - `Principal` is one sealed class: `PrincipalKind Kind` (`Anonymous`, `User`, `Service`, `System`), `UserId? UserId`, `string? Name`, and the factories `Principal.Anonymous`, `Principal.User(UserId id)`, `Principal.Service(string name)` and `Principal.System(string reason)`; a name or reason is required. `PrincipalRef` is `sealed record PrincipalRef(PrincipalKind Kind, UserId Id)`.
 
-  > **Amended 2026-11-27**, by the owner's decisions of 2026-11-26 (`specs/0013-thin-slice/plan.md`, decision log): the shapes of `Principal` and `PrincipalRef`. Nested cases named `System` would hide the namespace, and `YAF2009` refuses a raw `Guid` id.
+  > **Amended 2026-11-27**, by the plan approved on 2026-11-26 (`specs/0013-thin-slice/plan.md`, decision log, the planner's rows): the shapes of `Principal` and `PrincipalRef`. Nested cases named `System` would hide the namespace, and `YAF2009` refuses a raw `Guid` id.
 - Elevation is explicit and scoped: `await using (elevation.CrossTenant("reason"))` (`ITenantElevation`, injected) returns a scope that widens tenant visibility until disposed, requires the permission `yaf.cross-tenant` (or a `System` principal), writes a security event with the reason, and cannot be nested silently. This replaces a flag that had to be switched back by hand.
 - Every outbox row, job row and message carries tenant, initiator (the producing operation's user, if any), correlation id and trace context. The consumer or runner builds its context from them as in the table above: tenant and correlation are taken over, the initiator is kept for audit, the actor is always its own system principal. The broker is thus trusted for the tenant id and the initiator, and a forged envelope cannot obtain a user's rights (`09-security.md`).
 
