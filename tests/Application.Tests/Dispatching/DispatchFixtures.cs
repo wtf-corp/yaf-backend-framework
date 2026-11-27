@@ -14,8 +14,11 @@ internal sealed record PingCommand(bool FailOnce = false) : ICommand<Result>;
 /// <summary>A query.</summary>
 internal sealed record PingQuery : IQuery<Result>;
 
-/// <summary>A stream query whose handler yields the numbers 1 to <see cref="Count"/>.</summary>
-internal sealed record CountQuery(int Count) : IStreamQuery<int>;
+/// <summary>
+/// A stream query whose handler yields the numbers 1 to <see cref="Count"/>; with <see cref="FailOnce"/> its handler throws the first time it
+/// runs, before the first item.
+/// </summary>
+internal sealed record CountQuery(int Count, bool FailOnce = false) : IStreamQuery<int>;
 
 /// <summary>What ran, in order, and the token the handler saw; scoped, so it also shows which scope each step resolved from.</summary>
 internal sealed class CallLog
@@ -50,6 +53,7 @@ internal sealed class DispatchingRegistry : IHandlerRegistry
         services.AddScoped(_ => new ShortCircuitMiddleware());
         services.AddScoped(_ => new RetryMiddleware());
         services.AddScoped(_ => new RefusingMiddleware<PingQuery, Result>());
+        services.AddScoped(_ => new RetryOnceMiddleware<PingQuery, Result>());
     }
 
     public bool TrySend<TResult>(IRequest<TResult> request, IRequestRunner runner, CancellationToken ct, out ValueTask<TResult> result)
@@ -106,6 +110,13 @@ internal sealed class CountQueryHandler(CallLog log) : IStreamQueryHandler<Count
     public async IAsyncEnumerable<int> HandleAsync(CountQuery query, [EnumeratorCancellation] CancellationToken ct)
     {
         log.HandlerToken = ct;
+        await Task.Yield();
+        if (query.FailOnce && !log.Entries.Contains("handler:failed"))
+        {
+            log.Entries.Add("handler:failed");
+            throw new InvalidOperationException("First attempt fails.");
+        }
+
         foreach (var item in Enumerable.Range(1, query.Count))
         {
             await Task.Yield();
@@ -171,4 +182,21 @@ internal sealed class RefusingMiddleware<TRequest, TResult> : IRequestMiddleware
 {
     public ValueTask<TResult> InvokeAsync(TRequest request, RequestDelegate<TResult> next, CancellationToken ct) =>
         ValueTask.FromResult(ResultFactory.Failure<TResult>([DispatchErrors.Refused.ToError()]));
+}
+
+/// <summary>Catches a failed attempt of the rest of the pipeline and runs it again, for any request.</summary>
+internal sealed class RetryOnceMiddleware<TRequest, TResult> : IRequestMiddleware<TRequest, TResult>
+    where TRequest : IRequest<TResult>
+{
+    public async ValueTask<TResult> InvokeAsync(TRequest request, RequestDelegate<TResult> next, CancellationToken ct)
+    {
+        try
+        {
+            return await next(ct).ConfigureAwait(false);
+        }
+        catch (InvalidOperationException)
+        {
+            return await next(ct).ConfigureAwait(false);
+        }
+    }
 }

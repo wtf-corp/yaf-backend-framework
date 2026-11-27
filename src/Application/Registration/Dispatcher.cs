@@ -72,7 +72,7 @@ internal sealed class Dispatcher(IServiceProvider services, ApplicationRegistrat
         var running = RunAsync(
             Compose<StreamQueryRequest<TQuery>, Result>(new StreamQueryRequest<TQuery>(query), async token =>
             {
-                await demand.WaitAsync(token).ConfigureAwait(false);
+                // The caller asked for the first item by starting the enumeration; a middleware that calls next again starts over.
                 await foreach (var item in handler.HandleAsync(query, token).WithCancellation(token).ConfigureAwait(false))
                 {
                     await items.Writer.WriteAsync(item, token).ConfigureAwait(false);
@@ -85,7 +85,6 @@ internal sealed class Dispatcher(IServiceProvider services, ApplicationRegistrat
             stop.Token);
         try
         {
-            demand.Release();
             while (await items.Reader.WaitToReadAsync(ct).ConfigureAwait(false))
             {
                 if (items.Reader.TryRead(out var item))
@@ -105,7 +104,7 @@ internal sealed class Dispatcher(IServiceProvider services, ApplicationRegistrat
         }
         finally
         {
-            if (!running.IsCompleted)
+            if (!running.IsCompletedSuccessfully)
             {
                 await stop.CancelAsync().ConfigureAwait(false);
                 try

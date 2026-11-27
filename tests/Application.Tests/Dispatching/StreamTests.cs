@@ -74,6 +74,21 @@ public sealed class StreamTests
         services.GetRequiredService<CallLog>().Entries.Should().Equal("outer:before", "outer:after");
     }
 
+    [Fact(Timeout = 10_000)]
+    public async Task StreamAsync_MiddlewareRetries_HandlerRunsAgain()
+    {
+        using var scope = Scope(p => p.Use(typeof(RetryOnceMiddleware<,>)).Use(typeof(InnerMiddleware<,>)));
+        var services = scope.ServiceProvider;
+
+        var items = await services.GetRequiredService<IDispatcher>()
+            .StreamAsync(new CountQuery(2, FailOnce: true), TestContext.Current.CancellationToken)
+            .ToListAsync(TestContext.Current.CancellationToken);
+
+        items.Should().Equal(1, 2);
+        services.GetRequiredService<CallLog>().Entries.Should().Equal(
+            "inner:before", "handler:failed", "inner:before", "handler:1", "handler:2", "inner:after");
+    }
+
     [Fact]
     public async Task StreamAsync_CommandScopedStep_Skipped()
     {
