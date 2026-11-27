@@ -4,6 +4,7 @@
   <PropertyGroup>
     <IsAotCompatible>true</IsAotCompatible>
     <IsTrimmable>true</IsTrimmable>
+    <YafServiceCode>core</YafServiceCode>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,5 +17,9 @@
     <None Include="../Analyzers/bin/$(Configuration)/netstandard2.0/YAF.Analyzers.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
     <None Include="buildTransitive/YAF.Core.props" Pack="true" PackagePath="build;buildTransitive" />
   </ItemGroup>
+
+  <!-- Makes YafServiceCode compiler-visible, so that the generators emit YAF.Core's own [assembly: YafService("core", …)] and registry,
+       as src/Domain/Domain.csproj does (03 §2.1; specs/0013-thin-slice/plan.md, T5). -->
+  <Import Project="buildTransitive/YAF.Core.props" />
 
 </Project>
