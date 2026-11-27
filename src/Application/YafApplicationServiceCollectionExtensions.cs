@@ -9,7 +9,7 @@ namespace YAF.Application;
 public static class YafApplicationServiceCollectionExtensions
 {
     /// <summary>
-    /// Adds the application layer: the handlers of the assemblies the builder names, the pipeline order and a startup check that stops the
+    /// Adds the application layer: the dispatcher (per scope), the handlers of the assemblies the builder names, the pipeline order and a startup check that stops the
     /// host when a request type has no handler or more than one. Calling it again adds to the same configuration and registers nothing twice.
     /// </summary>
     /// <param name="services">The application's services.</param>
@@ -39,6 +39,7 @@ public static class YafApplicationServiceCollectionExtensions
             services.AddSingleton(registrations);
             services.AddSingleton<IHostedService>(new HandlerStartupCheck(registrations));
             services.AddSingleton<IPipelineDescriptor>(_ => registrations.Pipeline.Build());
+            services.AddScoped<IDispatcher, Dispatcher>();
         }
 
         configure(new YafApplicationBuilder(services, registrations));
