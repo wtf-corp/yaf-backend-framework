@@ -17,7 +17,7 @@ namespace YAF.Domain;
 /// <typeparam name="TId">The aggregate's typed id.</typeparam>
 /// <typeparam name="TSelf">The aggregate type itself.</typeparam>
 /// <typeparam name="TMemento">The aggregate's memento interface, nested in the aggregate.</typeparam>
-public abstract class AggregateRoot<TId, TSelf, TMemento> : Entity<TId, TSelf, TMemento>, IAggregateRoot
+public abstract class AggregateRoot<TId, TSelf, TMemento> : Entity<TId, TSelf, TMemento>, IAggregateRoot, IAggregateStateSync
     where TId : struct, ITypedId<TId>
     where TSelf : AggregateRoot<TId, TSelf, TMemento>, IOriginator<TSelf, TMemento>
     where TMemento : IEntityMemento, IVersionedMemento
@@ -52,6 +52,9 @@ public abstract class AggregateRoot<TId, TSelf, TMemento> : Entity<TId, TSelf, T
 
     /// <inheritdoc/>
     Result IAggregateRoot.CheckInvariants() => CheckInvariants();
+
+    /// <inheritdoc/>
+    void IAggregateStateSync.SyncVersion(AggregateVersion version) => Version = version;
 
     /// <summary>Queues <paramref name="domainEvent"/> behind the events raised before it.</summary>
     /// <param name="domainEvent">The event, raised inside the behaviour that causes it, after the state has changed.</param>
