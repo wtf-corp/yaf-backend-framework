@@ -30,7 +30,9 @@ app.Run();
 `YAF.Http` provides the style-neutral pieces:
 
 - `IProblemDetailsMapper` (`03-results-and-errors.md` §4).
-- `HttpResultMapper`: `Result<T>` → status + body by convention: `200` with the value; `201` + `Location` when the endpoint declares a location; `204` for `Result` and for `Result<Unit>`; `202` + `Location` for accepted long-running work; failures → problem details.
+- `HttpResultMapper`: `Result<T>` → status + body by convention: `200` with the value; `201` + `Location` when the endpoint declares a location; `204` for `Result`; `202` + `Location` for accepted long-running work; failures → problem details.
+
+  > **Amended 2026-11-27**, by the owner's decisions of 2026-11-26 (`specs/0013-thin-slice/plan.md`, decision log; deviation 9, confirmed by the owner on 2026-11-26): no `Result<Unit>`. `03-results-and-errors.md` declares no `Unit` type; a use case without a value returns `Result`.
 - `YafExceptionHandler : IExceptionHandler`: `OperationCanceledException` from the client → `499`-style close without logging an error; `BadHttpRequestException` and JSON binding errors → `400` problem with `code: core.request.malformed`; anything else → `500` generic problem, logged once with the trace id.
 
 Style adapters are thin:

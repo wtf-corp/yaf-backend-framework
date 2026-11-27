@@ -37,8 +37,12 @@ internal sealed partial class SessionData : Session.IMemento;
 |---|---|
 | Typed id | Generic `TypedIdConverter<TId>` over the static abstract members of `ITypedId<TSelf>` → `uuid` |
 | Enum, `Enumeration<T>` | String column; `EnumerationConverter<T>` for smart enumerations |
-| Single-value value object (`EmailAddress`, `Percentage`) | Value converter to its primitive |
-| Multi-value value object (`Money`, `Period`) | EF complex type, one column per component |
+| Single-value value object shipped in `YAF.Domain` (`Currency`, `EmailAddress`, `Percentage`) | Value converter to its primitive |
+| Multi-value value object shipped in `YAF.Domain` (`Money`, `Period`, `DateRange`) | EF complex type, one column per component, each component named |
+
+The convention maps only the value objects `YAF.Domain` ships. An app maps its own value objects in its entity configuration.
+
+> **Amended 2026-11-27**, by the owner's decisions of 2026-11-26 (`specs/0013-thin-slice/plan.md`, decision log; deviation 10, confirmed by the owner on 2026-11-26): the value-object rows name the value objects the convention maps. Recognising an app's own value objects would need a marker interface, a contract `02` does not have. `Money`'s properties are get-only, so EF maps its components only when each is named.
 
 ## 2. `YafDbContext`
 
@@ -57,8 +61,12 @@ Behaviour is implemented as **interceptors and conventions registered by `AddYaf
 | `VersioningInterceptor` | New `Version` (UUIDv7) for every added or updated aggregate root; original value kept, so the statement is `… WHERE id = @id AND version = @original`; a mismatch becomes `ConcurrencyConflictException`. An aggregate gets its new version on the first flush of a transaction and keeps it for later flushes (§5) |
 | `SoftDeleteInterceptor` | Turns `Remove` of an `ISoftDeletableMemento` into an update of `DeletedAt/By` |
 | `AuditInterceptor` | §7 |
-| `ModelConventions` | Tenant and soft-delete query filters (named filters), snake_case names, `timestamptz` for `DateTimeOffset`, the typed-member mappings of §1, max length required on every string (model validation fails otherwise), `jsonb` for members marked `[JsonColumn]` |
+| `ModelConventions` | Tenant and soft-delete query filters (named filters), `timestamptz` for `DateTimeOffset`, the typed-member mappings of §1, max length required on every string (model validation fails otherwise), `jsonb` for members marked `[JsonColumn]` |
 | `TransactionScopeInterceptor` | §4: every command runs in a transaction that carries the tenant settings |
+
+Snake_case names for tables and columns are a convention of `YAF.Persistence.EfCore.PostgreSql`, registered by `AddYafPostgres<TContext>()` (`01-repository-and-packages.md` §2.1).
+
+> **Amended 2026-11-27**, by the owner's decision of 2026-11-27 (`specs/0013-thin-slice/plan.md`, deviation 8; recorded on issue #455): snake_case naming moves from `ModelConventions`, registered by `AddYafDbContext<T>()`, to `YAF.Persistence.EfCore.PostgreSql`, registered by `AddYafPostgres<TContext>()`. This resolves a contradiction between this section and ADR-0010 on one side and the package table of `01` §2.1 on the other, in favour of the package table; ADR-0010 is amended to match.
 
 Field protection (§6) is **not** an interceptor; it runs in the repository base and the read-model helpers.
 
@@ -71,7 +79,7 @@ Framework tables are added by opt-in interfaces on the context, each with a `Con
 ## 3. Repositories
 
 ```csharp
-public abstract class AggregateRepository<TAggregate, TId, TData, TMemento>(YafDbContext db, IAggregateTracker tracker, IFieldProtector protector)
+public abstract class AggregateRepository<TAggregate, TId, TData, TMemento>(YafDbContext db, IAggregateTracker tracker)
 {
     protected abstract IQueryable<TData> WithChildren(IQueryable<TData> set);   // the Includes
     public ValueTask<TAggregate?> FindAsync(TId id, CancellationToken ct);
@@ -89,13 +97,15 @@ Rules:
 - **Reads for change** load tracked data with children, unprotect it (§6), `Restore` the aggregate, remember the data object for the scope, and register the aggregate with `IAggregateTracker`. A second `FindAsync` for the same id in the scope returns the same aggregate instance.
 - **Updates** `Snapshot` onto the remembered data object (or reload it when absent) and protect it (§6). The version in the snapshot must equal the tracked original; otherwise `ConcurrencyConflictException` is thrown before reaching the database.
 - **`UpdateAsync` always writes a new version on the root row**, also when only a child changed, so two commands that each add a child to the same aggregate cannot both commit. Child rows have no version column.
-- Repositories **do not call `SaveChanges`**. The unit of work flushes (§5). After each flush it copies the version and stamps back into tracked aggregates through an internal `IAggregateStateSync`.
+- Repositories **do not call `SaveChanges`**. The unit of work flushes (§5). After each flush it copies the version and stamps back into tracked aggregates through `IAggregateStateSync`, a public interface of `YAF.Domain` that `AggregateRoot<…>` implements explicitly. The optimistic check compares with the original version EF tracks, never with the aggregate's own `Version`, so a version forged through the interface fails the save with `core.concurrency.conflict`; analyzer `YAF2011` (warning) reports a call to `SyncVersion` outside the `YAF.Persistence.*` assemblies.
 - `AddAsync` and `UpdateAsync` register the aggregate with the tracker, which is how its domain events reach the unit of work.
 - **Query handlers** do not use repositories. They use a read-side interface (`ISessionReadModel`) implemented in infrastructure with `AsNoTracking()` projections to response DTOs or read-model rows, paged and bounded in the store. Query filters (tenant, soft delete) apply automatically. A projection that includes a protected column goes through the helpers of §6.
-- Specification translation: `SpecificationTranslator.For<TMemento, TData>()` rewrites `Expression<Func<TMemento, bool>>` to `Expression<Func<TData, bool>>` by replacing the parameter and mapping interface members to the implementing properties. Typed members translate through their converters, so a specification compares a status with the enumeration value, not a string. A member that is not a mapped column, or is protected (other than an equality test on a `[Searchable]` member, which is rewritten to the hash column), fails with an exception naming the member.
+- Specification translation: `SpecificationTranslator.Translate<TMemento, TData>(specification)` rewrites `Expression<Func<TMemento, bool>>` to `Expression<Func<TData, bool>>` by replacing the parameter and mapping interface members to the implementing properties. Typed members translate through their converters, so a specification compares a status with the enumeration value, not a string. A member that is not a mapped column, or is protected (other than an equality test on a `[Searchable]` member, which is rewritten to the hash column), fails with an exception naming the member.
 - A client-supplied expected version (`If-Match` or a body field) is compared by the handler: `aggregate.Version.Matches(expected)` else `PreconditionFailed`.
 
 Paging: `Page(int Offset, int Limit)` clamped to `[1, PagingOptions.MaxLimit]` (default 200), or `Cursor(string? After, int Limit)` with opaque, sort-bound cursors. Results are `PagedList<T>(Items, HasMore, NextCursor?, TotalCount?)`; total counts are opt-in. Every list query has a deterministic total ordering (ties broken by id).
+
+> **Amended 2026-11-27**, by the owner's decisions of 2026-11-26 (`specs/0013-thin-slice/plan.md`, decision log Q1; deviations 11 and 12, confirmed by the owner on 2026-11-26, 11 with three conditions). The constructor takes no `IFieldProtector` until M6, which adds field protection to the repository base (`18-build-plan.md` §2). `IAggregateStateSync` is public in `YAF.Domain`, because `InternalsVisibleTo` names only a package's own test project (`01-repository-and-packages.md` §2); the owner's conditions are the check against the tracked original, the forgery test and `YAF2011`. The translator's entry is the static method `Translate`, which needs no translator object.
 
 ## 4. Tenant isolation: two layers
 

@@ -27,12 +27,14 @@ Test support is split so that a domain or application test project does not pull
 
 | Package | Depends on | For |
 |---|---|---|
-| `YAF.Testing` | `YAF.Application` (and so Domain and Core), `Microsoft.Extensions.Diagnostics.Testing`, `Microsoft.Extensions.TimeProvider.Testing`, ArchUnitNET | Domain and application tests, architecture tests. No ASP.NET Core, no EF Core, no Docker |
+| `YAF.Testing` | `YAF.Application` (and so Domain and Core), `Microsoft.Extensions.Diagnostics.Testing`, `Microsoft.Extensions.TimeProvider.Testing`, ArchUnitNET (ADR-0033) | Domain and application tests, architecture tests. No ASP.NET Core, no EF Core, no Docker |
 | `YAF.Testing.Integration` | `YAF.Testing`, `YAF.Http`, `YAF.Persistence.EfCore.PostgreSql`, xUnit v3, Testcontainers, the ASP.NET Core test host | Component, API integration and security tests; the conformance suites |
 
 The helpers of `YAF.Testing` throw their own `YafAssertionException`, so they do not depend on a test framework or an assertion library; the abstract suites and fixtures of `YAF.Testing.Integration` are xUnit v3 types, which ties a project that uses them to xUnit v3.
 
 > **Amended 2026-11-25**, by the owner's decisions of 2026-11-25 (`specs/0009-domain/plan.md`, decision log Q2): `YAF.Testing` depends on `YAF.Domain` (and so Core) until M3, and on `YAF.Application` from M3 on, when the first ports it fakes exist.
+
+> **Amended 2026-11-27**, by the owner's decisions of 2026-11-26 (`specs/0013-thin-slice/plan.md`, decision log Q3): ADR-0003's allow-list row for `YAF.Testing` did not include ArchUnitNET; ADR-0033 adds `TngTech.ArchUnitNET` to it. `YAF.Testing` uses it only to implement `YafArchitectureRules`, and its public API exposes no ArchUnitNET type.
 
 ### 3.1 `YAF.Testing` (pure helpers)
 
@@ -40,16 +42,18 @@ The helpers of `YAF.Testing` throw their own `YafAssertionException`, so they do
 |---|---|
 | Fakes | `FakeExecutionContext` (builders for a user actor, and for a system actor with an initiator), `FakeUnitOfWork` (runs the delegate, records commit/rollback and the save/dispatch rounds), `RecordingIntegrationEventPublisher`, `RecordingJobScheduler`, `InMemoryRepository<TAggregate,TId>`, `FakeObjectStore`, `FakeKeyProvider`, `FakeFieldProtector`, `FakeMarkupSanitizer` |
 | Time | `TestClock` over `FakeTimeProvider` |
-| Domain helpers | `MementoAssert.RoundTrips<T>()` (snapshot → generated data class → restore → snapshot is equal, for every member of the memento), `MementoAssert.RoundTrips(entity, mementoFactory)` (the same over a memento the factory creates), `DomainEventAssert.Raised<T>(aggregate)`, `AggregateAssert.InvariantsHold(aggregate)`, `StateMachineAssert.IsWellFormed(machine, initial, finals)` (`02-domain.md` §4 and §10), `ResultAssert` (`ShouldSucceed`, `ShouldFailWith(descriptor)`) — assert on **codes**, never messages |
+| Domain helpers | `MementoAssert.RoundTrips<TData>()` where `TData : class, IEntityMemento, new()` (fills every member the domain owns of a new `TData` with a distinct value, restores the originator, snapshots into a new `TData` and compares, for every member the domain owns), `MementoAssert.RoundTrips(entity, mementoFactory)` (the same over a memento the factory creates), `DomainEventAssert.Raised<T>(aggregate)`, `AggregateAssert.InvariantsHold(aggregate)`, `StateMachineAssert.IsWellFormed(machine, initial, finals)` (`02-domain.md` §4 and §10), `ResultAssert` (`ShouldSucceed`, `ShouldFailWith(descriptor)`) — assert on **codes**, never messages |
 | Logs | `LogAssert.ContainsNo(value)` over `FakeLogCollector` |
-| Approvals | `Approvals.Verify(actualText, name, [CallerFilePath])`: compares with `<name>.approved.txt` next to the test, writes `<name>.received.txt` and fails listing added/removed lines; no third-party dependency. Used for `errors.approved.txt` (which also proves codes are unique across all catalogues of a service), `fields.approved.txt` (the stable field ids of protected members), contracts and inventories |
+| Approvals | `Approvals.Verify(actualText, name, [CallerFilePath])`: compares with `<name>.approved.txt` next to the test, writes `<name>.received.txt` and fails listing added/removed lines; no third-party dependency. Used for `errors.approved.txt` through `ErrorCatalogAssert.MatchesApproved(assemblies, name = "errors")`, which writes one line `<code> | <Kind> | <template>` per descriptor, ordered by code, and fails naming both declaring types when two descriptors share a code, `fields.approved.txt` (the stable field ids of protected members), contracts and inventories |
 | Architecture | `YafArchitectureRules.For(assemblies)` → ready-made rule set (§4) |
 | Controls | `[Control("C-AC-1")]`, `[Control("S1")]` trait attribute, read by the compliance tool |
-| Builders | `TestIds` (deterministic UUIDv7 sequences), synthetic personal data generators that are obviously fake (`attendee-0001@example.test`) |
+| Builders | `TestIds` (`new TestIds(seed)`, `NextGuid()`, `Next<TId>()`: deterministic UUIDv7 sequences, the same for the same seed), `SyntheticData.Email(index, role)` and `SyntheticData.Name(index, role)`, synthetic personal data that is obviously fake (`attendee-0001@example.test`, `Attendee 0001`) |
 
 A test project that calls `Approvals.Verify` sets `DeterministicSourcePaths` to `false`: in a CI build the compiler maps the repository root to `/_/` in `[CallerFilePath]`, and the helper fails with a message that says so when the directory of the calling file does not exist.
 
 > **Amended 2026-11-25**, by the owner's decisions of 2026-11-25 (`specs/0009-domain/plan.md`, decision log Q1, Q2 and Q5; deviation 7, confirmed by the owner on 2026-11-25): `Approvals.Verify` takes the name of the approved file, which has no other source, and the note on `DeterministicSourcePaths` is added. The domain helpers list `AggregateAssert` and `StateMachineAssert`, which `02-domain.md` names, and the overload of `MementoAssert.RoundTrips` with a memento factory; `RoundTrips<T>()` over the generated data class comes with the `[MementoData]` generator in M3. Each fake comes with the milestone of its port; `YafArchitectureRules`, `TestIds` and the generators come with M3, `[Control]` with M4, `LogAssert` with M5 (`18-build-plan.md` §2).
+
+> **Amended 2026-11-27**, by the plan approved on 2026-11-26 (`specs/0013-thin-slice/plan.md`, decision log, the planner's rows): the shapes of `TestIds`, `SyntheticData`, `ErrorCatalogAssert` and `MementoAssert.RoundTrips<TData>()`. `RoundTrips<TData>()` has no aggregate to start from, so it fills the members itself; members persistence fills (`TenantId`, the stamps, `DeletedAt`/`DeletedBy`) are not round-tripped.
 
 ### 3.2 `YAF.Testing.Integration`
 
@@ -63,6 +67,8 @@ A test project that calls `Approvals.Verify` sets `DeterministicSourcePaths` to 
 | Security pack | namespace `YAF.Testing.Integration.Security` (§5) |
 
 `YAF.Testing.Integration` throws when the host environment is Production.
+
+> **Amended 2026-11-27**, by the owner's decisions of 2026-11-26 (`specs/0013-thin-slice/plan.md`, decision log Q2 and review F3; deviations 2, 15 and 16), until M4. The host has no `TestAuth` yet: `factory.ActAs(user, tenant)` sets the seed with which the factory begins the execution-context scope of each in-process request, without an authentication handler, and a request without it gets no context and fails closed (`04-application.md` §7). M4 replaces the seed with `TestAuth` and deletes it. `factory.SeedAsync(…)`, the `Seed` of the table above, takes no tenant or actor; its work runs under the context `ActAs` set. Migrations are applied with `MigrateAsync`, not through the service's migrator code with the three database roles, which come with M4.
 
 Shared fixtures: one container and one host per xUnit collection; tests isolate by **their own tenant** (`factory.NewTenant()`), not by cleaning the database. Tests of behaviour that is not tenant-scoped (cross-tenant elevation, cron fan-out, the relay and runners, the sealer, retention and partition drops) run in a collection of their own with its own database (`[Collection(YafCollections.Global)]`), so they cannot disturb, or be disturbed by, tenant-isolated tests.
 
