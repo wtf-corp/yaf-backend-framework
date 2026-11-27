@@ -22,6 +22,22 @@ test('weakened guards are found', () => {
   assert.equal(findGuardChanges(d('src/Core/A.cs', ['+public int X { get; }'])).length, 0);
 });
 
+// Built from parts so that this file's own added lines do not match the guard patterns.
+const lowered = 'dotnet_diagnostic.CA1040.severity = ' + 'none';
+const pragma = '#pragma warning ' + 'disable CA1062';
+
+test('findGuardChanges_SeverityLineInAPlan_IsNoFinding', () => {
+  assert.equal(findGuardChanges(d('specs/0015-x/plan.md', [`+Set \`${lowered}\` in .editorconfig.`])).length, 0);
+});
+
+test('findGuardChanges_SeverityLineInEditorconfig_IsAFinding', () => {
+  assert.equal(findGuardChanges(d('.editorconfig', [`+${lowered}`])).length, 1);
+});
+
+test('findGuardChanges_PragmaInADocsArticle_IsAFinding', () => {
+  assert.equal(findGuardChanges(d('docs/articles/x.md', [`+${pragma}`])).length, 1);
+});
+
 test('a moved test is not a removed test; a deleted one is', () => {
   const moved = d('tests/Core.Tests/A.cs', ['-    [Fact]', '+    [Fact]']);
   assert.equal(dropMovedTests(findGuardChanges(moved), moved).length, 0);
