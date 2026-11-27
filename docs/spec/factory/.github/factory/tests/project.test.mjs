@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { addItem } from '../project.mjs';
+import { addItem, setStatus } from '../project.mjs';
 import { firstStatus } from '../create-tickets.mjs';
 
 process.env.FACTORY_PROJECT_OWNER = 'acme';
@@ -56,6 +56,44 @@ test('addItem rethrows the same error when no item matches after the last read',
   assert.throws(() => addItem(url, f.options), (e) => e === error);
   assert.equal(f.calls.length, 4); // item-add and three reads
   assert.deepEqual(f.waits, [2000, 2000]);
+});
+
+/**
+ * A fake Project behind `gh` on a fake clock: sleeping moves the clock. `editFails` is how many
+ * item-edit calls throw GraphQL's rate-limit error before one succeeds.
+ */
+function fakeProject({ editFails = 0 } = {}) {
+  let t = 1_800_000_000_000;
+  const calls = [];
+  const waits = [];
+  const gh = (args) => {
+    calls.push({ what: args[1], at: t });
+    if (args[1] === 'view') return { id: 'PVT_1' };
+    if (args[1] === 'field-list') return { fields: [{ name: 'Status', id: 'F_1', options: [{ name: 'Ready', id: 'O_R' }] }] };
+    if (args[1] === 'item-add') return { id: `PVTI_${args.at(-1).split('/').pop()}` };
+    if (args[1] === 'item-edit' && editFails-- > 0) throw new Error('Command failed: gh project item-edit --format json\nGraphQL: API rate limit exceeded\n');
+    return {};
+  };
+  const rateLimit = () => ({ resources: { graphql: { remaining: 0, reset: (t + 30_000) / 1000 } } });
+  const options = { gh, now: () => t, sleep: (ms) => { waits.push(ms); t += ms; }, rateLimit };
+  return { calls, waits, options };
+}
+
+test('setStatus_GraphQLRateLimitOnce_WaitsForTheResetAndRetries', () => {
+  const p = fakeProject({ editFails: 1 });
+  setStatus(url, 'Ready', p.options);
+  // The pace after item-add (a write), then one wait of 30 s for the reset; no more.
+  assert.deepEqual(p.waits, [1000, 30_000]);
+  assert.deepEqual(p.calls.map((c) => c.what), ['view', 'field-list', 'item-add', 'item-edit', 'item-edit']);
+});
+
+test('setStatus_TwoTickets_WritesAreASecondApart', () => {
+  const p = fakeProject();
+  setStatus(url, 'Ready', p.options);
+  setStatus(other.content.url, 'Ready', p.options);
+  const writes = p.calls.filter((c) => c.what === 'item-add' || c.what === 'item-edit');
+  assert.equal(writes.length, 4);
+  for (let i = 1; i < writes.length; i++) assert.ok(writes[i].at - writes[i - 1].at >= 1000, `write ${i} came ${writes[i].at - writes[i - 1].at} ms after the one before`);
 });
 
 test('an existing open ticket with no status gets its first status', () => {
