@@ -122,7 +122,7 @@ export function ticketProblems(tickets, policy) {
 
 /**
  * A plan is flagged (a human maintainer must approve it) when it declares a public API change,
- * a schema change, a new dependency, a deviation from the spec, or a ticket in tier high.
+ * a schema change, a new dependency, a deviation from the spec, a ticket in tier high, or exit checks.
  * → { flagged, reasons }
  */
 export function planFlags(markdown, policy) {
@@ -133,5 +133,7 @@ export function planFlags(markdown, policy) {
   if (hasDeviations(markdown)) reasons.push('declares a deviation from the specification');
   const high = parseTickets(markdown).filter((t) => t.tier === 'high').map((t) => t.key);
   if (high.length) reasons.push(`tickets in tier high: ${high.join(', ')}`);
+  // Any fence of the block, valid or not: exit-check.mjs runs its commands on the owner's machine.
+  if (/```factory:exit\b/.test(markdown)) reasons.push("declares exit checks that run on the owner's machine");
   return { flagged: reasons.length > 0, reasons };
 }
