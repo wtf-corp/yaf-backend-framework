@@ -38,6 +38,29 @@ const COLUMN_ALIASES = {
   area: ['area'],
 };
 
+/**
+ * Splits a cell at `,`, `;` and `<br>` at depth 0 only: outside a code span and outside `{…}`, `(…)`
+ * and `[…]`. An unmatched closing bracket is ignored; a backtick with no later one is plain text.
+ */
+function splitCell(text) {
+  const parts = [];
+  const br = /<br\s*\/?>/y;
+  let start = 0, depth = 0, span = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (c === '`') { if (span || text.includes('`', i + 1)) span = !span; continue; }
+    if (span) continue;
+    if ('{(['.includes(c)) depth++;
+    else if ('})]'.includes(c)) depth = Math.max(0, depth - 1);
+    else if (depth === 0) {
+      br.lastIndex = i;
+      const end = c === ',' || c === ';' ? i + 1 : br.test(text) ? br.lastIndex : -1;
+      if (end > 0) { parts.push(text.slice(start, i)); start = end; i = end - 1; }
+    }
+  }
+  return [...parts, text.slice(start)];
+}
+
 /** Parses the table under the `## Tickets` heading. Returns [] when there is none. */
 export function parseTickets(markdown) {
   const section = markdown.split(/^##\s+Tickets\s*$/m)[1];
@@ -49,7 +72,7 @@ export function parseTickets(markdown) {
   for (const [field, names] of Object.entries(COLUMN_ALIASES)) index[field] = header.findIndex((h) => names.includes(h));
   if (index.key < 0 || index.title < 0) throw new Error('Tickets table needs at least the columns Key and Title');
   const cell = (row, field) => (index[field] >= 0 ? (row[index[field]] ?? '') : '');
-  const list = (text) => text.split(/[,;]|<br\s*\/?>/).map((s) => s.trim().replace(/^`|`$/g, '')).filter((s) => s && s !== '—' && s !== '-' && s.toLowerCase() !== 'none');
+  const list = (text) => splitCell(text).map((s) => s.trim()).map((s) => (/^`[^`]*`$/.test(s) ? s.slice(1, -1) : s)).filter((s) => s && s !== '—' && s !== '-' && s.toLowerCase() !== 'none');
   return lines.slice(2).map(cells).filter((r) => r[index.key]).map((r) => ({
     key: cell(r, 'key'),
     title: cell(r, 'title'),

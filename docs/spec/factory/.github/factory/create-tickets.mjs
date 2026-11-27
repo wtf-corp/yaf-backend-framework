@@ -20,7 +20,7 @@ export function ticketBody(folder, t, blockedBy, epicNumber) {
     `Blocked by: ${blockedBy.length ? blockedBy.map((n) => `#${n}`).join(', ') : 'nothing'}`,
     '',
     '### Touches',
-    t.touches.map((p) => `- \`${p}\``).join('\n') || '- —',
+    t.touches.map((p) => (p.includes('`') ? `- ${p}` : `- \`${p}\``)).join('\n') || '- —',
     '',
     '### Failing test first',
     t.failingTest || '—',
