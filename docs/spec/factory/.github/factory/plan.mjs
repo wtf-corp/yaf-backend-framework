@@ -1,6 +1,6 @@
 // Reads the machine-readable parts of a plan.md: the `factory:delta` block and the Tickets table.
 
-const DELTA_CATEGORIES = ['publicApi', 'schema', 'errorCodes', 'contracts', 'configuration', 'telemetry', 'dependencies'];
+const DELTA_CATEGORIES = ['publicApi', 'schema', 'errorCodes', 'contracts', 'configuration', 'telemetry', 'dependencies', 'editorconfig'];
 
 /**
  * The block is a fenced code block whose info string is `factory:delta`, containing JSON:
