@@ -3,6 +3,7 @@ YAF.Http.HttpOptions
 YAF.Http.HttpOptions.HttpOptions() -> void
 YAF.Http.HttpOptions.ValidationStatusCode.get -> int
 YAF.Http.HttpOptions.ValidationStatusCode.set -> void
+YAF.Http.HttpResultMapper
 YAF.Http.IProblemDetailsMapper
 YAF.Http.IProblemDetailsMapper.Map(System.Collections.Generic.IReadOnlyList<YAF.Core.Results.Error!>! errors, Microsoft.AspNetCore.Http.HttpContext! httpContext) -> Microsoft.AspNetCore.Mvc.ProblemDetails!
 YAF.Http.ProblemDetailsOptions
@@ -10,4 +11,8 @@ YAF.Http.ProblemDetailsOptions.ProblemDetailsOptions() -> void
 YAF.Http.ProblemDetailsOptions.TypeBaseUri.get -> System.Uri!
 YAF.Http.ProblemDetailsOptions.TypeBaseUri.set -> void
 YAF.Http.YafHttpExtensions
+static YAF.Http.HttpResultMapper.ToAcceptedResponse<T>(YAF.Core.Results.Result<T> result, System.Func<T, System.Uri!>! location, Microsoft.AspNetCore.Http.HttpContext! httpContext) -> Microsoft.AspNetCore.Http.IResult!
+static YAF.Http.HttpResultMapper.ToCreatedResponse<T>(YAF.Core.Results.Result<T> result, System.Func<T, System.Uri!>! location, Microsoft.AspNetCore.Http.HttpContext! httpContext) -> Microsoft.AspNetCore.Http.IResult!
+static YAF.Http.HttpResultMapper.ToResponse(YAF.Core.Results.Result result, Microsoft.AspNetCore.Http.HttpContext! httpContext) -> Microsoft.AspNetCore.Http.IResult!
+static YAF.Http.HttpResultMapper.ToResponse<T>(YAF.Core.Results.Result<T> result, Microsoft.AspNetCore.Http.HttpContext! httpContext) -> Microsoft.AspNetCore.Http.IResult!
 static YAF.Http.YafHttpExtensions.AddYafHttp(this Microsoft.Extensions.Hosting.IHostApplicationBuilder! builder) -> Microsoft.Extensions.Hosting.IHostApplicationBuilder!
