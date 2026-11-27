@@ -1,6 +1,6 @@
 # ADR-0003 — Technology stack and dependency policy
 
-> **Status** Accepted
+> **Status** Accepted; row YAF.Testing superseded by ADR-0033
 > **Date** 2026-11
 > **Deciders** Framework maintainers
 

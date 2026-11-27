@@ -10,7 +10,8 @@ Every ADR has the sections Context, Drivers, Options considered, Decision, Conse
 |---|---|
 | [0001](0001-record-architecture-decisions.md) | Record architecture decisions |
 | [0002](0002-architecture-principles.md) | Architecture principles: bounded contexts, clean layers, transactional inside and eventual across |
-| [0003](0003-technology-stack-and-dependency-policy.md) | Technology stack; own the contracts, plug the engines; dependency allow-list |
+| [0003](0003-technology-stack-and-dependency-policy.md) | Technology stack; own the contracts, plug the engines; dependency allow-list (row `YAF.Testing` superseded by 0033) |
+| [0033](0033-architecture-rules-in-the-testing-package.md) | ArchUnitNET as a dependency of `YAF.Testing`, for the architecture rule set; supersedes the row `YAF.Testing` of 0003 (Proposed) |
 | [0004](0004-security-by-design.md) | **Security by design** |
 | [0005](0005-compliance-by-design.md) | **Compliance by design** |
 | [0006](0006-repository-structure-and-packaging.md) | Repository structure and NuGet packaging |
