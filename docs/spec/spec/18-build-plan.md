@@ -15,7 +15,7 @@ This file orders the work for the software factory (ADR-0029) building the frame
 7. Build vertically where possible: a thin end-to-end slice first (M3), then widen.
 8. Take current stable versions of third-party packages from the feed; record them in `Directory.Packages.props`; where this spec's assumption about a third-party API turns out wrong, follow the library's documentation and note the deviation in the plan's decision log. Do not invent APIs.
 9. Anything this specification leaves open is listed in §4. Do not guess silently: decide, record the decision in the plan's decision log or, once the plan is merged, in a comment on the ticket (or an ADR when it is architectural), and continue; ask the human when it changes scope, security or public contracts.
-10. Never weaken a guard to get green (ADR-0026). A guard change needs the `guard-change` label applied by a human maintainer; an agent never applies it, nor `size-accepted` or `major-release`.
+10. Never weaken a guard to get green (ADR-0026). A guard change needs the `guard-change` label applied by a human maintainer, unless it is a change to `.editorconfig` or `Directory.Packages.props` that the merged plan declares exactly, read from the plan on the base branch and outside `neverLowered` (ADR-0034); an agent never applies it, nor `size-accepted` or `major-release`.
 11. Build only what §2 lists. The packages of §6 are not part of the initial build, even where a contract mentions them.
 
 ## 2. Milestones

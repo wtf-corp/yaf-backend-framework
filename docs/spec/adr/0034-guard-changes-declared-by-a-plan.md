@@ -3,7 +3,7 @@
 > **Status** Proposed
 > **Date** 2026-11
 > **Deciders** maintainers
-> **Supersedes** in part: 0029 §4 (the tier of declared guard changes); 0026 rule 3 and its Enforcement rows on the `guard-change` label and on `CODEOWNERS` for analyzer configuration; 0023 "What counts as approval" (the weakened-guard row) and the guard-file code-owner row of its Enforcement; 0027 the guard-file code-owner row of its Enforcement; 0025 (the seven keys of the `factory:delta` block and the reasons a plan is flagged)
+> **Supersedes** in part: 0029 §4 (the tier of declared guard changes); 0026 rule 3 and its Enforcement rows on the `guard-change` label and on `CODEOWNERS` for analyzer configuration; 0023 "What counts as approval" (the weakened-guard row) and the guard-file code-owner row of its Enforcement; 0027 the guard-file code-owner row of its Enforcement; 0025 (the seven keys of the `factory:delta` block and the reasons a plan is flagged). Amends, in the same pull request, `spec/17-ci-release-docs.md` §2.2 (`factory/guards`, the sensitive paths) and §6 (`CODEOWNERS`), and `spec/18-build-plan.md` rule 10
 
 ## Context
 
@@ -21,6 +21,8 @@ This record supersedes parts of five accepted records, under rule 2 of the templ
 - ADR-0025: the `factory:delta` block has exactly seven keys, and its list of reasons a plan is flagged, repeated in ADR-0023, gains `editorconfig` entries (Decisions 2 and 7).
 
 Every other part of these records stands.
+
+The approved specification said the same, and is amended in the pull request that carries this record, as the owner chose on 2026-11-27: `spec/17-ci-release-docs.md` §2.2 (`factory/guards` passes on declared findings; the sensitive paths are always high except a declared change) and §6 (`.editorconfig` leaves the `CODEOWNERS` paths), and `spec/18-build-plan.md` rule 10 (`guard-change` is not needed for a declared change). Each amended line cites this record.
 
 ## Drivers
 
