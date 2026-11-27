@@ -9,22 +9,17 @@ using YAF.Domain.Events;
 namespace Application.Tests.Registration;
 
 /// <summary>A hand-written stand-in for the generated registry (the generator is T26). Created by the attribute above.</summary>
-internal sealed class StubHandlerRegistry : IHandlerRegistry
+internal sealed class StubHandlerRegistry(IReadOnlyCollection<Type> declaredRequests, IReadOnlyCollection<Type> handledRequests)
+    : IHandlerRegistry
 {
     public StubHandlerRegistry()
         : this([typeof(PingQuery)], [typeof(PingQuery)])
     {
     }
 
-    public StubHandlerRegistry(IReadOnlyCollection<Type> declaredRequests, IReadOnlyCollection<Type> handledRequests)
-    {
-        DeclaredRequests = declaredRequests;
-        HandledRequests = handledRequests;
-    }
+    public IReadOnlyCollection<Type> DeclaredRequests { get; } = declaredRequests;
 
-    public IReadOnlyCollection<Type> DeclaredRequests { get; }
-
-    public IReadOnlyCollection<Type> HandledRequests { get; }
+    public IReadOnlyCollection<Type> HandledRequests { get; } = handledRequests;
 
     public void Register(IServiceCollection services) => services.AddSingleton(new PingHandlerStandIn());
 

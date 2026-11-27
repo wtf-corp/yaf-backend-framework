@@ -9,13 +9,6 @@ namespace YAF.Application;
 /// Configures the application layer inside <see cref="YafApplicationServiceCollectionExtensions.AddYafApplication"/>: which assemblies'
 /// handlers are registered and in which order the middleware runs.
 /// </summary>
-/// <example>
-/// <code language="csharp">
-/// builder.Services.AddYafApplication(app => app
-///     .AddHandlersFrom&lt;CreateSessionCommand&gt;()
-///     .UsePipeline(p => p.Use(typeof(TenantQuotaMiddleware&lt;,&gt;))));
-/// </code>
-/// </example>
 public sealed class YafApplicationBuilder
 {
     private readonly IServiceCollection _services;

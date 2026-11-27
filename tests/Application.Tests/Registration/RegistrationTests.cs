@@ -83,27 +83,16 @@ public sealed class RegistrationTests
         await act.Should().NotThrowAsync();
     }
 
-    [Fact]
-    public void AddYafApplication_RegistersTheStartupCheck()
+    /// <summary>The hosted service <c>AddYafApplication</c> registers, over the given registries (one assembly has only one registry).</summary>
+    private static IHostedService StartupCheck(params IHandlerRegistry[] registries)
     {
-        var services = new ServiceCollection();
-
-        services.AddYafApplication(_ => { });
-
-        services.Should().ContainSingle(descriptor => descriptor.ServiceType == typeof(IHostedService))
-            .Which.ImplementationInstance.Should().BeOfType<HandlerStartupCheck>();
+        var services = new ServiceCollection().AddYafApplication(_ => { });
+        Array.ForEach(registries, ((ApplicationRegistrations)Instance(services, typeof(ApplicationRegistrations))).Add);
+        return (IHostedService)Instance(services, typeof(IHostedService));
     }
 
-    private static HandlerStartupCheck StartupCheck(params IHandlerRegistry[] registries)
-    {
-        var registrations = new ApplicationRegistrations();
-        foreach (var registry in registries)
-        {
-            registrations.Add(registry);
-        }
-
-        return new HandlerStartupCheck(registrations);
-    }
+    private static object Instance(IServiceCollection services, Type serviceType) =>
+        services.Single(descriptor => descriptor.ServiceType == serviceType).ImplementationInstance!;
 
     private static IPipelineDescriptor Descriptor(ServiceCollection services)
     {

@@ -18,7 +18,9 @@ public static class YafApplicationServiceCollectionExtensions
     /// <exception cref="InvalidOperationException">A named assembly has no generated handler registry.</exception>
     /// <example>
     /// <code language="csharp">
-    /// builder.Services.AddYafApplication(app => app.AddHandlersFrom&lt;CreateSessionCommand&gt;());
+    /// builder.Services.AddYafApplication(app => app
+    ///     .AddHandlersFrom&lt;CreateSessionCommand&gt;()
+    ///     .UsePipeline(p => p.Use(typeof(TenantQuotaMiddleware&lt;,&gt;))));
     /// </code>
     /// </example>
     public static IServiceCollection AddYafApplication(this IServiceCollection services, Action<YafApplicationBuilder> configure)
