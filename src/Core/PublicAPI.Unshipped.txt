@@ -161,6 +161,7 @@ YAF.Core.Results.Result<T>.Then<TOut>(System.Func<T, YAF.Core.Results.Result<TOu
 YAF.Core.Results.Result<T>.ThenAsync<TOut>(System.Func<T, System.Threading.Tasks.Task<YAF.Core.Results.Result<TOut>>!>! continuation) -> System.Threading.Tasks.Task<YAF.Core.Results.Result<TOut>>!
 YAF.Core.Results.Result<T>.ThenAsync<TOut>(System.Func<T, System.Threading.Tasks.ValueTask<YAF.Core.Results.Result<TOut>>>! continuation) -> System.Threading.Tasks.ValueTask<YAF.Core.Results.Result<TOut>>
 YAF.Core.Results.Result<T>.Value.get -> T
+YAF.Core.Results.ResultFactory
 const YAF.Core.Classification.YafTaxonomy.Name = "YAF" -> string!
 override YAF.Core.Ids.CorrelationId.GetHashCode() -> int
 override YAF.Core.Ids.CorrelationId.ToString() -> string!
@@ -238,6 +239,7 @@ static YAF.Core.Results.Result<T>.implicit operator YAF.Core.Results.Result<T>(T
 static YAF.Core.Results.Result<T>.implicit operator YAF.Core.Results.Result<T>(YAF.Core.Results.Error! error) -> YAF.Core.Results.Result<T>
 static YAF.Core.Results.Result<T>.implicit operator YAF.Core.Results.Result<T>(YAF.Core.Results.Error![]! errors) -> YAF.Core.Results.Result<T>
 static YAF.Core.Results.Result<T>.implicit operator YAF.Core.Results.Result<T>(YAF.Core.Results.ErrorDescriptor! descriptor) -> YAF.Core.Results.Result<T>
+static YAF.Core.Results.ResultFactory.Failure<TResult>(System.Collections.Generic.IReadOnlyList<YAF.Core.Results.Error!>! errors) -> TResult
 static readonly YAF.Core.Classification.YafTaxonomy.Internal -> Microsoft.Extensions.Compliance.Classification.DataClassification
 static readonly YAF.Core.Classification.YafTaxonomy.Personal -> Microsoft.Extensions.Compliance.Classification.DataClassification
 static readonly YAF.Core.Classification.YafTaxonomy.Public -> Microsoft.Extensions.Compliance.Classification.DataClassification

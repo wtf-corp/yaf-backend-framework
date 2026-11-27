@@ -40,7 +40,7 @@ namespace YAF.Core.Results;
 /// </example>
 /// <typeparam name="T">The type of the value of a success.</typeparam>
 [Union]
-public readonly struct Result<T> : IResult, Result<T>.IUnionMembers
+public readonly struct Result<T> : IResult, Result<T>.IUnionMembers, IFailureFactory
 {
     private readonly T _value;
     private readonly ReadOnlyCollection<Error>? _errors;
@@ -466,4 +466,7 @@ public readonly struct Result<T> : IResult, Result<T>.IUnionMembers
     }
 
     private ReadOnlyCollection<Error> FailureErrors => _errors ?? ResultErrors.Uninitialised;
+
+    /// <inheritdoc/>
+    IResult IFailureFactory.CreateFailure(IReadOnlyList<Error> errors) => Failure(errors);
 }
