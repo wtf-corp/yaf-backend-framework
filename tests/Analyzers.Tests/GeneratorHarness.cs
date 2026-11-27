@@ -22,13 +22,15 @@ internal static class GeneratorHarness
         string source,
         IEnumerable<IIncrementalGenerator>? generators = null,
         IEnumerable<DiagnosticAnalyzer>? analyzers = null,
-        IReadOnlyDictionary<string, string>? buildProperties = null)
+        IReadOnlyDictionary<string, string>? buildProperties = null,
+        string assemblyName = "Snippet",
+        IEnumerable<MetadataReference>? references = null)
     {
         var options = new BuildPropertyOptionsProvider(buildProperties ?? new Dictionary<string, string>());
         var compilation = CSharpCompilation.Create(
-            "Snippet",
+            assemblyName,
             [CSharpSyntaxTree.ParseText(source, s_parseOptions)],
-            References(),
+            References().Concat(references ?? []),
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, nullableContextOptions: NullableContextOptions.Enable));
 
         var driver = CSharpGeneratorDriver.Create(
@@ -49,12 +51,12 @@ internal static class GeneratorHarness
         using var stream = new MemoryStream();
         if (!generated.Emit(stream).Success)
         {
-            return new HarnessResult(diagnostics, null, null);
+            return new HarnessResult(diagnostics, null, null, null);
         }
 
         stream.Position = 0;
-        var context = new AssemblyLoadContext("Snippet", isCollectible: true);
-        return new HarnessResult(diagnostics, context, context.LoadFromStream(stream));
+        var context = new AssemblyLoadContext(assemblyName, isCollectible: true);
+        return new HarnessResult(diagnostics, stream.ToArray(), context, context.LoadFromStream(stream));
     }
 
     private static IEnumerable<MetadataReference> References()
