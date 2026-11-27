@@ -12,3 +12,35 @@ YAF.Application.IRequestHandler<TRequest, TResult>.HandleAsync(TRequest request,
 YAF.Application.IStreamQuery<TItem>
 YAF.Application.IStreamQueryHandler<TQuery, TItem>
 YAF.Application.IStreamQueryHandler<TQuery, TItem>.HandleAsync(TQuery query, System.Threading.CancellationToken ct) -> System.Collections.Generic.IAsyncEnumerable<TItem>!
+override YAF.Application.Pipeline.PipelineStep.Equals(object? obj) -> bool
+override YAF.Application.Pipeline.PipelineStep.GetHashCode() -> int
+override YAF.Application.Pipeline.PipelineStep.ToString() -> string!
+static YAF.Application.Pipeline.PipelineStep.operator !=(YAF.Application.Pipeline.PipelineStep? left, YAF.Application.Pipeline.PipelineStep? right) -> bool
+static YAF.Application.Pipeline.PipelineStep.operator ==(YAF.Application.Pipeline.PipelineStep? left, YAF.Application.Pipeline.PipelineStep? right) -> bool
+virtual YAF.Application.Pipeline.RequestDelegate<TResult>.Invoke(System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<TResult>
+YAF.Application.Pipeline.IPipelineDescriptor
+YAF.Application.Pipeline.IPipelineDescriptor.Render() -> string!
+YAF.Application.Pipeline.IPipelineDescriptor.Steps.get -> System.Collections.Generic.IReadOnlyList<YAF.Application.Pipeline.PipelineStep!>!
+YAF.Application.Pipeline.IRequestMiddleware<TRequest, TResult>
+YAF.Application.Pipeline.IRequestMiddleware<TRequest, TResult>.InvokeAsync(TRequest request, YAF.Application.Pipeline.RequestDelegate<TResult>! next, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<TResult>
+YAF.Application.Pipeline.PipelineBuilder
+YAF.Application.Pipeline.PipelineBuilder.ForCommands(System.Action<YAF.Application.Pipeline.PipelineBuilder!>! configure) -> YAF.Application.Pipeline.PipelineBuilder!
+YAF.Application.Pipeline.PipelineBuilder.ForQueries(System.Action<YAF.Application.Pipeline.PipelineBuilder!>! configure) -> YAF.Application.Pipeline.PipelineBuilder!
+YAF.Application.Pipeline.PipelineBuilder.InsertAfter(System.Type! existing, System.Type! middleware) -> YAF.Application.Pipeline.PipelineBuilder!
+YAF.Application.Pipeline.PipelineBuilder.InsertBefore(System.Type! existing, System.Type! middleware) -> YAF.Application.Pipeline.PipelineBuilder!
+YAF.Application.Pipeline.PipelineBuilder.Use(System.Type! middleware) -> YAF.Application.Pipeline.PipelineBuilder!
+YAF.Application.Pipeline.PipelineBuilder.Use<TMiddleware>() -> YAF.Application.Pipeline.PipelineBuilder!
+YAF.Application.Pipeline.PipelineScope
+YAF.Application.Pipeline.PipelineScope.All = 0 -> YAF.Application.Pipeline.PipelineScope
+YAF.Application.Pipeline.PipelineScope.Commands = 1 -> YAF.Application.Pipeline.PipelineScope
+YAF.Application.Pipeline.PipelineScope.Queries = 2 -> YAF.Application.Pipeline.PipelineScope
+YAF.Application.Pipeline.PipelineStep
+YAF.Application.Pipeline.PipelineStep.<Clone>$() -> YAF.Application.Pipeline.PipelineStep!
+YAF.Application.Pipeline.PipelineStep.AppliesTo.get -> YAF.Application.Pipeline.PipelineScope
+YAF.Application.Pipeline.PipelineStep.AppliesTo.init -> void
+YAF.Application.Pipeline.PipelineStep.Deconstruct(out System.Type! Middleware, out YAF.Application.Pipeline.PipelineScope AppliesTo) -> void
+YAF.Application.Pipeline.PipelineStep.Equals(YAF.Application.Pipeline.PipelineStep? other) -> bool
+YAF.Application.Pipeline.PipelineStep.Middleware.get -> System.Type!
+YAF.Application.Pipeline.PipelineStep.Middleware.init -> void
+YAF.Application.Pipeline.PipelineStep.PipelineStep(System.Type! Middleware, YAF.Application.Pipeline.PipelineScope AppliesTo) -> void
+YAF.Application.Pipeline.RequestDelegate<TResult>
