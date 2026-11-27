@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- No IsAotCompatible or IsTrimmable: YAF.Application makes no AOT or trimming claim (01 §4). No package reference: the
+       Microsoft.Extensions abstractions it needs are part of Microsoft.NETCore.App (specs/0013-thin-slice/research.md §3). -->
+  <PropertyGroup>
+    <YafServiceCode>core</YafServiceCode>
+  </PropertyGroup>
+
+  <!-- A project reference carries neither the analyzers nor YAF.Core.props, which an app gets from the YAF.Core package, so both are named
+       here (specs/0009-domain/research.md §6). The analyzers stay out of this package: consumers get them through YAF.Core. -->
+  <ItemGroup>
+    <ProjectReference Include="../Analyzers/Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
+    <ProjectReference Include="../Domain/Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Application.Tests" />
+  </ItemGroup>
+
+  <Import Project="../Core/buildTransitive/YAF.Core.props" />
+
+</Project>
