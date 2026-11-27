@@ -18,6 +18,9 @@ override YAF.Application.Pipeline.PipelineStep.ToString() -> string!
 static YAF.Application.Pipeline.PipelineStep.operator !=(YAF.Application.Pipeline.PipelineStep? left, YAF.Application.Pipeline.PipelineStep? right) -> bool
 static YAF.Application.Pipeline.PipelineStep.operator ==(YAF.Application.Pipeline.PipelineStep? left, YAF.Application.Pipeline.PipelineStep? right) -> bool
 virtual YAF.Application.Pipeline.RequestDelegate<TResult>.Invoke(System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<TResult>
+YAF.Application.Pipeline.ExceptionBoundaryMiddleware<TRequest, TResult>
+YAF.Application.Pipeline.ExceptionBoundaryMiddleware<TRequest, TResult>.ExceptionBoundaryMiddleware(Microsoft.Extensions.Logging.ILogger<YAF.Application.Pipeline.ExceptionBoundaryMiddleware<TRequest, TResult>!>! logger) -> void
+YAF.Application.Pipeline.ExceptionBoundaryMiddleware<TRequest, TResult>.InvokeAsync(TRequest request, YAF.Application.Pipeline.RequestDelegate<TResult>! next, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<TResult>
 YAF.Application.Pipeline.IPipelineDescriptor
 YAF.Application.Pipeline.IPipelineDescriptor.Render() -> string!
 YAF.Application.Pipeline.IPipelineDescriptor.Steps.get -> System.Collections.Generic.IReadOnlyList<YAF.Application.Pipeline.PipelineStep!>!
@@ -62,6 +65,17 @@ YAF.Application.Registration.IRequestRunner.StreamAsync<TQuery, TItem>(TQuery qu
 YAF.Application.Registration.YafHandlersAttribute
 YAF.Application.Registration.YafHandlersAttribute.Registry.get -> System.Type!
 YAF.Application.Registration.YafHandlersAttribute.YafHandlersAttribute(System.Type! registry) -> void
+static readonly YAF.Application.UnitOfWork.ApplicationErrors.ConcurrencyConflict -> YAF.Core.Results.ErrorDescriptor!
+static readonly YAF.Application.UnitOfWork.ApplicationErrors.DependencyUnavailable -> YAF.Core.Results.ErrorDescriptor!
+YAF.Application.UnitOfWork.ApplicationErrors
+YAF.Application.UnitOfWork.ConcurrencyConflictException
+YAF.Application.UnitOfWork.ConcurrencyConflictException.ConcurrencyConflictException() -> void
+YAF.Application.UnitOfWork.ConcurrencyConflictException.ConcurrencyConflictException(string! message) -> void
+YAF.Application.UnitOfWork.ConcurrencyConflictException.ConcurrencyConflictException(string! message, System.Exception! innerException) -> void
+YAF.Application.UnitOfWork.DependencyUnavailableException
+YAF.Application.UnitOfWork.DependencyUnavailableException.DependencyUnavailableException() -> void
+YAF.Application.UnitOfWork.DependencyUnavailableException.DependencyUnavailableException(string! message) -> void
+YAF.Application.UnitOfWork.DependencyUnavailableException.DependencyUnavailableException(string! message, System.Exception! innerException) -> void
 YAF.Application.YafApplicationBuilder
 YAF.Application.YafApplicationBuilder.AddHandlersFrom<TMarker>() -> YAF.Application.YafApplicationBuilder!
 YAF.Application.YafApplicationBuilder.UsePipeline(System.Action<YAF.Application.Pipeline.PipelineBuilder!>! configure) -> YAF.Application.YafApplicationBuilder!
