@@ -9,3 +9,4 @@ YAF3001 | YAF.Errors | Error | CatalogueAnalyzer
 YAF3002 | YAF.Errors | Error | DuplicateCodeAnalyzer
 YAF3003 | YAF.Errors | Warning | TemplateArgumentAnalyzer
 YAF3004 | YAF.Errors | Error | ErrorCodeAnalyzer
+YAF4001 | YAF.Application | Error | RequestResultAnalyzer
