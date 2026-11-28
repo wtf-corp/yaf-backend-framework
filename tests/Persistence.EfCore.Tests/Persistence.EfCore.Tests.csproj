@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="../../src/Analyzers/Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
     <ProjectReference Include="../../src/Persistence.EfCore/Persistence.EfCore.csproj" />
+    <ProjectReference Include="../../src/Persistence.EfCore.PostgreSql/Persistence.EfCore.PostgreSql.csproj" />
     <ProjectReference Include="../../src/Testing/Testing.csproj" />
   </ItemGroup>
 
