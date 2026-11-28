@@ -29,3 +29,13 @@ YAF.Persistence.EfCore.OwnedEntityData.ModifiedAt.set -> void
 YAF.Persistence.EfCore.OwnedEntityData.ModifiedBy.get -> System.Guid
 YAF.Persistence.EfCore.OwnedEntityData.ModifiedBy.set -> void
 YAF.Persistence.EfCore.OwnedEntityData.OwnedEntityData() -> void
+YAF.Persistence.EfCore.IYafDbContextServices
+YAF.Persistence.EfCore.IYafDbContextServices.ExecutionContext.get -> YAF.Application.Context.IExecutionContextAccessor!
+YAF.Persistence.EfCore.IYafDbContextServices.TimeProvider.get -> System.TimeProvider!
+YAF.Persistence.EfCore.YafDbContext
+YAF.Persistence.EfCore.YafDbContext.Services.get -> YAF.Persistence.EfCore.IYafDbContextServices!
+YAF.Persistence.EfCore.YafDbContext.YafDbContext(Microsoft.EntityFrameworkCore.DbContextOptions! options, YAF.Persistence.EfCore.IYafDbContextServices! services) -> void
+YAF.Persistence.EfCore.YafDbContextServiceCollectionExtensions
+YAF.Persistence.EfCore.YafModelBuilderExtensions
+static YAF.Persistence.EfCore.YafDbContextServiceCollectionExtensions.AddYafDbContext<TContext>(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<Microsoft.EntityFrameworkCore.DbContextOptionsBuilder!>! configure) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static YAF.Persistence.EfCore.YafModelBuilderExtensions.ApplyYafModel(this Microsoft.EntityFrameworkCore.ModelBuilder! modelBuilder, YAF.Persistence.EfCore.YafDbContext! context) -> void
