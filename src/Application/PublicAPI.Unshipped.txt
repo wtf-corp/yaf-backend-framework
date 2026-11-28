@@ -84,6 +84,8 @@ YAF.Application.UnitOfWork.IAggregateTracker.Clear() -> void
 YAF.Application.UnitOfWork.IAggregateTracker.DequeueDomainEvents() -> System.Collections.Generic.IReadOnlyList<YAF.Domain.Events.IDomainEvent!>!
 YAF.Application.UnitOfWork.IAggregateTracker.Track(YAF.Domain.IAggregateRoot! aggregate) -> void
 YAF.Application.UnitOfWork.IAggregateTracker.Tracked.get -> System.Collections.Generic.IReadOnlyList<YAF.Domain.IAggregateRoot!>!
+YAF.Application.UnitOfWork.IDomainEventPublisher
+YAF.Application.UnitOfWork.IDomainEventPublisher.PublishAsync(System.Collections.Generic.IReadOnlyList<YAF.Domain.Events.IDomainEvent!>! domainEvents, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<YAF.Core.Results.Result>
 YAF.Application.Validation.IValidator<T>
 YAF.Application.Validation.IValidator<T>.ValidateAsync(T instance, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<YAF.Core.Results.Result>
 YAF.Application.Validation.RuleBuilder<T, TProperty>
