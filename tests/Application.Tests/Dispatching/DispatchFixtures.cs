@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using YAF.Application;
 using YAF.Application.Pipeline;
 using YAF.Application.Registration;
+using YAF.Application.UnitOfWork;
 using YAF.Core.Results;
 using YAF.Domain.Events;
 
@@ -41,6 +42,7 @@ internal sealed class DispatchingRegistry : IHandlerRegistry
         services.AddScoped<IRequestHandler<PingCommand, Result>>(scope => new PingCommandHandler(scope.GetRequiredService<CallLog>()));
         services.AddScoped<IRequestHandler<PingQuery, Result>>(scope => new PingQueryHandler(scope.GetRequiredService<CallLog>()));
         services.AddScoped<IStreamQueryHandler<CountQuery, int>>(scope => new CountQueryHandler(scope.GetRequiredService<CallLog>()));
+        services.AddScoped<IQueryTransaction>(scope => new StreamingQueryTransaction(scope.GetRequiredService<CallLog>()));
     }
 
     /// <summary>Registers the test middleware with factories, so that the dispatcher resolves them from the scope.</summary>
@@ -197,6 +199,32 @@ internal sealed class RetryOnceMiddleware<TRequest, TResult> : IRequestMiddlewar
         catch (InvalidOperationException)
         {
             return await next(ct).ConfigureAwait(false);
+        }
+    }
+}
+
+/// <summary>A query transaction that records when a stream's transaction begins and ends; a query that is not streamed is refused.</summary>
+internal sealed class StreamingQueryTransaction(CallLog log) : IQueryTransaction
+{
+    public ValueTask<TResult> ExecuteAsync<TResult>(Func<CancellationToken, ValueTask<TResult>> work, CancellationToken ct)
+        where TResult : IResult =>
+        throw new NotSupportedException("A stream query is held in the transaction's stream.");
+
+    public async IAsyncEnumerable<TItem> Stream<TItem>(
+        Func<CancellationToken, IAsyncEnumerable<TItem>> work,
+        [EnumeratorCancellation] CancellationToken ct)
+    {
+        log.Entries.Add("transaction:begin");
+        try
+        {
+            await foreach (var item in work(ct).WithCancellation(ct).ConfigureAwait(false))
+            {
+                yield return item;
+            }
+        }
+        finally
+        {
+            log.Entries.Add("transaction:end");
         }
     }
 }

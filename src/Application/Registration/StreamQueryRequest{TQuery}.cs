@@ -8,4 +8,4 @@ namespace YAF.Application.Registration;
 /// </summary>
 /// <typeparam name="TQuery">The stream query type.</typeparam>
 /// <param name="Query">The stream query being enumerated.</param>
-internal sealed record StreamQueryRequest<TQuery>(TQuery Query) : IQuery<Result>;
+internal sealed record StreamQueryRequest<TQuery>(TQuery Query) : IQuery<Result>, IStreamQueryRequest;
