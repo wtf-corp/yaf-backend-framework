@@ -1,0 +1,5 @@
+1. TelemetryMiddleware (all)
+2. ExceptionBoundaryMiddleware (all)
+3. ValidationMiddleware (all)
+4. UnitOfWorkMiddleware (commands)
+5. QueryTransactionMiddleware (queries)

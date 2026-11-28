@@ -33,6 +33,7 @@ YAF.Application.Pipeline.PipelineBuilder.InsertAfter(System.Type! existing, Syst
 YAF.Application.Pipeline.PipelineBuilder.InsertBefore(System.Type! existing, System.Type! middleware) -> YAF.Application.Pipeline.PipelineBuilder!
 YAF.Application.Pipeline.PipelineBuilder.Use(System.Type! middleware) -> YAF.Application.Pipeline.PipelineBuilder!
 YAF.Application.Pipeline.PipelineBuilder.Use<TMiddleware>() -> YAF.Application.Pipeline.PipelineBuilder!
+YAF.Application.Pipeline.PipelineBuilder.UseDefaults() -> YAF.Application.Pipeline.PipelineBuilder!
 YAF.Application.Pipeline.PipelineScope
 YAF.Application.Pipeline.PipelineScope.All = 0 -> YAF.Application.Pipeline.PipelineScope
 YAF.Application.Pipeline.PipelineScope.Commands = 1 -> YAF.Application.Pipeline.PipelineScope
