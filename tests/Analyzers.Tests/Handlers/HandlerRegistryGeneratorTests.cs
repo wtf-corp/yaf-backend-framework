@@ -4,13 +4,16 @@ using Microsoft.Extensions.DependencyInjection;
 using YAF.Analyzers.Handlers;
 using YAF.Application;
 using YAF.Application.Registration;
+using YAF.Application.Validation;
 using YAF.Core.Results;
+using YAF.Domain.Events;
 
 namespace Analyzers.Tests.Handlers;
 
 public sealed class HandlerRegistryGeneratorTests
 {
     private const string Usings = """
+        using System.Collections.Generic;
         using System.Threading;
         using System.Threading.Tasks;
         using YAF.Application;
@@ -78,11 +81,134 @@ public sealed class HandlerRegistryGeneratorTests
     }
 
     [Fact]
+    public async Task StreamHandler_IsDispatched()
+    {
+        const string source = Usings + """
+            namespace Probe;
+            public sealed record Count(int To) : IStreamQuery<int>;
+            internal sealed class CountHandler : IStreamQueryHandler<Count, int>
+            {
+                public async IAsyncEnumerable<int> HandleAsync(Count query, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
+                {
+                    for (var i = 1; i <= query.To; i++)
+                    {
+                        await Task.Yield();
+                        yield return i;
+                    }
+                }
+            }
+            """;
+
+        using var result = await RunAsync(source);
+
+        result.Diagnostics.Should().BeEmpty();
+        var (registry, _, runner) = Registered(result);
+        var count = Type(result, "Probe.Count");
+        registry.DeclaredRequests.Should().Equal(count);
+        registry.HandledRequests.Should().Equal(count);
+        var query = (IStreamQuery<int>)Activator.CreateInstance(count, 3)!;
+        registry.TryStream(query, runner, TestContext.Current.CancellationToken, out var items).Should().BeTrue();
+        (await items.ToListAsync(TestContext.Current.CancellationToken).ConfigureAwait(true)).Should().Equal(1, 2, 3);
+        runner.Calls.Should().Equal("stream Probe.Count");
+        registry.TryStream(new Unknown(), runner, TestContext.Current.CancellationToken, out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task DomainEventHandler_IsPublished()
+    {
+        const string source = Usings + """
+            namespace Probe;
+            public sealed record SessionOpened : YAF.Domain.Events.DomainEvent;
+            internal sealed class NotifySpeakers : IDomainEventHandler<SessionOpened>
+            {
+                public ValueTask<Result> HandleAsync(SessionOpened domainEvent, CancellationToken ct) => ValueTask.FromResult(Result.Success());
+            }
+            internal sealed class UpdateAgenda : IDomainEventHandler<SessionOpened>
+            {
+                public ValueTask<Result> HandleAsync(SessionOpened domainEvent, CancellationToken ct) => ValueTask.FromResult(Result.Success());
+            }
+            """;
+
+        using var result = await RunAsync(source);
+
+        result.Diagnostics.Should().BeEmpty();
+        var (registry, _, runner) = Registered(result);
+        var opened = (IDomainEvent)Activator.CreateInstance(Type(result, "Probe.SessionOpened"))!;
+        registry.TryPublish(opened, runner, TestContext.Current.CancellationToken, out var running).Should().BeTrue();
+        (await running.ConfigureAwait(true)).IsSuccess.Should().BeTrue();
+        runner.Calls.Should().Equal("publish Probe.SessionOpened", "handled by NotifySpeakers", "handled by UpdateAgenda");
+        registry.TryPublish(new Unpublished(), runner, TestContext.Current.CancellationToken, out _).Should().BeFalse();
+        registry.DeclaredRequests.Should().BeEmpty();
+        registry.HandledRequests.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Validator_IsRegistered()
+    {
+        const string source = Usings + """
+            namespace Probe;
+            public sealed record Rename(string Title) : ICommand<Result>;
+            internal sealed class RenameValidator : YAF.Application.Validation.Validator<Rename>;
+            """;
+
+        using var result = await RunAsync(source);
+
+        result.Diagnostics.Should().BeEmpty();
+        var (_, services, _) = Registered(result);
+        services.Should().ContainSingle(descriptor =>
+            descriptor.ServiceType == typeof(IValidator<>).MakeGenericType(Type(result, "Probe.Rename"))
+            && descriptor.ImplementationType == Type(result, "Probe.RenameValidator") && descriptor.Lifetime == ServiceLifetime.Scoped);
+    }
+
+    [Fact]
+    public async Task HandlerOfInaccessibleType_IsLeftOut()
+    {
+        const string source = Usings + """
+            using YAF.Application.Validation;
+            namespace Probe;
+            public sealed record Open : ICommand<Result>;
+            internal sealed class OpenHandler : IRequestHandler<Open, Result>
+            {
+                public ValueTask<Result> HandleAsync(Open request, CancellationToken ct) => ValueTask.FromResult(Result.Success());
+            }
+            internal static class Hidden
+            {
+                private sealed record Close : ICommand<Result>;
+                private sealed record Count : IStreamQuery<int>;
+                private sealed record Closed : YAF.Domain.Events.DomainEvent;
+                internal sealed class CloseHandler : IRequestHandler<Close, Result>, IValidator<Close>
+                {
+                    ValueTask<Result> IRequestHandler<Close, Result>.HandleAsync(Close request, CancellationToken ct) => ValueTask.FromResult(Result.Success());
+                    ValueTask<Result> IValidator<Close>.ValidateAsync(Close instance, CancellationToken ct) => ValueTask.FromResult(Result.Success());
+                }
+                internal sealed class CountHandler : IStreamQueryHandler<Count, int>
+                {
+                    IAsyncEnumerable<int> IStreamQueryHandler<Count, int>.HandleAsync(Count query, CancellationToken ct) => System.Linq.AsyncEnumerable.Empty<int>();
+                }
+                internal sealed class NotifyClosed : IDomainEventHandler<Closed>
+                {
+                    ValueTask<Result> IDomainEventHandler<Closed>.HandleAsync(Closed domainEvent, CancellationToken ct) => ValueTask.FromResult(Result.Success());
+                }
+            }
+            """;
+
+        using var result = await RunAsync(source);
+
+        result.Diagnostics.Should().BeEmpty();
+        var (registry, services, _) = Registered(result);
+        var open = Type(result, "Probe.Open");
+        registry.DeclaredRequests.Should().Equal(open);
+        registry.HandledRequests.Should().Equal(open);
+        services.Should().ContainSingle().Which.ImplementationType.Should().Be(Type(result, "Probe.OpenHandler"));
+    }
+
+    [Fact]
     public async Task DeclaredRequestWithoutHandler_IsListed()
     {
         const string source = Usings + """
             namespace Probe;
             public sealed record Open : ICommand<Result>;
+            public sealed record List : IStreamQuery<string>;
             public abstract record Base : IQuery<Result>;
             """;
 
@@ -90,7 +216,7 @@ public sealed class HandlerRegistryGeneratorTests
 
         result.Diagnostics.Should().BeEmpty();
         var (registry, services, _) = Registered(result);
-        registry.DeclaredRequests.Should().Equal(Type(result, "Probe.Open"));
+        registry.DeclaredRequests.Should().Equal(Type(result, "Probe.Open"), Type(result, "Probe.List"));
         registry.HandledRequests.Should().BeEmpty();
         services.Should().BeEmpty();
     }
@@ -155,5 +281,7 @@ public sealed class HandlerRegistryGeneratorTests
         return (registry, services, new RecordingRunner(services));
     }
 
-    private sealed record Unknown : IQuery<Result<string>>;
+    private sealed record Unknown : IQuery<Result<string>>, IStreamQuery<int>;
+
+    private sealed record Unpublished : DomainEvent;
 }
