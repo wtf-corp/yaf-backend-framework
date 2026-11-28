@@ -7,6 +7,7 @@ namespace YAF.Application.Validation;
 /// <summary>
 /// The checks of one rule of a <see cref="Validator{T}"/>, started by <c>Rule(x =&gt; x.Member)</c>. Each check takes the
 /// <see cref="ErrorDescriptor"/> it fails with, at the rule's target, and returns this builder; the first check that fails ends the chain.
+/// The <see cref="MustAsync"/> checks run after every synchronous check of the chain has passed, in the order they were added.
 /// </summary>
 /// <remarks>
 /// The length and range checks pass their limits as the arguments <c>MaxLength</c>, <c>MinLength</c>, <c>Minimum</c> and <c>Maximum</c>,
@@ -21,14 +22,10 @@ public sealed class RuleBuilder<T, TProperty>
     private static readonly TimeSpan s_matchTimeout = TimeSpan.FromSeconds(1);
 
     private readonly string _target;
-    private readonly Func<T, TProperty> _read;
-    private readonly List<Func<T, TProperty, Error?>> _checks = [];
+    private readonly List<(Func<T, TProperty, bool> Holds, Error Failure)> _checks = [];
+    private readonly List<(Func<TProperty, CancellationToken, ValueTask<bool>> Holds, Error Failure)> _asyncChecks = [];
 
-    internal RuleBuilder(string target, Func<T, TProperty> read)
-    {
-        _target = target;
-        _read = read;
-    }
+    internal RuleBuilder(string target) => _target = target;
 
     /// <summary>Fails when the value is <see langword="null"/>.</summary>
     /// <param name="error">The error to fail with.</param>
@@ -94,11 +91,41 @@ public sealed class RuleBuilder<T, TProperty>
     public RuleBuilder<T, TProperty> Must(Func<T, TProperty, bool> predicate, ErrorDescriptor error) =>
         Add(error, predicate ?? throw new ArgumentNullException(nameof(predicate)));
 
-    /// <summary>Runs the checks in order; returns the error of the first that fails, or <see langword="null"/>.</summary>
-    internal Error? Check(T instance)
+    /// <summary>
+    /// Fails when the asynchronous predicate returns <see langword="false"/> for the value, for example a check that reads the store.
+    /// It runs only after every synchronous check of the chain has passed.
+    /// </summary>
+    /// <param name="predicate">The condition the value must meet, given the value, which may be <see langword="null"/>, and the token that
+    /// cancels the validation.</param>
+    /// <param name="error">The error to fail with.</param>
+    public RuleBuilder<T, TProperty> MustAsync(Func<TProperty, CancellationToken, ValueTask<bool>> predicate, ErrorDescriptor error)
     {
-        var value = _read(instance);
-        return _checks.Select(check => check(instance, value)).FirstOrDefault(error => error is not null);
+        ArgumentNullException.ThrowIfNull(predicate);
+        ArgumentNullException.ThrowIfNull(error);
+        _asyncChecks.Add((predicate, error.ToError()));
+        return this;
+    }
+
+    /// <summary>Runs the checks in order; returns the error of the first that fails, at <paramref name="target"/>, or <see langword="null"/>.</summary>
+    internal async ValueTask<Error?> CheckAsync(T instance, TProperty value, string target, CancellationToken ct)
+    {
+        foreach (var (holds, failure) in _checks)
+        {
+            if (!holds(instance, value))
+            {
+                return failure with { Target = target };
+            }
+        }
+
+        foreach (var (holds, failure) in _asyncChecks)
+        {
+            if (!await holds(value, ct).ConfigureAwait(false))
+            {
+                return failure with { Target = target };
+            }
+        }
+
+        return null;
     }
 
     private static bool IsEmpty(TProperty value) => value switch
@@ -126,8 +153,7 @@ public sealed class RuleBuilder<T, TProperty>
     private RuleBuilder<T, TProperty> Add(ErrorDescriptor error, Func<T, TProperty, bool> holds, params (string Name, object? Value)[] arguments)
     {
         ArgumentNullException.ThrowIfNull(error);
-        var failure = arguments.Length == 0 ? error.At(_target) : error.With(arguments) with { Target = _target };
-        _checks.Add((instance, value) => holds(instance, value) ? null : failure);
+        _checks.Add((holds, arguments.Length == 0 ? error.ToError() : error.With(arguments)));
         return this;
     }
 }

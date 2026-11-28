@@ -85,12 +85,17 @@ YAF.Application.Validation.RuleBuilder<T, TProperty>.MaxLength(int maxLength, YA
 YAF.Application.Validation.RuleBuilder<T, TProperty>.MinLength(int minLength, YAF.Core.Results.ErrorDescriptor! error) -> YAF.Application.Validation.RuleBuilder<T, TProperty>!
 YAF.Application.Validation.RuleBuilder<T, TProperty>.Must(System.Func<T, TProperty, bool>! predicate, YAF.Core.Results.ErrorDescriptor! error) -> YAF.Application.Validation.RuleBuilder<T, TProperty>!
 YAF.Application.Validation.RuleBuilder<T, TProperty>.Must(System.Func<TProperty, bool>! predicate, YAF.Core.Results.ErrorDescriptor! error) -> YAF.Application.Validation.RuleBuilder<T, TProperty>!
+YAF.Application.Validation.RuleBuilder<T, TProperty>.MustAsync(System.Func<TProperty, System.Threading.CancellationToken, System.Threading.Tasks.ValueTask<bool>>! predicate, YAF.Core.Results.ErrorDescriptor! error) -> YAF.Application.Validation.RuleBuilder<T, TProperty>!
 YAF.Application.Validation.RuleBuilder<T, TProperty>.NotEmpty(YAF.Core.Results.ErrorDescriptor! error) -> YAF.Application.Validation.RuleBuilder<T, TProperty>!
 YAF.Application.Validation.RuleBuilder<T, TProperty>.NotNull(YAF.Core.Results.ErrorDescriptor! error) -> YAF.Application.Validation.RuleBuilder<T, TProperty>!
 YAF.Application.Validation.Validator<T>
+YAF.Application.Validation.Validator<T>.Include(YAF.Application.Validation.IValidator<T>! validator) -> void
+YAF.Application.Validation.Validator<T>.Nested<TChild>(System.Linq.Expressions.Expression<System.Func<T, TChild?>!>! member, YAF.Application.Validation.IValidator<TChild>! validator) -> void
 YAF.Application.Validation.Validator<T>.Rule<TProperty>(System.Linq.Expressions.Expression<System.Func<T, TProperty>!>! member) -> YAF.Application.Validation.RuleBuilder<T, TProperty>!
+YAF.Application.Validation.Validator<T>.RuleForEach<TItem>(System.Linq.Expressions.Expression<System.Func<T, System.Collections.Generic.IEnumerable<TItem>!>!>! member) -> YAF.Application.Validation.RuleBuilder<T, TItem>!
 YAF.Application.Validation.Validator<T>.ValidateAsync(T instance, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<YAF.Core.Results.Result>
 YAF.Application.Validation.Validator<T>.Validator() -> void
+YAF.Application.Validation.Validator<T>.When(System.Func<T, bool>! condition, System.Action! rules) -> void
 YAF.Application.YafApplicationBuilder
 YAF.Application.YafApplicationBuilder.AddHandlersFrom<TMarker>() -> YAF.Application.YafApplicationBuilder!
 YAF.Application.YafApplicationBuilder.UsePipeline(System.Action<YAF.Application.Pipeline.PipelineBuilder!>! configure) -> YAF.Application.YafApplicationBuilder!
