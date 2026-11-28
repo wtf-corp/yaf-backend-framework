@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using YAF.Application.Context;
 using YAF.Persistence.EfCore.Conventions;
+using YAF.Persistence.EfCore.Interceptors;
 
 namespace YAF.Persistence.EfCore;
 
@@ -11,8 +12,9 @@ namespace YAF.Persistence.EfCore;
 public static class YafDbContextServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers <typeparamref name="TContext"/> per scope, with YAF's conventions and the <see cref="IYafDbContextServices"/> it is
-    /// created with. Calling it again for the same context registers nothing and does not run <paramref name="configure"/>.
+    /// Registers <typeparamref name="TContext"/> per scope, with YAF's conventions, the interceptor that stamps the rows of a save, and the
+    /// <see cref="IYafDbContextServices"/> it is created with. Calling it again for the same context registers nothing and does not run
+    /// <paramref name="configure"/>.
     /// </summary>
     /// <typeparam name="TContext">The service's context.</typeparam>
     /// <param name="services">The application's services. They must also hold an <see cref="IExecutionContextAccessor"/> and a
@@ -22,7 +24,8 @@ public static class YafDbContextServiceCollectionExtensions
     /// <remarks>
     /// The model of the context fails to build, with an <see cref="InvalidOperationException"/> at its first use, when its
     /// <c>OnModelCreating</c> does not call <see cref="YafModelBuilderExtensions.ApplyYafModel"/> or a <see langword="string"/> property has
-    /// no maximum length; the message names the property.
+    /// no maximum length; the message names the property. A save throws <see cref="MissingExecutionContextException"/> when the scope has no
+    /// execution context.
     /// </remarks>
     /// <example>
     /// <code language="csharp">
@@ -40,8 +43,9 @@ public static class YafDbContextServiceCollectionExtensions
         }
 
         services.TryAddScoped<IYafDbContextServices, YafDbContextServices>();
-        services.AddDbContext<TContext>(options =>
+        services.AddDbContext<TContext>((provider, options) =>
         {
+            options.AddInterceptors(new StampingInterceptor(provider.GetRequiredService<IYafDbContextServices>()));
             configure(options);
             ((IDbContextOptionsBuilderInfrastructure)options).AddOrUpdateExtension(new YafDbContextOptionsExtension());
         });
