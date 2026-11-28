@@ -10,6 +10,8 @@ static YAF.Testing.ResultAssert.ShouldFailWith<T>(this YAF.Core.Results.Result<T
 static YAF.Testing.ResultAssert.ShouldSucceed(this YAF.Core.Results.Result result) -> void
 static YAF.Testing.ResultAssert.ShouldSucceed<T>(this YAF.Core.Results.Result<T> result) -> T
 static YAF.Testing.StateMachineAssert.IsWellFormed<TState, TTrigger>(YAF.Domain.StateMachines.StateMachine<TState, TTrigger>! machine, TState initial, System.Collections.Generic.IReadOnlyCollection<TState>! finals) -> void
+static YAF.Testing.SyntheticData.Email(int index, string! role = "attendee") -> string!
+static YAF.Testing.SyntheticData.Name(int index, string! role = "Attendee") -> string!
 YAF.Testing.AggregateAssert
 YAF.Testing.Approvals
 YAF.Testing.DomainEventAssert
@@ -41,6 +43,7 @@ YAF.Testing.InMemoryRepository<TAggregate, TId>.UpdateAsync(TAggregate! aggregat
 YAF.Testing.MementoAssert
 YAF.Testing.ResultAssert
 YAF.Testing.StateMachineAssert
+YAF.Testing.SyntheticData
 YAF.Testing.TestClock
 YAF.Testing.TestClock.Advance(System.TimeSpan by) -> void
 YAF.Testing.TestClock.Now.get -> System.DateTimeOffset
