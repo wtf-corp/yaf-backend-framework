@@ -10,8 +10,6 @@ namespace YAF.Persistence.EfCore.PostgreSql;
 /// <summary>Connects a <see cref="YafDbContext"/> to PostgreSQL.</summary>
 public static class YafPostgresServiceCollectionExtensions
 {
-    private const int CommandTimeoutSeconds = 30;
-
     /// <summary>
     /// Registers <typeparamref name="TContext"/> with <see cref="YafDbContextServiceCollectionExtensions.AddYafDbContext{TContext}"/> on
     /// PostgreSQL over the connection string <c>ConnectionStrings:&lt;connectionName&gt;</c>: retry on transient failures, a command
@@ -60,7 +58,7 @@ public static class YafPostgresServiceCollectionExtensions
             {
                 IncludeErrorDetail = development,
             };
-            options.UseNpgsql(connection.ConnectionString, npgsql => npgsql.EnableRetryOnFailure().CommandTimeout(CommandTimeoutSeconds));
+            options.UseNpgsql(connection.ConnectionString, npgsql => npgsql.EnableRetryOnFailure().CommandTimeout(30));
             ((IDbContextOptionsBuilderInfrastructure)options).AddOrUpdateExtension(new PostgresOptionsExtension());
         });
         return builder;

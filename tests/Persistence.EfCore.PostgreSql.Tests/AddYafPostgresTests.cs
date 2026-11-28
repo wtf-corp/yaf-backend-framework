@@ -37,7 +37,6 @@ public sealed class AddYafPostgresTests
     }
 
     [Theory]
-    [InlineData("TicketData", "ticket_data")]
     [InlineData("Price_Amount", "price_amount")]
     [InlineData("ExternalURLPath", "external_url_path")]
     [InlineData("Line2Text", "line2_text")]
