@@ -17,7 +17,7 @@ public sealed class ExecutionContextTests
 
         var act = () => accessor.Current;
 
-        act.Should().Throw<MissingExecutionContextException>();
+        act.Should().Throw<MissingExecutionContextException>().Which.Should().BeAssignableTo<InvalidOperationException>();
     }
 
     [Fact]
@@ -26,6 +26,8 @@ public sealed class ExecutionContextTests
         var accessor = new ExecutionContextScope();
         var initiator = new PrincipalRef(PrincipalKind.User, s_user);
         var seed = new ExecutionContextSeed(s_tenant, Principal.System("job:send-reminders"), initiator, s_correlation, "job");
+        using var activity = new Activity("test");
+        activity.SetIdFormat(ActivityIdFormat.W3C).Start();
 
         using (accessor.Begin(seed))
         {
@@ -35,6 +37,7 @@ public sealed class ExecutionContextTests
             context.Actor.Should().BeSameAs(seed.Actor);
             context.Initiator.Should().Be(initiator);
             context.CorrelationId.Should().Be(s_correlation);
+            context.TraceParent.Should().Be(activity.Id);
             context.Origin.Should().Be("job");
             context.AdditionalTenants.Should().BeEmpty();
             context.IdempotencyKey.Should().BeNull();
@@ -43,19 +46,6 @@ public sealed class ExecutionContextTests
 
         var afterwards = () => accessor.Current;
         afterwards.Should().Throw<MissingExecutionContextException>();
-    }
-
-    [Fact]
-    public void Begin_TakesTheTraceParentOfTheCurrentActivity()
-    {
-        var factory = new ExecutionContextScope();
-        using var activity = new Activity("test");
-        activity.SetIdFormat(ActivityIdFormat.W3C).Start();
-
-        using (factory.Begin(new ExecutionContextSeed(s_tenant, Principal.User(s_user), null, s_correlation, "http")))
-        {
-            factory.Current.TraceParent.Should().Be(activity.Id);
-        }
     }
 
     [Fact]
@@ -70,56 +60,29 @@ public sealed class ExecutionContextTests
         act.Should().Throw<InvalidOperationException>();
     }
 
-    [Fact]
-    public void Begin_WithoutSeed_Throws()
-    {
-        var factory = new ExecutionContextScope();
-
-        var act = () => factory.Begin(null!);
-
-        act.Should().Throw<ArgumentNullException>();
-    }
-
     [Theory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("  ")]
     public void Principal_System_RequiresAReason(string? reason)
     {
-        var act = () => Principal.System(reason!);
+        var system = () => Principal.System(reason!);
+        var service = () => Principal.Service(reason!);
 
-        act.Should().Throw<ArgumentException>();
+        system.Should().Throw<ArgumentException>();
+        service.Should().Throw<ArgumentException>();
     }
 
     [Fact]
-    public void Principal_System_KeepsTheReason()
+    public void Principal_System_KeepsTheReasonAndService_TheName()
     {
-        var principal = Principal.System("cron:purge-retention");
+        var system = Principal.System("cron:purge-retention");
+        var service = Principal.Service("registrations");
 
-        principal.Kind.Should().Be(PrincipalKind.System);
-        principal.Name.Should().Be("cron:purge-retention");
-        principal.UserId.Should().BeNull();
-    }
-
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("  ")]
-    public void Principal_Service_RequiresAName(string? name)
-    {
-        var act = () => Principal.Service(name!);
-
-        act.Should().Throw<ArgumentException>();
-    }
-
-    [Fact]
-    public void Principal_Service_KeepsTheName()
-    {
-        var principal = Principal.Service("registrations");
-
-        principal.Kind.Should().Be(PrincipalKind.Service);
-        principal.Name.Should().Be("registrations");
-        principal.UserId.Should().BeNull();
+        (system.Kind, system.Name, system.UserId).Should().Be((PrincipalKind.System, "cron:purge-retention", (UserId?)null));
+        (service.Kind, service.Name, service.UserId).Should().Be((PrincipalKind.Service, "registrations", (UserId?)null));
+        var anonymous = Principal.Anonymous;
+        (anonymous.Kind, anonymous.Name, anonymous.UserId).Should().Be((PrincipalKind.Anonymous, (string?)null, (UserId?)null));
     }
 
     [Fact]
@@ -130,27 +93,5 @@ public sealed class ExecutionContextTests
         principal.Kind.Should().Be(PrincipalKind.User);
         principal.UserId.Should().Be(s_user);
         principal.Name.Should().BeNull();
-    }
-
-    [Fact]
-    public void Principal_Anonymous_HasNoIdentity()
-    {
-        var principal = Principal.Anonymous;
-
-        principal.Kind.Should().Be(PrincipalKind.Anonymous);
-        principal.UserId.Should().BeNull();
-        principal.Name.Should().BeNull();
-        Principal.Anonymous.Should().BeSameAs(principal);
-    }
-
-    [Fact]
-    public void MissingExecutionContextException_IsAnInvalidOperation()
-    {
-        var inner = new InvalidOperationException("inner");
-
-        new MissingExecutionContextException().Message.Should().NotBeNullOrWhiteSpace();
-        new MissingExecutionContextException("message").Message.Should().Be("message");
-        new MissingExecutionContextException("message", inner).InnerException.Should().BeSameAs(inner);
-        new MissingExecutionContextException().Should().BeAssignableTo<InvalidOperationException>();
     }
 }

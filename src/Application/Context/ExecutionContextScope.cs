@@ -15,6 +15,9 @@ internal sealed class ExecutionContextScope : IExecutionContextAccessor, IExecut
     /// <inheritdoc/>
     public IDisposable Begin(ExecutionContextSeed seed)
     {
+        ArgumentNullException.ThrowIfNull(seed);
+        ArgumentNullException.ThrowIfNull(seed.Actor);
+        ArgumentException.ThrowIfNullOrWhiteSpace(seed.Origin);
         var context = new SeededExecutionContext(seed);
         if (Interlocked.Exchange(ref _begun, 1) != 0)
         {
