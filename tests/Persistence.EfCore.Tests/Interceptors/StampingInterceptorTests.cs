@@ -38,7 +38,8 @@ public sealed class StampingInterceptorTests
     public void Update_StampsModifiedOnly()
     {
         var user = UserId.New();
-        using var provider = Build(FakeExecutionContext.ForUser(user, TenantId.New()));
+        var tenant = TenantId.New();
+        using var provider = Build(FakeExecutionContext.ForUser(user, tenant));
         using var scope = provider.CreateScope();
         using var context = Context(scope);
         var createdAt = _clock.Now;
@@ -46,6 +47,7 @@ public sealed class StampingInterceptorTests
         var note = new NoteData
         {
             Id = Guid.NewGuid(),
+            TenantId = tenant.Value,
             Body = "first",
             CreatedAt = createdAt,
             CreatedBy = createdBy,
