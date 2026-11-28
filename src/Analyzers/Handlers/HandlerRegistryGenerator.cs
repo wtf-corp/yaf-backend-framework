@@ -6,11 +6,12 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 namespace YAF.Analyzers.Handlers;
 
 /// <summary>
-/// Emits, in a compilation that declares a request or has a handler or validator, the assembly's <c>[assembly: YafHandlers(…)]</c> and
-/// the file-local <c>YAF.Generated.YafHandlerRegistry</c> it names (04 §2, §5): the declared and the handled request types, the
-/// registration of every request handler, stream query handler, domain event handler and validator as a scoped service, and a switch on
-/// the runtime type of a request, stream query or domain event to the <c>IRequestRunner</c> call with its static types. A type the
-/// registry cannot name (private, or inside a generic type) or a generic or abstract type is left out. Being file-local, the registry is
+/// Emits, in a compilation that declares a command or query or has a request handler, the assembly's <c>[assembly: YafHandlers(…)]</c>
+/// and the file-local <c>YAF.Generated.YafHandlerRegistry</c> it names (04 §2, §5): the declared and the handled request types, the
+/// registration of every request handler as a scoped service, and a switch on the runtime type of a request to the
+/// <c>IRequestRunner</c> call with its static types. Stream queries, domain events and validators are not covered yet: <c>TryStream</c>
+/// and <c>TryPublish</c> return <see langword="false"/>. A type the registry cannot name (private, or inside a generic type) or a generic
+/// or abstract type is left out. Being file-local, the registry is
 /// reached only through the attribute and is invisible to every other assembly, so that a friend assembly with its own handlers does not
 /// clash with it.
 /// </summary>
@@ -51,20 +52,11 @@ internal sealed class HandlerRegistryGenerator : IIncrementalGenerator
             var depth = Depth(contract.TypeArguments.FirstOrDefault());
             switch (Contract(contract))
             {
-                case "YAF.Application.IRequest`1" or "YAF.Application.IStreamQuery`1":
+                case "YAF.Application.IRequest`1":
                     entries.Add(new Entry(Kind.Declared, name, name, null, 0));
                     break;
                 case "YAF.Application.IRequestHandler`2":
                     entries.Add(new Entry(Kind.Request, name, arguments[0], arguments[1], depth));
-                    break;
-                case "YAF.Application.IStreamQueryHandler`2":
-                    entries.Add(new Entry(Kind.Stream, name, arguments[0], arguments[1], depth));
-                    break;
-                case "YAF.Application.IDomainEventHandler`1":
-                    entries.Add(new Entry(Kind.Event, name, arguments[0], null, depth));
-                    break;
-                case "YAF.Application.Validation.IValidator`1":
-                    entries.Add(new Entry(Kind.Validator, name, arguments[0], null, 0));
                     break;
             }
         }
@@ -87,7 +79,7 @@ internal sealed class HandlerRegistryGenerator : IIncrementalGenerator
         return false;
     }
 
-    // How many base types a request or event has, so that the switch tests a derived type before its base (no case subsumes a later one).
+    // How many base types a request has, so that the switch tests a derived type before its base (no case subsumes a later one).
     private static int Depth(ITypeSymbol? type)
     {
         var depth = 0;
@@ -108,17 +100,10 @@ internal sealed class HandlerRegistryGenerator : IIncrementalGenerator
         }
 
         var register = new StringBuilder();
-        foreach (var entry in entries.Where(entry => entry.Kind != Kind.Declared))
+        foreach (var entry in entries.Where(entry => entry.Kind == Kind.Request))
         {
-            var service = entry.Kind switch
-            {
-                Kind.Request => $"global::YAF.Application.IRequestHandler<{entry.Target}, {entry.Result}>",
-                Kind.Stream => $"global::YAF.Application.IStreamQueryHandler<{entry.Target}, {entry.Result}>",
-                Kind.Event => $"global::YAF.Application.IDomainEventHandler<{entry.Target}>",
-                _ => $"global::YAF.Application.Validation.IValidator<{entry.Target}>",
-            };
             register.Append("            global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddScoped<")
-                .Append(service).Append(", ").Append(entry.Type).AppendLine(">(services);");
+                .Append($"global::YAF.Application.IRequestHandler<{entry.Target}, {entry.Result}>, ").Append(entry.Type).AppendLine(">(services);");
         }
 
         output.AddSource("YAF.HandlerRegistry.g.cs", $$"""
@@ -134,7 +119,7 @@ internal sealed class HandlerRegistryGenerator : IIncrementalGenerator
                         new global::System.Type[] { {{TypeList(entries, Kind.Declared)}} };
 
                     public global::System.Collections.Generic.IReadOnlyCollection<global::System.Type> HandledRequests { get; } =
-                        new global::System.Type[] { {{TypeList(entries, Kind.Request, Kind.Stream)}} };
+                        new global::System.Type[] { {{TypeList(entries, Kind.Request)}} };
 
                     public void Register(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services)
                     {
@@ -152,22 +137,14 @@ internal sealed class HandlerRegistryGenerator : IIncrementalGenerator
 
                     public bool TryStream<TItem>(global::YAF.Application.IStreamQuery<TItem> query, global::YAF.Application.Registration.IRequestRunner runner, global::System.Threading.CancellationToken ct, out global::System.Collections.Generic.IAsyncEnumerable<TItem> items)
                     {
-                        switch (query)
-                        {
-            {{Cases(entries, Kind.Stream, entry => $"items = (global::System.Collections.Generic.IAsyncEnumerable<TItem>)runner.StreamAsync<{entry.Target}, {entry.Result}>(r, ct);")}}                default:
-                                items = global::System.Linq.AsyncEnumerable.Empty<TItem>();
-                                return false;
-                        }
+                        items = global::System.Linq.AsyncEnumerable.Empty<TItem>();
+                        return false;
                     }
 
                     public bool TryPublish(global::YAF.Domain.Events.IDomainEvent domainEvent, global::YAF.Application.Registration.IRequestRunner runner, global::System.Threading.CancellationToken ct, out global::System.Threading.Tasks.ValueTask<global::YAF.Core.Results.Result> result)
                     {
-                        switch (domainEvent)
-                        {
-            {{Cases(entries, Kind.Event, entry => $"result = runner.PublishAsync<{entry.Target}>(r, ct);")}}                default:
-                                result = default;
-                                return false;
-                        }
+                        result = default;
+                        return false;
                     }
                 }
             }
@@ -175,8 +152,8 @@ internal sealed class HandlerRegistryGenerator : IIncrementalGenerator
             """);
     }
 
-    private static string TypeList(List<Entry> entries, params Kind[] kinds) =>
-        string.Join(", ", entries.Where(entry => kinds.Contains(entry.Kind)).Select(entry => $"typeof({entry.Target})").Distinct());
+    private static string TypeList(List<Entry> entries, Kind kind) =>
+        string.Join(", ", entries.Where(entry => entry.Kind == kind).Select(entry => $"typeof({entry.Target})").Distinct());
 
     // One case per target type, a derived type before its base; a request type handled twice (YAF4005) gets its first handler's case.
     private static string Cases(List<Entry> entries, Kind kind, Func<Entry, string> call)
@@ -197,9 +174,6 @@ internal sealed class HandlerRegistryGenerator : IIncrementalGenerator
     {
         Declared,
         Request,
-        Stream,
-        Event,
-        Validator,
     }
 
     private sealed record Entry(Kind Kind, string Type, string Target, string? Result, int Depth);
