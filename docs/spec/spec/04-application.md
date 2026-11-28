@@ -81,7 +81,7 @@ Default pipeline, outermost first:
 | # | Middleware | Applies to | Behaviour |
 |---|---|---|---|
 | 1 | `TelemetryMiddleware` | all | Starts an `Activity` `yaf.request {RequestName}`; records duration and outcome metrics; logs `Handling` / `Handled` / `Failed {ErrorCodes}` with names and codes only. With `[LogPayload]`, logs the request through the redacting formatter |
-| 2 | `ExceptionBoundaryMiddleware` | all | Lets `OperationCanceledException` pass; converts known infrastructure exceptions (`ConcurrencyConflictException` → `Conflict`, `DependencyUnavailableException` → `Unavailable`); logs and rethrows anything else |
+| 2 | `ExceptionBoundaryMiddleware` | all | Lets `OperationCanceledException` pass; converts known infrastructure exceptions (`ConcurrencyConflictException` → `Conflict`, `DependencyUnavailableException` → `Unavailable`); rethrows anything else without logging it |
 | 3 | `TimeoutMiddleware` | marked | Linked cancellation after `[Timeout]` or the configured default |
 | 4 | `AuthorizationMiddleware` | all | Enforces the request markers against `IExecutionContext` (§7). A request with **no marker is refused** (`core.authorization.undeclared`), so a use case reachable from a job, a consumer or a new adapter is still authorised |
 | 5 | `InputGuardMiddleware` | commands | Checks every string of the request and **never alters it**. A control character other than tab, CR and LF, or invalid Unicode (an unpaired surrogate), fails the request with validation error `Input.InvalidCharacters` at the member's target. A member marked `[Markup]` is the one exception to "never alters": it is passed through `IMarkupSanitizer` (`09-security.md` §7) |
@@ -94,6 +94,8 @@ Default pipeline, outermost first:
 > **Amended 2026-11-27**, by the owner's decisions of 2026-11-26 (`specs/0013-thin-slice/plan.md`, decision log Q4): a middleware that applies to every request is an open generic type, which C# does not accept as a type argument, so the builder names a step by `Type`. `Use(Type)`, `InsertAfter(Type existing, Type middleware)` and `InsertBefore(Type existing, Type middleware)` accept open generic middleware (`typeof(ValidationMiddleware<,>)`); `Use<TMiddleware>()` adds a closed, request-specific middleware.
 
 > **Amended 2026-11-27**, by the owner's decisions of 2026-11-26 (`specs/0013-thin-slice/plan.md`, decision log Q1): the default pipeline of M3 is steps 1, 2, 6 and both steps 7. `AuthorizationMiddleware` and `InputGuardMiddleware` join it in M4, `TimeoutMiddleware` and `[LogPayload]` in M5, `IdempotencyMiddleware` in M9; `[NoTransaction]` comes with M8 (`18-build-plan.md` §2).
+
+> **Amended 2026-11-28**, by the owner's decision of 2026-11-28 (`specs/0013-thin-slice/plan.md`, deviation 18; recorded on issue #337): an unhandled exception is logged once, by the entry point that finally handles it, and the exception boundary rethrows it without logging (`12-observability.md` §1 rule 5). Over HTTP that is `YafExceptionHandler` (`08-http.md` §2); for the entry points that are not requests, the runtime that retries, parks or dead-letters them.
 
 Rules:
 
