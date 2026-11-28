@@ -24,6 +24,13 @@ YAF.Testing.FakeExecutionContext.Origin.get -> string!
 YAF.Testing.FakeExecutionContext.TenantId.get -> YAF.Core.Ids.TenantId?
 YAF.Testing.FakeExecutionContext.TraceParent.get -> string?
 YAF.Testing.FakeExecutionContext.WithCorrelation(YAF.Core.Ids.CorrelationId id) -> YAF.Testing.FakeExecutionContext!
+YAF.Testing.FakeUnitOfWork
+YAF.Testing.FakeUnitOfWork.Commits.get -> int
+YAF.Testing.FakeUnitOfWork.ExecuteAsync<TResult>(System.Func<System.Threading.CancellationToken, System.Threading.Tasks.ValueTask<TResult>>! work, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<TResult>
+YAF.Testing.FakeUnitOfWork.FakeUnitOfWork() -> void
+YAF.Testing.FakeUnitOfWork.FakeUnitOfWork(YAF.Application.UnitOfWork.IAggregateTracker! tracker, YAF.Application.UnitOfWork.IDomainEventPublisher! publisher) -> void
+YAF.Testing.FakeUnitOfWork.Rollbacks.get -> int
+YAF.Testing.FakeUnitOfWork.Rounds.get -> System.Collections.Generic.IReadOnlyList<int>!
 YAF.Testing.MementoAssert
 YAF.Testing.ResultAssert
 YAF.Testing.StateMachineAssert
