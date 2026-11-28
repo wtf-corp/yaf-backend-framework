@@ -79,6 +79,11 @@ YAF.Application.UnitOfWork.DependencyUnavailableException
 YAF.Application.UnitOfWork.DependencyUnavailableException.DependencyUnavailableException() -> void
 YAF.Application.UnitOfWork.DependencyUnavailableException.DependencyUnavailableException(string! message) -> void
 YAF.Application.UnitOfWork.DependencyUnavailableException.DependencyUnavailableException(string! message, System.Exception! innerException) -> void
+YAF.Application.UnitOfWork.IAggregateTracker
+YAF.Application.UnitOfWork.IAggregateTracker.Clear() -> void
+YAF.Application.UnitOfWork.IAggregateTracker.DequeueDomainEvents() -> System.Collections.Generic.IReadOnlyList<YAF.Domain.Events.IDomainEvent!>!
+YAF.Application.UnitOfWork.IAggregateTracker.Track(YAF.Domain.IAggregateRoot! aggregate) -> void
+YAF.Application.UnitOfWork.IAggregateTracker.Tracked.get -> System.Collections.Generic.IReadOnlyList<YAF.Domain.IAggregateRoot!>!
 YAF.Application.Validation.IValidator<T>
 YAF.Application.Validation.IValidator<T>.ValidateAsync(T instance, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<YAF.Core.Results.Result>
 YAF.Application.Validation.RuleBuilder<T, TProperty>
