@@ -29,9 +29,6 @@ public interface IExecutionContext
     /// <summary>Gets the idempotency key the caller sent, if any.</summary>
     string? IdempotencyKey { get; }
 
-    /// <summary>
-    /// Gets the kind of entry point that began the scope: <c>http</c>, <c>job</c>, <c>integration-event</c>, <c>cron</c>, <c>process</c> or
-    /// <c>test</c>.
-    /// </summary>
+    /// <summary>Gets the entry point: <c>http</c>, <c>job</c>, <c>integration-event</c>, <c>cron</c>, <c>process</c> or <c>test</c>.</summary>
     string Origin { get; }
 }

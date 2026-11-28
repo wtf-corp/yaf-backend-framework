@@ -28,10 +28,8 @@ internal sealed class ExecutionContextScope : IExecutionContextAccessor, IExecut
         return new End(this);
     }
 
-    private void Clear() => Volatile.Write(ref _current, null);
-
     private sealed class End(ExecutionContextScope scope) : IDisposable
     {
-        public void Dispose() => scope.Clear();
+        public void Dispose() => Volatile.Write(ref scope._current, null);
     }
 }

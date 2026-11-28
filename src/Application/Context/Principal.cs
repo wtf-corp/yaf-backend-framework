@@ -21,10 +21,7 @@ public sealed class Principal
     /// <summary>Gets the user's id for a <see cref="PrincipalKind.User"/>; otherwise <see langword="null"/>.</summary>
     public UserId? UserId { get; }
 
-    /// <summary>
-    /// Gets the service's name for a <see cref="PrincipalKind.Service"/> or the reason for a <see cref="PrincipalKind.System"/>; otherwise
-    /// <see langword="null"/>.
-    /// </summary>
+    /// <summary>Gets the name of a service or the reason of a system principal; otherwise <see langword="null"/>.</summary>
     public string? Name { get; }
 
     /// <summary>Creates the principal of an authenticated user.</summary>

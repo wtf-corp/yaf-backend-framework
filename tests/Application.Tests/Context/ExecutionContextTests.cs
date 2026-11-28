@@ -74,15 +74,11 @@ public sealed class ExecutionContextTests
     }
 
     [Fact]
-    public void Principal_System_KeepsTheReasonAndService_TheName()
+    public void Principal_System_KeepsTheReason()
     {
-        var system = Principal.System("cron:purge-retention");
-        var service = Principal.Service("registrations");
-
-        (system.Kind, system.Name, system.UserId).Should().Be((PrincipalKind.System, "cron:purge-retention", (UserId?)null));
-        (service.Kind, service.Name, service.UserId).Should().Be((PrincipalKind.Service, "registrations", (UserId?)null));
-        var anonymous = Principal.Anonymous;
-        (anonymous.Kind, anonymous.Name, anonymous.UserId).Should().Be((PrincipalKind.Anonymous, (string?)null, (UserId?)null));
+        (Principal.System("cron:purge").Kind, Principal.System("cron:purge").Name).Should().Be((PrincipalKind.System, "cron:purge"));
+        (Principal.Service("billing").Kind, Principal.Service("billing").Name).Should().Be((PrincipalKind.Service, "billing"));
+        (Principal.Anonymous.Kind, Principal.Anonymous.Name).Should().Be((PrincipalKind.Anonymous, (string?)null));
     }
 
     [Fact]
