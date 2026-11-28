@@ -14,7 +14,8 @@ namespace YAF.Application.Registration;
 /// <remarks>
 /// A stream query runs the "all" and "queries" steps closed over <see cref="StreamQueryRequest{TQuery}"/>. The innermost step enumerates
 /// the stream handler and hands each item to the caller, asking the handler for the next one only when the caller does, so a middleware's
-/// code after <c>next</c> runs once the caller has asked past the last item (<c>04</c> §5 item 5).
+/// code after <c>next</c> runs once the caller has asked past the last item (<c>04</c> §5 item 5). A domain event runs no pipeline: its
+/// handlers run from the scope in registration order until one fails (<c>04</c> §6).
 /// </remarks>
 internal sealed class Dispatcher(IServiceProvider services, ApplicationRegistrations registrations, IPipelineDescriptor pipeline)
     : IDispatcher, IRequestRunner
@@ -56,8 +57,19 @@ internal sealed class Dispatcher(IServiceProvider services, ApplicationRegistrat
     IAsyncEnumerable<TItem> IRequestRunner.StreamAsync<TQuery, TItem>(TQuery query, CancellationToken ct) =>
         StreamThroughPipelineAsync<TQuery, TItem>(query, ct);
 
-    ValueTask<Result> IRequestRunner.PublishAsync<TEvent>(TEvent domainEvent, CancellationToken ct) =>
-        throw new NotSupportedException("Domain events are not published through the dispatcher yet.");
+    async ValueTask<Result> IRequestRunner.PublishAsync<TEvent>(TEvent domainEvent, CancellationToken ct)
+    {
+        foreach (var handler in services.GetServices<IDomainEventHandler<TEvent>>())
+        {
+            var result = await handler.HandleAsync(domainEvent, ct).ConfigureAwait(false);
+            if (result.IsFailure)
+            {
+                return result;
+            }
+        }
+
+        return Result.Success();
+    }
 
     private async IAsyncEnumerable<TItem> StreamThroughPipelineAsync<TQuery, TItem>(
         TQuery query,
