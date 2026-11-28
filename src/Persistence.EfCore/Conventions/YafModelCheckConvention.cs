@@ -17,8 +17,7 @@ internal sealed class YafModelCheckConvention : IModelFinalizingConvention
         var model = modelBuilder.Metadata;
         if (model.FindAnnotation(AppliedAnnotation) is null)
         {
-            throw new InvalidOperationException(
-                "The model does not apply YAF's model: call modelBuilder.ApplyYafModel(this) last in OnModelCreating.");
+            throw new InvalidOperationException("The model does not apply YAF's model: call modelBuilder.ApplyYafModel(this) last in OnModelCreating.");
         }
 
         model.RemoveAnnotation(AppliedAnnotation);

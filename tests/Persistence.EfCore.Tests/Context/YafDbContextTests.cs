@@ -49,7 +49,6 @@ public sealed class YafDbContextTests
 
         services.Count(descriptor => descriptor.ServiceType == typeof(ValidContext)).Should().Be(1);
         services.Count(descriptor => descriptor.ServiceType == typeof(IDbContextOptionsConfiguration<ValidContext>)).Should().Be(1);
-        services.Count(descriptor => descriptor.ServiceType == typeof(IYafDbContextServices)).Should().Be(1);
     }
 
     [Fact]

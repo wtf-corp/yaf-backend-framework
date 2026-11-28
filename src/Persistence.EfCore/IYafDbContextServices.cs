@@ -4,9 +4,8 @@ namespace YAF.Persistence.EfCore;
 
 /// <summary>
 /// What a <see cref="YafDbContext"/> needs from the application's services, bundled so that a derived context has a two-parameter
-/// constructor.
+/// constructor. <see cref="YafDbContextServiceCollectionExtensions.AddYafDbContext{TContext}"/> registers it per scope.
 /// </summary>
-/// <remarks><see cref="YafDbContextServiceCollectionExtensions.AddYafDbContext{TContext}"/> registers it per scope.</remarks>
 public interface IYafDbContextServices
 {
     /// <summary>Gets the execution context of the current scope: the tenant and the actor of the work the context saves.</summary>
