@@ -12,11 +12,7 @@ public static class YafModelBuilderExtensions
     /// </summary>
     /// <param name="modelBuilder">The builder of the context's model.</param>
     /// <param name="context">The context whose model is built.</param>
-    /// <remarks>
-    /// Without this call the model of a context registered with
-    /// <see cref="YafDbContextServiceCollectionExtensions.AddYafDbContext{TContext}"/> fails to build with an
-    /// <see cref="InvalidOperationException"/>.
-    /// </remarks>
+    /// <remarks>Without this call the model fails to build with an <see cref="InvalidOperationException"/>.</remarks>
     /// <example>
     /// <code language="csharp">
     /// protected override void OnModelCreating(ModelBuilder modelBuilder)

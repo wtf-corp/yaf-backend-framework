@@ -22,16 +22,12 @@ internal sealed class YafModelCheckConvention : IModelFinalizingConvention
         }
 
         model.RemoveAnnotation(AppliedAnnotation);
-        foreach (var entityType in model.GetEntityTypes())
+        var unbounded = model.GetEntityTypes().SelectMany(entityType => entityType.GetDeclaredProperties())
+            .FirstOrDefault(property => property.ClrType == typeof(string) && property.GetMaxLength() is null);
+        if (unbounded is not null)
         {
-            foreach (var property in entityType.GetDeclaredProperties())
-            {
-                if (property.ClrType == typeof(string) && property.GetMaxLength() is null)
-                {
-                    throw new InvalidOperationException(
-                        $"The string property '{entityType.DisplayName()}.{property.Name}' has no maximum length: set one with HasMaxLength.");
-                }
-            }
+            throw new InvalidOperationException(
+                $"The string property '{unbounded.DeclaringType.DisplayName()}.{unbounded.Name}' has no maximum length: set one with HasMaxLength.");
         }
     }
 }

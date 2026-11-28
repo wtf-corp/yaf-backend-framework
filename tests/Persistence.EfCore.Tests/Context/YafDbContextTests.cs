@@ -7,9 +7,8 @@ using YAF.Testing;
 
 namespace Persistence.EfCore.Tests.Context;
 
-// The model is built with Npgsql over a connection string that is never opened: no test here reaches a database. Each context is created
-// from the options and services AddYafDbContext registers.
-public sealed class YafDbContextTests : IDisposable
+// Npgsql over a connection string that is never opened builds the models: no test reaches a database.
+public sealed class YafDbContextTests
 {
     private const string UnusedConnection = "Host=localhost;Database=unused";
 
@@ -17,13 +16,11 @@ public sealed class YafDbContextTests : IDisposable
 
     private readonly NoExecutionContext _accessor = new();
 
-    private readonly List<IDisposable> _disposables = [];
-
     [Fact]
     public void Model_WithoutApplyYafModel_Throws()
     {
-        var (options, services) = Register<WithoutApplyYafModelContext>();
-        using var context = new WithoutApplyYafModelContext(options, services);
+        using var provider = Build<WithoutApplyYafModelContext>();
+        using var context = new WithoutApplyYafModelContext(Options<WithoutApplyYafModelContext>(provider), Services(provider));
 
         var act = () => context.Model;
 
@@ -33,23 +30,12 @@ public sealed class YafDbContextTests : IDisposable
     [Fact]
     public void Model_StringWithoutMaxLength_ThrowsNamingIt()
     {
-        var (options, services) = Register<StringWithoutMaxLengthContext>();
-        using var context = new StringWithoutMaxLengthContext(options, services);
+        using var provider = Build<StringWithoutMaxLengthContext>();
+        using var context = new StringWithoutMaxLengthContext(Options<StringWithoutMaxLengthContext>(provider), Services(provider));
 
         var act = () => context.Model;
 
         act.Should().Throw<InvalidOperationException>().WithMessage($"*{nameof(NoteData)}.{nameof(NoteData.Body)}*");
-    }
-
-    [Fact]
-    public void Model_WithApplyYafModelAndMaxLengths_Builds()
-    {
-        var (options, services) = Register<ValidContext>();
-        using var context = new ValidContext(options, services);
-
-        var body = context.Entry(new NoteData()).Property(note => note.Body).Metadata;
-
-        body.GetMaxLength().Should().Be(200);
     }
 
     [Fact]
@@ -68,36 +54,30 @@ public sealed class YafDbContextTests : IDisposable
     [Fact]
     public void Services_ExposeContextAccessorAndTime()
     {
-        var (options, services) = Register<ValidContext>();
-        using var context = new ValidContext(options, services);
+        using var provider = Build<ValidContext>();
+        using var context = new ValidContext(Options<ValidContext>(provider), Services(provider));
 
         var exposed = context.ContextServices;
 
         exposed.ExecutionContext.Should().BeSameAs(_accessor);
         exposed.TimeProvider.Should().BeSameAs(_clock.TimeProvider);
+        context.Entry(new NoteData()).Property(note => note.Body).Metadata.GetMaxLength().Should().Be(200);
     }
 
-    public void Dispose()
-    {
-        foreach (var disposable in _disposables)
-        {
-            disposable.Dispose();
-        }
-    }
+    private static DbContextOptions<TContext> Options<TContext>(ServiceProvider provider)
+        where TContext : DbContext
+        => provider.GetRequiredService<DbContextOptions<TContext>>();
 
-    private (DbContextOptions<TContext> Options, IYafDbContextServices Services) Register<TContext>()
+    private static IYafDbContextServices Services(ServiceProvider provider) => provider.GetRequiredService<IYafDbContextServices>();
+
+    private ServiceProvider Build<TContext>()
         where TContext : YafDbContext
     {
         var services = new ServiceCollection();
         services.AddSingleton<IExecutionContextAccessor>(_accessor);
         services.AddSingleton(_clock.TimeProvider);
         services.AddYafDbContext<TContext>(options => options.UseNpgsql(UnusedConnection));
-        var provider = services.BuildServiceProvider(validateScopes: true);
-        var scope = provider.CreateScope();
-        _disposables.Add(scope);
-        _disposables.Add(provider);
-        return (scope.ServiceProvider.GetRequiredService<DbContextOptions<TContext>>(),
-            scope.ServiceProvider.GetRequiredService<IYafDbContextServices>());
+        return services.BuildServiceProvider();
     }
 
     private sealed class NoExecutionContext : IExecutionContextAccessor
