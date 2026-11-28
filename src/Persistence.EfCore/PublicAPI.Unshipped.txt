@@ -15,6 +15,10 @@ YAF.Persistence.EfCore.AggregateData.TenantId.get -> System.Guid
 YAF.Persistence.EfCore.AggregateData.TenantId.set -> void
 YAF.Persistence.EfCore.AggregateData.Version.get -> System.Guid
 YAF.Persistence.EfCore.AggregateData.Version.set -> void
+YAF.Persistence.EfCore.Conventions.EnumerationConverter<TEnumeration>
+YAF.Persistence.EfCore.Conventions.EnumerationConverter<TEnumeration>.EnumerationConverter() -> void
+YAF.Persistence.EfCore.Conventions.TypedIdConverter<TId>
+YAF.Persistence.EfCore.Conventions.TypedIdConverter<TId>.TypedIdConverter() -> void
 YAF.Persistence.EfCore.MementoDataAttribute
 YAF.Persistence.EfCore.MementoDataAttribute.MementoDataAttribute() -> void
 YAF.Persistence.EfCore.OwnedEntityData
@@ -37,5 +41,6 @@ YAF.Persistence.EfCore.YafDbContext.Services.get -> YAF.Persistence.EfCore.IYafD
 YAF.Persistence.EfCore.YafDbContext.YafDbContext(Microsoft.EntityFrameworkCore.DbContextOptions! options, YAF.Persistence.EfCore.IYafDbContextServices! services) -> void
 YAF.Persistence.EfCore.YafDbContextServiceCollectionExtensions
 YAF.Persistence.EfCore.YafModelBuilderExtensions
+override YAF.Persistence.EfCore.YafDbContext.ConfigureConventions(Microsoft.EntityFrameworkCore.ModelConfigurationBuilder! configurationBuilder) -> void
 static YAF.Persistence.EfCore.YafDbContextServiceCollectionExtensions.AddYafDbContext<TContext>(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<Microsoft.EntityFrameworkCore.DbContextOptionsBuilder!>! configure) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static YAF.Persistence.EfCore.YafModelBuilderExtensions.ApplyYafModel(this Microsoft.EntityFrameworkCore.ModelBuilder! modelBuilder, YAF.Persistence.EfCore.YafDbContext! context) -> void
