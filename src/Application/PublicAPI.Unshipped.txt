@@ -50,6 +50,9 @@ YAF.Application.Pipeline.RequestDelegate<TResult>
 YAF.Application.Pipeline.TelemetryMiddleware<TRequest, TResult>
 YAF.Application.Pipeline.TelemetryMiddleware<TRequest, TResult>.InvokeAsync(TRequest request, YAF.Application.Pipeline.RequestDelegate<TResult>! next, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<TResult>
 YAF.Application.Pipeline.TelemetryMiddleware<TRequest, TResult>.TelemetryMiddleware(Microsoft.Extensions.Logging.ILogger<YAF.Application.Pipeline.TelemetryMiddleware<TRequest, TResult>!>! logger, System.Diagnostics.Metrics.IMeterFactory! meterFactory) -> void
+YAF.Application.Pipeline.UnitOfWorkMiddleware<TRequest, TResult>
+YAF.Application.Pipeline.UnitOfWorkMiddleware<TRequest, TResult>.InvokeAsync(TRequest request, YAF.Application.Pipeline.RequestDelegate<TResult>! next, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<TResult>
+YAF.Application.Pipeline.UnitOfWorkMiddleware<TRequest, TResult>.UnitOfWorkMiddleware(YAF.Application.UnitOfWork.IUnitOfWork! unitOfWork) -> void
 YAF.Application.Pipeline.ValidationMiddleware<TRequest, TResult>
 YAF.Application.Pipeline.ValidationMiddleware<TRequest, TResult>.InvokeAsync(TRequest request, YAF.Application.Pipeline.RequestDelegate<TResult>! next, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<TResult>
 YAF.Application.Pipeline.ValidationMiddleware<TRequest, TResult>.ValidationMiddleware(System.Collections.Generic.IEnumerable<YAF.Application.Validation.IValidator<TRequest>!>! validators) -> void
@@ -70,6 +73,7 @@ YAF.Application.Registration.YafHandlersAttribute.Registry.get -> System.Type!
 YAF.Application.Registration.YafHandlersAttribute.YafHandlersAttribute(System.Type! registry) -> void
 static readonly YAF.Application.UnitOfWork.ApplicationErrors.ConcurrencyConflict -> YAF.Core.Results.ErrorDescriptor!
 static readonly YAF.Application.UnitOfWork.ApplicationErrors.DependencyUnavailable -> YAF.Core.Results.ErrorDescriptor!
+static readonly YAF.Application.UnitOfWork.ApplicationErrors.DomainEventDepthExceeded -> YAF.Core.Results.ErrorDescriptor!
 YAF.Application.UnitOfWork.ApplicationErrors
 YAF.Application.UnitOfWork.ConcurrencyConflictException
 YAF.Application.UnitOfWork.ConcurrencyConflictException.ConcurrencyConflictException() -> void
@@ -86,6 +90,8 @@ YAF.Application.UnitOfWork.IAggregateTracker.Track(YAF.Domain.IAggregateRoot! ag
 YAF.Application.UnitOfWork.IAggregateTracker.Tracked.get -> System.Collections.Generic.IReadOnlyList<YAF.Domain.IAggregateRoot!>!
 YAF.Application.UnitOfWork.IDomainEventPublisher
 YAF.Application.UnitOfWork.IDomainEventPublisher.PublishAsync(System.Collections.Generic.IReadOnlyList<YAF.Domain.Events.IDomainEvent!>! domainEvents, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<YAF.Core.Results.Result>
+YAF.Application.UnitOfWork.IUnitOfWork
+YAF.Application.UnitOfWork.IUnitOfWork.ExecuteAsync<TResult>(System.Func<System.Threading.CancellationToken, System.Threading.Tasks.ValueTask<TResult>>! work, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<TResult>
 YAF.Application.Validation.IValidator<T>
 YAF.Application.Validation.IValidator<T>.ValidateAsync(T instance, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<YAF.Core.Results.Result>
 YAF.Application.Validation.RuleBuilder<T, TProperty>
