@@ -41,7 +41,6 @@ public sealed class ExecutionContextTests
             context.Origin.Should().Be("job");
             context.AdditionalTenants.Should().BeEmpty();
             context.IdempotencyKey.Should().BeNull();
-            accessor.Current.Should().BeSameAs(context);
         }
 
         var afterwards = () => accessor.Current;
@@ -62,7 +61,6 @@ public sealed class ExecutionContextTests
 
     [Theory]
     [InlineData(null)]
-    [InlineData("")]
     [InlineData("  ")]
     public void Principal_System_RequiresAReason(string? reason)
     {

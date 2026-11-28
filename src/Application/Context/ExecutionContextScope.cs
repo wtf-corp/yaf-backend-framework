@@ -1,9 +1,6 @@
 namespace YAF.Application.Context;
 
-/// <summary>
-/// Holds the execution context of one scope: <see cref="Begin"/> sets it once, <see cref="Current"/> reads it. Without a context, or after it
-/// ended, reading it throws <see cref="MissingExecutionContextException"/>.
-/// </summary>
+/// <summary>Holds one scope's execution context: <see cref="Begin"/> sets it once; <see cref="Current"/> throws when there is none.</summary>
 internal sealed class ExecutionContextScope : IExecutionContextAccessor, IExecutionContextScopeFactory
 {
     private IExecutionContext? _current;

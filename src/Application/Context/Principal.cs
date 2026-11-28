@@ -26,12 +26,10 @@ public sealed class Principal
 
     /// <summary>Creates the principal of an authenticated user.</summary>
     /// <param name="id">The user's id.</param>
-    /// <returns>The principal.</returns>
     public static Principal User(UserId id) => new(PrincipalKind.User, id, null);
 
     /// <summary>Creates the principal of another service.</summary>
     /// <param name="name">The service's name; required.</param>
-    /// <returns>The principal.</returns>
     /// <exception cref="ArgumentException"><paramref name="name"/> is null, empty or white space.</exception>
     public static Principal Service(string name)
     {
@@ -41,7 +39,6 @@ public sealed class Principal
 
     /// <summary>Creates the principal of the service itself, acting for a reason that is audited, such as <c>cron:purge-retention</c>.</summary>
     /// <param name="reason">Why the service acts; required.</param>
-    /// <returns>The principal.</returns>
     /// <exception cref="ArgumentException"><paramref name="reason"/> is null, empty or white space.</exception>
     public static Principal System(string reason)
     {
