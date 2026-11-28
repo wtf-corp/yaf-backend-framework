@@ -123,3 +123,65 @@ YAF.Application.YafApplicationBuilder
 YAF.Application.YafApplicationBuilder.AddHandlersFrom<TMarker>() -> YAF.Application.YafApplicationBuilder!
 YAF.Application.YafApplicationBuilder.UsePipeline(System.Action<YAF.Application.Pipeline.PipelineBuilder!>! configure) -> YAF.Application.YafApplicationBuilder!
 YAF.Application.YafApplicationServiceCollectionExtensions
+override YAF.Application.Context.ExecutionContextSeed.Equals(object? obj) -> bool
+override YAF.Application.Context.ExecutionContextSeed.GetHashCode() -> int
+override YAF.Application.Context.ExecutionContextSeed.ToString() -> string!
+override YAF.Application.Context.PrincipalRef.Equals(object? obj) -> bool
+override YAF.Application.Context.PrincipalRef.GetHashCode() -> int
+override YAF.Application.Context.PrincipalRef.ToString() -> string!
+static YAF.Application.Context.ExecutionContextSeed.operator !=(YAF.Application.Context.ExecutionContextSeed? left, YAF.Application.Context.ExecutionContextSeed? right) -> bool
+static YAF.Application.Context.ExecutionContextSeed.operator ==(YAF.Application.Context.ExecutionContextSeed? left, YAF.Application.Context.ExecutionContextSeed? right) -> bool
+static YAF.Application.Context.Principal.Anonymous.get -> YAF.Application.Context.Principal!
+static YAF.Application.Context.Principal.Service(string! name) -> YAF.Application.Context.Principal!
+static YAF.Application.Context.Principal.System(string! reason) -> YAF.Application.Context.Principal!
+static YAF.Application.Context.Principal.User(YAF.Core.Ids.UserId id) -> YAF.Application.Context.Principal!
+static YAF.Application.Context.PrincipalRef.operator !=(YAF.Application.Context.PrincipalRef? left, YAF.Application.Context.PrincipalRef? right) -> bool
+static YAF.Application.Context.PrincipalRef.operator ==(YAF.Application.Context.PrincipalRef? left, YAF.Application.Context.PrincipalRef? right) -> bool
+YAF.Application.Context.ExecutionContextSeed
+YAF.Application.Context.ExecutionContextSeed.<Clone>$() -> YAF.Application.Context.ExecutionContextSeed!
+YAF.Application.Context.ExecutionContextSeed.Actor.get -> YAF.Application.Context.Principal!
+YAF.Application.Context.ExecutionContextSeed.Actor.init -> void
+YAF.Application.Context.ExecutionContextSeed.CorrelationId.get -> YAF.Core.Ids.CorrelationId
+YAF.Application.Context.ExecutionContextSeed.CorrelationId.init -> void
+YAF.Application.Context.ExecutionContextSeed.Deconstruct(out YAF.Core.Ids.TenantId? TenantId, out YAF.Application.Context.Principal! Actor, out YAF.Application.Context.PrincipalRef? Initiator, out YAF.Core.Ids.CorrelationId CorrelationId, out string! Origin) -> void
+YAF.Application.Context.ExecutionContextSeed.Equals(YAF.Application.Context.ExecutionContextSeed? other) -> bool
+YAF.Application.Context.ExecutionContextSeed.ExecutionContextSeed(YAF.Core.Ids.TenantId? TenantId, YAF.Application.Context.Principal! Actor, YAF.Application.Context.PrincipalRef? Initiator, YAF.Core.Ids.CorrelationId CorrelationId, string! Origin) -> void
+YAF.Application.Context.ExecutionContextSeed.Initiator.get -> YAF.Application.Context.PrincipalRef?
+YAF.Application.Context.ExecutionContextSeed.Initiator.init -> void
+YAF.Application.Context.ExecutionContextSeed.Origin.get -> string!
+YAF.Application.Context.ExecutionContextSeed.Origin.init -> void
+YAF.Application.Context.ExecutionContextSeed.TenantId.get -> YAF.Core.Ids.TenantId?
+YAF.Application.Context.ExecutionContextSeed.TenantId.init -> void
+YAF.Application.Context.IExecutionContext
+YAF.Application.Context.IExecutionContext.Actor.get -> YAF.Application.Context.Principal!
+YAF.Application.Context.IExecutionContext.AdditionalTenants.get -> System.Collections.Generic.IReadOnlySet<YAF.Core.Ids.TenantId>!
+YAF.Application.Context.IExecutionContext.CorrelationId.get -> YAF.Core.Ids.CorrelationId
+YAF.Application.Context.IExecutionContext.IdempotencyKey.get -> string?
+YAF.Application.Context.IExecutionContext.Initiator.get -> YAF.Application.Context.PrincipalRef?
+YAF.Application.Context.IExecutionContext.Origin.get -> string!
+YAF.Application.Context.IExecutionContext.TenantId.get -> YAF.Core.Ids.TenantId?
+YAF.Application.Context.IExecutionContext.TraceParent.get -> string?
+YAF.Application.Context.IExecutionContextAccessor
+YAF.Application.Context.IExecutionContextAccessor.Current.get -> YAF.Application.Context.IExecutionContext!
+YAF.Application.Context.MissingExecutionContextException
+YAF.Application.Context.MissingExecutionContextException.MissingExecutionContextException() -> void
+YAF.Application.Context.MissingExecutionContextException.MissingExecutionContextException(string! message) -> void
+YAF.Application.Context.MissingExecutionContextException.MissingExecutionContextException(string! message, System.Exception! innerException) -> void
+YAF.Application.Context.Principal
+YAF.Application.Context.Principal.Kind.get -> YAF.Application.Context.PrincipalKind
+YAF.Application.Context.Principal.Name.get -> string?
+YAF.Application.Context.Principal.UserId.get -> YAF.Core.Ids.UserId?
+YAF.Application.Context.PrincipalKind
+YAF.Application.Context.PrincipalKind.Anonymous = 0 -> YAF.Application.Context.PrincipalKind
+YAF.Application.Context.PrincipalKind.Service = 2 -> YAF.Application.Context.PrincipalKind
+YAF.Application.Context.PrincipalKind.System = 3 -> YAF.Application.Context.PrincipalKind
+YAF.Application.Context.PrincipalKind.User = 1 -> YAF.Application.Context.PrincipalKind
+YAF.Application.Context.PrincipalRef
+YAF.Application.Context.PrincipalRef.<Clone>$() -> YAF.Application.Context.PrincipalRef!
+YAF.Application.Context.PrincipalRef.Deconstruct(out YAF.Application.Context.PrincipalKind Kind, out YAF.Core.Ids.UserId Id) -> void
+YAF.Application.Context.PrincipalRef.Equals(YAF.Application.Context.PrincipalRef? other) -> bool
+YAF.Application.Context.PrincipalRef.Id.get -> YAF.Core.Ids.UserId
+YAF.Application.Context.PrincipalRef.Id.init -> void
+YAF.Application.Context.PrincipalRef.Kind.get -> YAF.Application.Context.PrincipalKind
+YAF.Application.Context.PrincipalRef.Kind.init -> void
+YAF.Application.Context.PrincipalRef.PrincipalRef(YAF.Application.Context.PrincipalKind Kind, YAF.Core.Ids.UserId Id) -> void

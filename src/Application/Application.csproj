@@ -15,6 +15,8 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Application.Tests" />
+    <!-- The test host begins each request's execution-context scope with the seed a test sets (04 §7; plan 0013 Q2). -->
+    <InternalsVisibleTo Include="YAF.Testing.Integration" />
   </ItemGroup>
 
   <Import Project="../Core/buildTransitive/YAF.Core.props" />
