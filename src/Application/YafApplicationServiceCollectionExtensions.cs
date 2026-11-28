@@ -1,7 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using YAF.Application.Pipeline;
 using YAF.Application.Registration;
+using YAF.Application.UnitOfWork;
 
 namespace YAF.Application;
 
@@ -9,9 +11,14 @@ namespace YAF.Application;
 public static class YafApplicationServiceCollectionExtensions
 {
     /// <summary>
-    /// Adds the application layer: the dispatcher (per scope), the handlers of the assemblies the builder names, the pipeline order and a startup check that stops the
-    /// host when a request type has no handler or more than one. Calling it again adds to the same configuration and registers nothing twice.
+    /// Adds the application layer: the dispatcher, the aggregate tracker and the domain event publisher (each per scope), the handlers of the assemblies the builder
+    /// names, the pipeline order and a startup check that stops the host when a request type has no handler or more than one. Calling it again adds to the same
+    /// configuration and registers nothing twice.
     /// </summary>
+    /// <remarks>
+    /// <see cref="TimeProvider.System"/> is registered only when no <see cref="TimeProvider"/> is registered yet. An <see cref="IDispatcher"/> registered afterwards
+    /// replaces YAF's for application code; domain events are still published through YAF's dispatcher.
+    /// </remarks>
     /// <param name="services">The application's services.</param>
     /// <param name="configure">Names the handler assemblies and the pipeline.</param>
     /// <returns><paramref name="services"/>.</returns>
@@ -39,7 +46,11 @@ public static class YafApplicationServiceCollectionExtensions
             services.AddSingleton(registrations);
             services.AddSingleton<IHostedService>(new HandlerStartupCheck(registrations));
             services.AddSingleton<IPipelineDescriptor>(_ => registrations.Pipeline.Build());
-            services.AddScoped<IDispatcher, Dispatcher>();
+            services.AddScoped<Dispatcher>();
+            services.AddScoped<IDispatcher>(provider => provider.GetRequiredService<Dispatcher>());
+            services.AddScoped<IAggregateTracker, AggregateTracker>();
+            services.AddScoped<IDomainEventPublisher, DomainEventPublisher>();
+            services.TryAddSingleton(TimeProvider.System);
         }
 
         configure(new YafApplicationBuilder(services, registrations));
