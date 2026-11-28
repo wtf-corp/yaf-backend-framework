@@ -48,6 +48,10 @@ YAF.Testing.TestClock.SetNow(System.DateTimeOffset now) -> void
 YAF.Testing.TestClock.TestClock() -> void
 YAF.Testing.TestClock.TestClock(System.DateTimeOffset start) -> void
 YAF.Testing.TestClock.TimeProvider.get -> System.TimeProvider!
+YAF.Testing.TestIds
+YAF.Testing.TestIds.Next<TId>() -> TId
+YAF.Testing.TestIds.NextGuid() -> System.Guid
+YAF.Testing.TestIds.TestIds(int seed = 1) -> void
 YAF.Testing.YafAssertionException
 YAF.Testing.YafAssertionException.YafAssertionException() -> void
 YAF.Testing.YafAssertionException.YafAssertionException(string! message) -> void
