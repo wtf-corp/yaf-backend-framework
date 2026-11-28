@@ -32,7 +32,7 @@ The nearest `AGENTS.md` to the file you edit adds to this one. Nested files may 
 dotnet build YAF.slnx                                   # zero warnings is the bar
 dotnet test --solution YAF.slnx                         # needs Docker for categories Docker/Broker/E2E
 dotnet test --project tests/Domain.Tests                # one project
-dotnet test --solution YAF.slnx --filter-trait "Category!=Docker"   # no Docker
+dotnet test --solution YAF.slnx --filter-not-trait "Category=Docker"   # no Docker
 dotnet run --project samples/conference/src/AppHost     # the sample under Aspire (PostgreSQL + RabbitMQ; LocalStack is opt-in and needs an account token, see its README)
 dotnet ef migrations has-pending-model-changes          # in a service's Infrastructure project
 dotnet tool run yaf-compliance generate && git diff --exit-code docs/   # generated references in sync
