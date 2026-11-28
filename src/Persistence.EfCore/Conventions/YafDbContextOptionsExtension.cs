@@ -1,19 +1,29 @@
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace YAF.Persistence.EfCore.Conventions;
 
-/// <summary>Registers YAF's conventions in EF Core's internal services of a context registered with <c>AddYafDbContext</c>.</summary>
+/// <summary>Adds YAF's conventions to the convention set of a context registered with <c>AddYafDbContext</c>.</summary>
 internal sealed class YafDbContextOptionsExtension : IDbContextOptionsExtension
 {
     public DbContextOptionsExtensionInfo Info => field ??= new ExtensionInfo(this);
 
     public void ApplyServices(IServiceCollection services)
-        => new EntityFrameworkServicesBuilder(services).TryAdd<IConventionSetPlugin, YafConventionSetPlugin>();
+        => new EntityFrameworkServicesBuilder(services).TryAdd<IConventionSetPlugin, ConventionSetPlugin>();
 
     public void Validate(IDbContextOptions options)
     {
+    }
+
+    private sealed class ConventionSetPlugin : IConventionSetPlugin
+    {
+        public ConventionSet ModifyConventions(ConventionSet conventionSet)
+        {
+            conventionSet.Add(new YafModelCheckConvention());
+            return conventionSet;
+        }
     }
 
     private sealed class ExtensionInfo(IDbContextOptionsExtension extension) : DbContextOptionsExtensionInfo(extension)
@@ -26,7 +36,6 @@ internal sealed class YafDbContextOptionsExtension : IDbContextOptionsExtension
 
         public override bool ShouldUseSameServiceProvider(DbContextOptionsExtensionInfo other) => other is ExtensionInfo;
 
-        public override void PopulateDebugInfo(IDictionary<string, string> debugInfo)
-            => debugInfo["YAF:Conventions"] = "1";
+        public override void PopulateDebugInfo(IDictionary<string, string> debugInfo) => debugInfo["YAF:Conventions"] = "1";
     }
 }

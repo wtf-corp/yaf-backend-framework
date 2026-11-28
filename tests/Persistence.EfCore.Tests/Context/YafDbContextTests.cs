@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using YAF.Application.Context;
+using YAF.Core.Ids;
 using YAF.Persistence.EfCore;
 using YAF.Testing;
 
@@ -14,7 +15,7 @@ public sealed class YafDbContextTests
 
     private readonly TestClock _clock = new();
 
-    private readonly NoExecutionContext _accessor = new();
+    private readonly FakeExecutionContext _accessor = FakeExecutionContext.ForUser(UserId.New(), TenantId.New());
 
     [Fact]
     public void Model_WithoutApplyYafModel_Throws()
@@ -78,11 +79,6 @@ public sealed class YafDbContextTests
         services.AddSingleton(_clock.TimeProvider);
         services.AddYafDbContext<TContext>(options => options.UseNpgsql(UnusedConnection));
         return services.BuildServiceProvider();
-    }
-
-    private sealed class NoExecutionContext : IExecutionContextAccessor
-    {
-        public IExecutionContext Current => throw new MissingExecutionContextException();
     }
 
     private sealed class NoteData
