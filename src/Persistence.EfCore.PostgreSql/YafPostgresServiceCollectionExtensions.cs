@@ -24,6 +24,12 @@ public static class YafPostgresServiceCollectionExtensions
     /// <remarks>
     /// When the host starts it fails with an <see cref="Microsoft.Extensions.Options.OptionsValidationException"/> naming the key if the
     /// connection string is missing or, outside Development, does not set <c>SSL Mode=VerifyFull</c>. Development allows any SSL mode.
+    /// <para>
+    /// The call throws <see cref="InvalidOperationException"/>, naming the context, when <typeparamref name="TContext"/> is already
+    /// registered without it, by <see cref="YafDbContextServiceCollectionExtensions.AddYafDbContext{TContext}"/> or a plain
+    /// <c>AddDbContext</c>. It registers nothing in that case, not the check of the connection string either, because a context
+    /// configured some other way need not use it. Register the context with this method alone.
+    /// </para>
     /// </remarks>
     /// <example>
     /// <code language="csharp">
@@ -36,11 +42,19 @@ public static class YafPostgresServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentException.ThrowIfNullOrWhiteSpace(connectionName);
-        if (builder.Services.Any(descriptor => descriptor.ServiceType == typeof(TContext)))
+        if (builder.Services.Any(descriptor => descriptor.ServiceType == typeof(Registered<TContext>)))
         {
             return builder;
         }
 
+        if (builder.Services.Any(descriptor => descriptor.ServiceType == typeof(TContext)))
+        {
+            throw new InvalidOperationException(
+                $"{typeof(TContext).FullName} is already registered without AddYafPostgres, so its connection string would not be checked "
+                + "at startup: register it with AddYafPostgres alone.");
+        }
+
+        builder.Services.AddSingleton(new Registered<TContext>());
         var configuration = builder.Configuration;
         var development = builder.Environment.IsDevelopment();
         var key = $"ConnectionStrings:{connectionName}";
@@ -63,6 +77,9 @@ public static class YafPostgresServiceCollectionExtensions
         });
         return builder;
     }
+
+    // Registered once per context type by AddYafPostgres; a registration of the context without it was made some other way.
+    private sealed class Registered<TContext>;
 
     // The options type the startup check of the connection string is registered under; it holds nothing.
     private sealed class PostgresConnectionCheck;

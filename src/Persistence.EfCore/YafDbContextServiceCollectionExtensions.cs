@@ -29,6 +29,11 @@ public static class YafDbContextServiceCollectionExtensions
     /// execution context. An added tenant-owned row without a tenant gets the context's tenant; a save throws
     /// <see cref="InvalidOperationException"/>, naming the entity type, when an added or modified tenant-owned row belongs to another tenant
     /// or the context has no tenant.
+    /// <para>
+    /// The call throws <see cref="InvalidOperationException"/>, naming the context, when <typeparamref name="TContext"/> is already
+    /// registered without it, for example by a plain <c>AddDbContext</c>: that registration would lack YAF's conventions, interceptors and
+    /// model check. Register the context with this method alone.
+    /// </para>
     /// </remarks>
     /// <example>
     /// <code language="csharp">
@@ -40,11 +45,19 @@ public static class YafDbContextServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configure);
-        if (services.Any(descriptor => descriptor.ServiceType == typeof(TContext)))
+        if (services.Any(descriptor => descriptor.ServiceType == typeof(Registered<TContext>)))
         {
             return services;
         }
 
+        if (services.Any(descriptor => descriptor.ServiceType == typeof(TContext)))
+        {
+            throw new InvalidOperationException(
+                $"{typeof(TContext).FullName} is already registered without AddYafDbContext, so YAF's conventions, interceptors and model "
+                + "check would not apply to it: register it with AddYafDbContext alone.");
+        }
+
+        services.AddSingleton(new Registered<TContext>());
         services.TryAddScoped<IYafDbContextServices, YafDbContextServices>();
         services.AddDbContext<TContext>((provider, options) =>
         {
@@ -55,6 +68,9 @@ public static class YafDbContextServiceCollectionExtensions
         });
         return services;
     }
+
+    // Registered once per context type by AddYafDbContext; a registration of the context without it was made some other way.
+    private sealed class Registered<TContext>;
 
     private sealed class YafDbContextServices(IExecutionContextAccessor executionContext, TimeProvider timeProvider) : IYafDbContextServices
     {

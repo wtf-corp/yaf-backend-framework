@@ -52,6 +52,17 @@ public sealed class YafDbContextTests
     }
 
     [Fact]
+    public void AddYafDbContext_AfterPlainAddDbContext_ThrowsNamingTheContext()
+    {
+        var services = new ServiceCollection();
+        services.AddDbContext<ValidContext>(options => options.UseNpgsql(UnusedConnection));
+
+        var act = () => services.AddYafDbContext<ValidContext>(options => options.UseNpgsql(UnusedConnection));
+
+        act.Should().Throw<InvalidOperationException>().WithMessage($"*{nameof(ValidContext)}*");
+    }
+
+    [Fact]
     public void Services_ExposeContextAccessorAndTime()
     {
         using var provider = Build<ValidContext>();
