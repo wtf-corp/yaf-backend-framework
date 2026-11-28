@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Pure test helpers (01 §2.1; 15 §3): no test framework or assertion library, no AOT or trimming claim (01 §4). References YAF.Domain
-       until M3 creates YAF.Application (specs/0009-domain/plan.md, Q2). -->
+  <!-- Pure test helpers (01 §2.1; 15 §3): no test framework or assertion library, no AOT or trimming claim (01 §4). References
+       YAF.Application, and so Domain and Core, from M3 on (specs/0009-domain/plan.md, Q2). -->
   <PropertyGroup>
     <YafServiceCode>core</YafServiceCode>
   </PropertyGroup>
@@ -10,7 +10,7 @@
        here (specs/0009-domain/research.md §6). The analyzers stay out of this package: consumers get them through YAF.Core. -->
   <ItemGroup>
     <ProjectReference Include="../Analyzers/Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
-    <ProjectReference Include="../Domain/Domain.csproj" />
+    <ProjectReference Include="../Application/Application.csproj" />
   </ItemGroup>
 
   <!-- TestClock wraps FakeTimeProvider (15 §3.1, ADR-0018); the type stays out of every public signature. -->
