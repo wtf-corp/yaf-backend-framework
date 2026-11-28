@@ -48,6 +48,8 @@ Contract: `spec/04-application.md`.
 7. Unit of work (commands), or a `READ ONLY` transaction (queries)
 8. Idempotency (`[Idempotent]` commands), inside the unit of work
 
+> **Amended 2026-11-28**, by the owner's decision of 2026-11-28 (`specs/0013-thin-slice/plan.md`, deviation 18; recorded on issue #337): in item 2 the exception boundary rethrows everything else without logging it. An unhandled exception is logged once, by the entry point that finally handles it (`spec/12-observability.md` §1 rule 5): over HTTP `YafExceptionHandler` (`spec/08-http.md` §2); for the entry points that are not requests, the runtime that retries, parks or dead-letters them. The rest of the decision of this ADR is unchanged.
+
 The order is data (`IPipelineDescriptor`) and each service snapshots it in an approved file. Middleware must be safe to run twice, because the unit of work may retry.
 
 **Input is checked, never rewritten.** The input guard rejects control characters (other than tab, CR, LF) and invalid Unicode in a command's strings with a validation error, and changes nothing. Only a member marked `[Markup]` is passed through `IMarkupSanitizer`, a port implemented by an adapter package; a `[Markup]` member without a registered sanitizer fails startup. Consumed message and job payloads get the same check. Stripping markup from every string was rejected: it silently changes what users typed, and in a JSON API the control against script injection is output encoding in the client (ADR-0004).
