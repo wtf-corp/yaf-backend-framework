@@ -6,12 +6,20 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
+  <!-- The DI container for the dispatcher benchmark: the platform has only the DI abstractions (as in tests/Application.Tests, #513). -->
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" />
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
+  <!-- A project reference carries neither the analyzers nor YAF.Core.props, so the handler registry of the dispatcher benchmark is
+       generated here as an app gets it from the package (specs/0009-domain/research.md §6). -->
   <ItemGroup>
+    <ProjectReference Include="../../../src/Analyzers/Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
+    <ProjectReference Include="../../../src/Application/Application.csproj" />
     <ProjectReference Include="../../../src/Core/Core.csproj" />
   </ItemGroup>
+
+  <Import Project="../../../src/Core/buildTransitive/YAF.Core.props" />
 
 </Project>
