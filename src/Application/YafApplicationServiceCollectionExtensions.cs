@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using YAF.Application.Errors;
 using YAF.Application.Pipeline;
 using YAF.Application.Registration;
 using YAF.Application.UnitOfWork;
@@ -12,8 +13,8 @@ public static class YafApplicationServiceCollectionExtensions
 {
     /// <summary>
     /// Adds the application layer: the dispatcher, the aggregate tracker and the domain event publisher (each per scope), the handlers of the assemblies the builder
-    /// names, the pipeline order and a startup check that stops the host when a request type has no handler or more than one. Calling it again adds to the same
-    /// configuration and registers nothing twice.
+    /// names, the pipeline order, the error catalogue of the loaded services (<see cref="IErrorCatalogProvider"/>) and a startup check that stops the host when
+    /// a request type has no handler or more than one. Calling it again adds to the same configuration and registers nothing twice.
     /// </summary>
     /// <remarks>
     /// <see cref="TimeProvider.System"/> is registered only when no <see cref="TimeProvider"/> is registered yet. An <see cref="IDispatcher"/> registered afterwards
@@ -51,6 +52,8 @@ public static class YafApplicationServiceCollectionExtensions
             services.AddScoped<IAggregateTracker, AggregateTracker>();
             services.AddScoped<IDomainEventPublisher, DomainEventPublisher>();
             services.TryAddSingleton(TimeProvider.System);
+            services.AddSingleton<IErrorCatalogAssemblySource, LoadedAssemblySource>();
+            services.AddSingleton<IErrorCatalogProvider, ErrorCatalogProvider>();
         }
 
         configure(new YafApplicationBuilder(services, registrations));

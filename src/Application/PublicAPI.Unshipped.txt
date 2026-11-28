@@ -185,3 +185,19 @@ YAF.Application.Context.PrincipalRef.Id.init -> void
 YAF.Application.Context.PrincipalRef.Kind.get -> YAF.Application.Context.PrincipalKind
 YAF.Application.Context.PrincipalRef.Kind.init -> void
 YAF.Application.Context.PrincipalRef.PrincipalRef(YAF.Application.Context.PrincipalKind Kind, YAF.Core.Ids.UserId Id) -> void
+override YAF.Application.Errors.ErrorCatalogEntry.Equals(object? obj) -> bool
+override YAF.Application.Errors.ErrorCatalogEntry.GetHashCode() -> int
+override YAF.Application.Errors.ErrorCatalogEntry.ToString() -> string!
+static YAF.Application.Errors.ErrorCatalogEntry.operator !=(YAF.Application.Errors.ErrorCatalogEntry? left, YAF.Application.Errors.ErrorCatalogEntry? right) -> bool
+static YAF.Application.Errors.ErrorCatalogEntry.operator ==(YAF.Application.Errors.ErrorCatalogEntry? left, YAF.Application.Errors.ErrorCatalogEntry? right) -> bool
+YAF.Application.Errors.ErrorCatalogEntry
+YAF.Application.Errors.ErrorCatalogEntry.<Clone>$() -> YAF.Application.Errors.ErrorCatalogEntry!
+YAF.Application.Errors.ErrorCatalogEntry.DeclaringType.get -> string!
+YAF.Application.Errors.ErrorCatalogEntry.DeclaringType.init -> void
+YAF.Application.Errors.ErrorCatalogEntry.Deconstruct(out YAF.Core.Results.ErrorDescriptor! Descriptor, out string! DeclaringType) -> void
+YAF.Application.Errors.ErrorCatalogEntry.Descriptor.get -> YAF.Core.Results.ErrorDescriptor!
+YAF.Application.Errors.ErrorCatalogEntry.Descriptor.init -> void
+YAF.Application.Errors.ErrorCatalogEntry.Equals(YAF.Application.Errors.ErrorCatalogEntry? other) -> bool
+YAF.Application.Errors.ErrorCatalogEntry.ErrorCatalogEntry(YAF.Core.Results.ErrorDescriptor! Descriptor, string! DeclaringType) -> void
+YAF.Application.Errors.IErrorCatalogProvider
+YAF.Application.Errors.IErrorCatalogProvider.Errors.get -> System.Collections.Generic.IReadOnlyList<YAF.Application.Errors.ErrorCatalogEntry!>!
