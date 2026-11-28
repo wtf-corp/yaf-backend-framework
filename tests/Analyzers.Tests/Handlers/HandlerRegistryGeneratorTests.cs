@@ -161,18 +161,45 @@ public sealed class HandlerRegistryGeneratorTests
     }
 
     [Fact]
+    public async Task ValidatorTheRegistryCannotName_RegisterThrowsNamingIt()
+    {
+        const string source = Usings + """
+            namespace Probe;
+            public sealed record Rename(string Title) : ICommand<Result>;
+            internal sealed class RenameHandler : IRequestHandler<Rename, Result>
+            {
+                public ValueTask<Result> HandleAsync(Rename request, CancellationToken ct) => ValueTask.FromResult(Result.Success());
+            }
+            internal static class Rules
+            {
+                private sealed class RenameValidator : YAF.Application.Validation.Validator<Rename>;
+            }
+            """;
+
+        using var result = await RunAsync(source);
+
+        result.Diagnostics.Should().BeEmpty();
+        var attribute = result.Assembly!.GetCustomAttribute<YafHandlersAttribute>()!;
+        var registry = (IHandlerRegistry)Activator.CreateInstance(attribute.Registry)!;
+        var register = () => registry.Register(new ServiceCollection());
+        register.Should().Throw<InvalidOperationException>().WithMessage("*Probe.Rules.RenameValidator*");
+    }
+
+    [Fact]
     public async Task HandlerOfInaccessibleType_IsLeftOut()
     {
         const string source = Usings + """
             using YAF.Application.Validation;
             namespace Probe;
             public sealed record Open : ICommand<Result>;
+            public sealed record Venue(string Name);
             internal sealed class OpenHandler : IRequestHandler<Open, Result>
             {
                 public ValueTask<Result> HandleAsync(Open request, CancellationToken ct) => ValueTask.FromResult(Result.Success());
             }
             internal static class Hidden
             {
+                private sealed class VenueValidator : Validator<Venue>;
                 private sealed record Close : ICommand<Result>;
                 private sealed record Count : IStreamQuery<int>;
                 private sealed record Closed : YAF.Domain.Events.DomainEvent;

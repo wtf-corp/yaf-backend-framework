@@ -11,8 +11,10 @@ namespace YAF.Analyzers.Handlers;
 /// registration of every request handler, stream query handler, domain event handler and validator as a scoped service, and a switch on
 /// the runtime type of a request, stream query or domain event to the <c>IRequestRunner</c> call with its static types. A type the
 /// registry cannot name (private, or inside a generic type), a generic or abstract type, and a handler or validator of a request, result,
-/// item or event type the registry cannot name are left out. Being file-local, the registry is reached only through the attribute and is
-/// invisible to every other assembly, so that a friend assembly with its own handlers does not clash with it.
+/// item or event type the registry cannot name are left out, except a validator of a request or stream query the registry handles: then
+/// <c>Register</c> throws <see cref="InvalidOperationException"/> naming it, so that the request does not run unvalidated. Being
+/// file-local, the registry is reached only through the attribute and is invisible to every other assembly, so that a friend assembly with
+/// its own handlers does not clash with it.
 /// </summary>
 [Generator(LanguageNames.CSharp)]
 internal sealed class HandlerRegistryGenerator : IIncrementalGenerator
@@ -36,11 +38,17 @@ internal sealed class HandlerRegistryGenerator : IIncrementalGenerator
     {
         var compilation = syntax.SemanticModel.Compilation;
         if (syntax.SemanticModel.GetDeclaredSymbol(syntax.Node, token) is not INamedTypeSymbol { IsAbstract: false } type
-            || type.TypeKind is not (TypeKind.Class or TypeKind.Struct)
-            || IsInGenericType(type)
-            || !compilation.IsSymbolAccessibleWithin(type, compilation.Assembly))
+            || type.TypeKind is not (TypeKind.Class or TypeKind.Struct))
         {
             return [];
+        }
+
+        if (IsInGenericType(type) || !compilation.IsSymbolAccessibleWithin(type, compilation.Assembly))
+        {
+            // Not registrable; a validator is kept by name, so that Emit can refuse a handled request that would run without it.
+            return type.AllInterfaces.Where(contract => Contract(contract) == "YAF.Application.Validation.IValidator`1")
+                .Select(contract => new Entry(Kind.Unnamed, type.ToDisplayString(), contract.TypeArguments[0].ToDisplayString(s_typeFormat), null, 0))
+                .ToImmutableArray();
         }
 
         var name = type.ToDisplayString(s_typeFormat);
@@ -104,7 +112,7 @@ internal sealed class HandlerRegistryGenerator : IIncrementalGenerator
 
     private static void Emit(SourceProductionContext output, ImmutableArray<Entry> found)
     {
-        var entries = found.Distinct().ToList();
+        var entries = found.Distinct().Where(entry => entry.Kind != Kind.Unnamed).ToList();
         if (entries.Count == 0)
         {
             return;
@@ -122,6 +130,16 @@ internal sealed class HandlerRegistryGenerator : IIncrementalGenerator
             };
             register.Append("            global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddScoped<")
                 .Append(service).Append(", ").Append(entry.Type).AppendLine(">(services);");
+        }
+
+        // A validator the registry cannot name, of a request it handles, fails the registration instead of being left out (fail closed).
+        var handled = entries.Where(entry => entry.Kind is Kind.Request or Kind.Stream).Select(entry => entry.Target).ToList();
+        var unnamed = found.Where(entry => entry.Kind == Kind.Unnamed && handled.Contains(entry.Target)).Select(entry => entry.Type).Distinct().ToList();
+        if (unnamed.Count > 0)
+        {
+            register.Clear().Append("            throw new global::System.InvalidOperationException(\"The generated handler registry cannot name ")
+                .Append("these validators of requests it handles, which would run unvalidated: ").Append(string.Join(", ", unnamed))
+                .AppendLine(". Make each one internal, outside any generic type.\");");
         }
 
         output.AddSource("YAF.HandlerRegistry.g.cs", $$"""
@@ -204,6 +222,9 @@ internal sealed class HandlerRegistryGenerator : IIncrementalGenerator
         Stream,
         Event,
         Validator,
+
+        // A validator the registry cannot name: Type is its name for the message, Target the request it validates.
+        Unnamed,
     }
 
     private sealed record Entry(Kind Kind, string Type, string Target, string? Result, int Depth);
