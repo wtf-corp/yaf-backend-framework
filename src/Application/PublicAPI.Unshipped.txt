@@ -46,6 +46,9 @@ YAF.Application.Pipeline.PipelineStep.Equals(YAF.Application.Pipeline.PipelineSt
 YAF.Application.Pipeline.PipelineStep.Middleware.get -> System.Type!
 YAF.Application.Pipeline.PipelineStep.Middleware.init -> void
 YAF.Application.Pipeline.PipelineStep.PipelineStep(System.Type! Middleware, YAF.Application.Pipeline.PipelineScope AppliesTo) -> void
+YAF.Application.Pipeline.QueryTransactionMiddleware<TRequest, TResult>
+YAF.Application.Pipeline.QueryTransactionMiddleware<TRequest, TResult>.InvokeAsync(TRequest request, YAF.Application.Pipeline.RequestDelegate<TResult>! next, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<TResult>
+YAF.Application.Pipeline.QueryTransactionMiddleware<TRequest, TResult>.QueryTransactionMiddleware(YAF.Application.UnitOfWork.IQueryTransaction! transaction) -> void
 YAF.Application.Pipeline.RequestDelegate<TResult>
 YAF.Application.Pipeline.TelemetryMiddleware<TRequest, TResult>
 YAF.Application.Pipeline.TelemetryMiddleware<TRequest, TResult>.InvokeAsync(TRequest request, YAF.Application.Pipeline.RequestDelegate<TResult>! next, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<TResult>
@@ -90,6 +93,9 @@ YAF.Application.UnitOfWork.IAggregateTracker.Track(YAF.Domain.IAggregateRoot! ag
 YAF.Application.UnitOfWork.IAggregateTracker.Tracked.get -> System.Collections.Generic.IReadOnlyList<YAF.Domain.IAggregateRoot!>!
 YAF.Application.UnitOfWork.IDomainEventPublisher
 YAF.Application.UnitOfWork.IDomainEventPublisher.PublishAsync(System.Collections.Generic.IReadOnlyList<YAF.Domain.Events.IDomainEvent!>! domainEvents, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<YAF.Core.Results.Result>
+YAF.Application.UnitOfWork.IQueryTransaction
+YAF.Application.UnitOfWork.IQueryTransaction.ExecuteAsync<TResult>(System.Func<System.Threading.CancellationToken, System.Threading.Tasks.ValueTask<TResult>>! work, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<TResult>
+YAF.Application.UnitOfWork.IQueryTransaction.Stream<TItem>(System.Func<System.Threading.CancellationToken, System.Collections.Generic.IAsyncEnumerable<TItem>!>! work, System.Threading.CancellationToken ct) -> System.Collections.Generic.IAsyncEnumerable<TItem>!
 YAF.Application.UnitOfWork.IUnitOfWork
 YAF.Application.UnitOfWork.IUnitOfWork.ExecuteAsync<TResult>(System.Func<System.Threading.CancellationToken, System.Threading.Tasks.ValueTask<TResult>>! work, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<TResult>
 YAF.Application.Validation.IValidator<T>

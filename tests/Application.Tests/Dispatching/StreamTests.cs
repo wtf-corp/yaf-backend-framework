@@ -24,6 +24,38 @@ public sealed class StreamTests
     }
 
     [Fact]
+    public async Task StreamAsync_HoldsTheTransactionUntilEnumerated()
+    {
+        using var scope = Scope(p => p.Use(typeof(QueryTransactionMiddleware<,>)));
+        var services = scope.ServiceProvider;
+        var log = services.GetRequiredService<CallLog>();
+
+        await foreach (var item in services.GetRequiredService<IDispatcher>().StreamAsync(new CountQuery(2), TestContext.Current.CancellationToken))
+        {
+            log.Entries.Add($"caller:{item}");
+        }
+
+        log.Entries.Should().Equal(
+            "transaction:begin", "handler:1", "caller:1", "handler:2", "caller:2", "transaction:end");
+    }
+
+    [Fact]
+    public async Task StreamAsync_CallerStopsEarly_EndsTheTransaction()
+    {
+        using var scope = Scope(p => p.Use(typeof(QueryTransactionMiddleware<,>)));
+        var services = scope.ServiceProvider;
+        var log = services.GetRequiredService<CallLog>();
+
+        await foreach (var item in services.GetRequiredService<IDispatcher>().StreamAsync(new CountQuery(5), TestContext.Current.CancellationToken))
+        {
+            log.Entries.Add($"caller:{item}");
+            break;
+        }
+
+        log.Entries.Should().Equal("transaction:begin", "handler:1", "caller:1", "transaction:end");
+    }
+
+    [Fact]
     public async Task StreamAsync_YieldsTheHandlersItems()
     {
         using var scope = Scope(p => p.Use(typeof(OuterMiddleware<,>)));
