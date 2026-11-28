@@ -34,6 +34,21 @@ public sealed class PipelineBuilder
         _scope = scope;
     }
 
+    /// <summary>
+    /// Appends the built-in steps, outermost first: <see cref="TelemetryMiddleware{TRequest, TResult}"/>,
+    /// <see cref="ExceptionBoundaryMiddleware{TRequest, TResult}"/> and <see cref="ValidationMiddleware{TRequest, TResult}"/> for every
+    /// request, then <see cref="UnitOfWorkMiddleware{TRequest, TResult}"/> for commands and
+    /// <see cref="QueryTransactionMiddleware{TRequest, TResult}"/> for queries.
+    /// </summary>
+    /// <returns>This builder.</returns>
+    /// <exception cref="InvalidOperationException">This builder is scoped to commands or to queries.</exception>
+    public PipelineBuilder UseDefaults() => this
+        .Use(typeof(TelemetryMiddleware<,>))
+        .Use(typeof(ExceptionBoundaryMiddleware<,>))
+        .Use(typeof(ValidationMiddleware<,>))
+        .ForCommands(commands => commands.Use(typeof(UnitOfWorkMiddleware<,>)))
+        .ForQueries(queries => queries.Use(typeof(QueryTransactionMiddleware<,>)));
+
     /// <summary>Appends a middleware as the innermost step so far.</summary>
     /// <param name="middleware">The middleware type, open generic or closed.</param>
     /// <returns>This builder.</returns>
