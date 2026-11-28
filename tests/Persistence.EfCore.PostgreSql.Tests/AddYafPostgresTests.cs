@@ -80,6 +80,53 @@ public sealed class AddYafPostgresTests
         new NpgsqlConnectionStringBuilder(connectionString).IncludeErrorDetail.Should().Be(expected);
     }
 
+    [Fact]
+    public void AddYafPostgres_AfterAddYafDbContext_ThrowsNamingTheContext()
+    {
+        var builder = Builder(Environments.Production, $"{Unopened};SSL Mode=Require");
+        builder.Services.AddYafDbContext<SessionContext>(options => options.UseNpgsql(Unopened));
+
+        var act = () => builder.AddYafPostgres<SessionContext>("catalog");
+
+        act.Should().Throw<InvalidOperationException>().WithMessage($"*{nameof(SessionContext)}*");
+    }
+
+    [Fact]
+    public void AddYafPostgres_AfterPlainAddDbContext_ThrowsNamingTheContext()
+    {
+        var builder = Builder(Environments.Production, $"{Unopened};SSL Mode=Require");
+        builder.Services.AddDbContext<SessionContext>(options => options.UseNpgsql(Unopened));
+
+        var act = () => builder.AddYafPostgres<SessionContext>("catalog");
+
+        act.Should().Throw<InvalidOperationException>().WithMessage($"*{nameof(SessionContext)}*");
+    }
+
+    [Fact]
+    public void AddYafPostgres_CalledTwice_RegistersOnce()
+    {
+        var builder = Builder(Environments.Development, Unopened);
+        builder.AddYafPostgres<SessionContext>("catalog");
+        var registered = builder.Services.Count;
+
+        builder.AddYafPostgres<SessionContext>("catalog");
+
+        builder.Services.Should().HaveCount(registered);
+        builder.Services.Count(descriptor => descriptor.ServiceType == typeof(SessionContext)).Should().Be(1);
+    }
+
+    [Fact]
+    public void AddYafDbContext_AfterAddYafPostgres_RegistersNothing()
+    {
+        var builder = Builder(Environments.Development, Unopened);
+        builder.AddYafPostgres<SessionContext>("catalog");
+        var registered = builder.Services.Count;
+
+        builder.Services.AddYafDbContext<SessionContext>(options => options.UseNpgsql(Unopened));
+
+        builder.Services.Should().HaveCount(registered);
+    }
+
     private static async Task FailsAtStartupAsync(string environment, string? connectionString, string message)
     {
         using var host = Build(environment, connectionString);
@@ -108,12 +155,18 @@ public sealed class AddYafPostgresTests
 
     private static IHost Build(string environment, string? connectionString)
     {
+        var builder = Builder(environment, connectionString);
+        builder.AddYafPostgres<SessionContext>("catalog");
+        return builder.Build();
+    }
+
+    private static HostApplicationBuilder Builder(string environment, string? connectionString)
+    {
         var builder = Host.CreateEmptyApplicationBuilder(new HostApplicationBuilderSettings { EnvironmentName = environment });
         builder.Configuration.AddInMemoryCollection([KeyValuePair.Create("ConnectionStrings:catalog", connectionString)]);
         builder.Services.AddSingleton<IExecutionContextAccessor>(FakeExecutionContext.ForUser(UserId.New(), TenantId.New()));
         builder.Services.AddSingleton(new TestClock().TimeProvider);
-        builder.AddYafPostgres<SessionContext>("catalog");
-        return builder.Build();
+        return builder;
     }
 
     private sealed class SessionRow
