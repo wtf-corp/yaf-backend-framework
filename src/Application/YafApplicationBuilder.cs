@@ -33,11 +33,6 @@ public sealed class YafApplicationBuilder
     public YafApplicationBuilder AddHandlersFrom<TMarker>()
     {
         var assembly = typeof(TMarker).Assembly;
-        if (!_registrations.TryAddAssembly(assembly))
-        {
-            return this;
-        }
-
         var attribute = assembly.GetCustomAttribute<YafHandlersAttribute>()
             ?? throw new InvalidOperationException(
                 $"Assembly {assembly.GetName().Name} has no [assembly: YafHandlers(...)] attribute. The handler registry generator emits it "
@@ -48,8 +43,21 @@ public sealed class YafApplicationBuilder
                 $"The handler registry {attribute.Registry} named by assembly {assembly.GetName().Name} does not implement IHandlerRegistry.");
         }
 
-        registry.Register(_services);
-        _registrations.Add(registry);
+        return AddHandlers(assembly, registry);
+    }
+
+    /// <summary>Registers the handlers of <paramref name="assembly"/> from <paramref name="registry"/>, once per assembly.</summary>
+    /// <param name="assembly">The assembly whose handlers <paramref name="registry"/> registers.</param>
+    /// <param name="registry">The assembly's handler registry.</param>
+    /// <returns>This builder.</returns>
+    internal YafApplicationBuilder AddHandlers(Assembly assembly, IHandlerRegistry registry)
+    {
+        if (_registrations.TryAddAssembly(assembly))
+        {
+            registry.Register(_services);
+            _registrations.Add(registry);
+        }
+
         return this;
     }
 
