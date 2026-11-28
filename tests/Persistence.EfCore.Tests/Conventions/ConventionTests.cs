@@ -11,84 +11,50 @@ namespace Persistence.EfCore.Tests.Conventions;
 // The model is built with Npgsql over a connection string that is never opened; the tests read the generated script.
 public sealed class ConventionTests
 {
-    private const string UnusedConnection = "Host=localhost;Database=unused";
-
     [Fact]
     public void TypedId_MapsToUuid()
     {
-        var (script, converter) = Read(context => context.Entry(new TicketData()).Property(ticket => ticket.Owner).Metadata.GetValueConverter());
+        var converter = Use(context => context.Entry(new TicketData()).Property(ticket => ticket.Owner).Metadata.GetValueConverter());
 
-        script.Should().Contain("\"Owner\" uuid NOT NULL,");
         converter.Should().BeOfType<TypedIdConverter<TicketId>>();
+        Script().Should().Contain("\"Owner\" uuid NOT NULL,");
     }
 
     [Fact]
-    public void NullableTypedId_MapsToNullableUuid()
-    {
-        var script = CreateScript();
-
-        script.Should().Contain("\"Previous\" uuid,");
-    }
+    public void NullableTypedId_MapsToNullableUuid() => Script().Should().Contain("\"Previous\" uuid,");
 
     [Fact]
     public void SmartEnumeration_MapsToItsCode()
     {
         var converter = new EnumerationConverter<TicketFormat>();
 
-        var script = CreateScript();
+        var stored = converter.ConvertToProvider(TicketFormat.Standard);
 
-        script.Should().Contain("\"Format\" character varying(64) NOT NULL,");
-        converter.ConvertToProvider(TicketFormat.Standard).Should().Be("standard");
-        converter.ConvertFromProvider("standard").Should().BeSameAs(TicketFormat.Standard);
+        stored.Should().Be("standard");
+        converter.ConvertFromProvider(stored).Should().BeSameAs(TicketFormat.Standard);
+        Script().Should().Contain("\"Format\" character varying(64) NOT NULL,");
     }
 
     [Fact]
-    public void Enum_MapsToString()
-    {
-        var script = CreateScript();
-
-        script.Should().Contain("\"Status\" character varying(64) NOT NULL,");
-    }
+    public void Enum_MapsToString() => Script().Should().Contain("\"Status\" character varying(64) NOT NULL,");
 
     [Fact]
     public void Money_MapsToAmountAndCurrencyColumns()
-    {
-        var script = CreateScript();
-
-        script.Should().Contain("\"Price_Amount\" numeric NOT NULL,").And.Contain("\"Price_Currency\" character varying(3) NOT NULL,");
-    }
+        => Script().Should().Contain("\"Price_Amount\" numeric NOT NULL,").And.Contain("\"Price_Currency\" character varying(3) NOT NULL,");
 
     [Fact]
     public void NullablePeriod_MapsToNullableColumns()
-    {
-        var script = CreateScript();
-
-        script.Should().Contain("\"Schedule_Start\" timestamp with time zone,").And.Contain("\"Schedule_End\" timestamp with time zone,");
-    }
+        => Script().Should().Contain("\"Schedule_Start\" timestamp with time zone,").And.Contain("\"Schedule_End\" timestamp with time zone,");
 
     [Fact]
     public void DateRange_MapsToStartAndEndColumns()
-    {
-        var script = CreateScript();
-
-        script.Should().Contain("\"Validity_Start\" date NOT NULL,").And.Contain("\"Validity_End\" date NOT NULL,");
-    }
+        => Script().Should().Contain("\"Validity_Start\" date NOT NULL,").And.Contain("\"Validity_End\" date NOT NULL,");
 
     [Fact]
-    public void EmailAddress_MapsToString()
-    {
-        var script = CreateScript();
-
-        script.Should().Contain("\"Contact\" character varying(254) NOT NULL,");
-    }
+    public void EmailAddress_MapsToString() => Script().Should().Contain("\"Contact\" character varying(254) NOT NULL,");
 
     [Fact]
-    public void Percentage_MapsToNumeric()
-    {
-        var script = CreateScript();
-
-        script.Should().Contain("\"Discount\" numeric NOT NULL,");
-    }
+    public void Percentage_MapsToNumeric() => Script().Should().Contain("\"Discount\" numeric NOT NULL,");
 
     [Fact]
     public void TypedIdConverter_RoundTripsTheValue()
@@ -105,38 +71,36 @@ public sealed class ConventionTests
     [Fact]
     public void Model_StringInComplexTypeWithoutMaxLength_ThrowsNamingIt()
     {
-        using var provider = Build<LabelContext>();
-        using var context = new LabelContext(Options<LabelContext>(provider), Services(provider));
+        using var provider = Provider<LabelContext>();
+        using var context = new LabelContext(Options<LabelContext>(provider), provider.GetRequiredService<IYafDbContextServices>());
 
         var act = () => context.Add(new LabelledData { Label = new Label { Text = "fixture" } });
 
         act.Should().Throw<InvalidOperationException>().WithMessage($"*{nameof(Label)}.{nameof(Label.Text)}*");
     }
 
-    private static string CreateScript() => Read(_ => 0).Script;
+    private static string Script() => Use(context => context.Database.GenerateCreateScript());
 
-    private static (string Script, T Value) Read<T>(Func<TicketContext, T> read)
+    private static T Use<T>(Func<TicketContext, T> read)
     {
-        using var provider = Build<TicketContext>();
-        using var context = new TicketContext(Options<TicketContext>(provider), Services(provider));
-        return (context.Database.GenerateCreateScript(), read(context));
+        using var provider = Provider<TicketContext>();
+        using var context = new TicketContext(Options<TicketContext>(provider), provider.GetRequiredService<IYafDbContextServices>());
+        return read(context);
     }
 
-    private static ServiceProvider Build<TContext>()
+    private static ServiceProvider Provider<TContext>()
         where TContext : YafDbContext
     {
         var services = new ServiceCollection();
         services.AddSingleton<IExecutionContextAccessor>(FakeExecutionContext.ForUser(UserId.New(), TenantId.New()));
         services.AddSingleton(new TestClock().TimeProvider);
-        services.AddYafDbContext<TContext>(options => options.UseNpgsql(UnusedConnection));
+        services.AddYafDbContext<TContext>(options => options.UseNpgsql("Host=localhost;Database=unused"));
         return services.BuildServiceProvider();
     }
 
     private static DbContextOptions<TContext> Options<TContext>(ServiceProvider provider)
         where TContext : DbContext
         => provider.GetRequiredService<DbContextOptions<TContext>>();
-
-    private static IYafDbContextServices Services(ServiceProvider provider) => provider.GetRequiredService<IYafDbContextServices>();
 
     private sealed class TicketContext(DbContextOptions<TicketContext> options, IYafDbContextServices services) : YafDbContext(options, services)
     {

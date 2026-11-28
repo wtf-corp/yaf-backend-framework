@@ -17,13 +17,9 @@ internal sealed class EmailAddressConverter() : ValueConverter<EmailAddress, str
 internal sealed class PercentageConverter() : ValueConverter<Percentage, decimal>(
     percentage => percentage.Value, value => ValueObjectConverters.Restore(Percentage.Create(value)));
 
-/// <summary>What the value-object converters share.</summary>
 internal static class ValueObjectConverters
 {
-    /// <summary>Returns the restored value object, or throws when the stored value no longer makes one.</summary>
-    /// <param name="restored">The result of the value object's factory over the stored value.</param>
-    /// <typeparam name="T">The value object.</typeparam>
-    /// <returns>The value object.</returns>
+    // The value object the factory made from the stored value, or a CorruptStateException when it made none.
     public static T Restore<T>(Result<T> restored) => restored.IsSuccess
         ? restored.Value
         : throw new CorruptStateException($"A stored {typeof(T).Name} is not valid: {restored.FirstError.Code}.");

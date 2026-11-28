@@ -7,14 +7,9 @@ namespace YAF.Persistence.EfCore.Conventions;
 /// <summary>Stores a smart enumeration as its <see cref="Enumeration{TSelf}.Code"/>.</summary>
 /// <typeparam name="TEnumeration">The smart enumeration.</typeparam>
 /// <remarks>
-/// A <see cref="YafDbContext"/> applies it by convention to every smart enumeration member of its data classes; a service does not
-/// configure it. Reading a code that no instance has throws a <see cref="CorruptStateException"/>.
+/// A <see cref="YafDbContext"/> applies it by convention to smart enumeration members. Reading a code that no instance has throws a
+/// <see cref="CorruptStateException"/>.
 /// </remarks>
-/// <example>
-/// <code language="csharp">
-/// var stored = new EnumerationConverter&lt;SessionFormat&gt;().ConvertToProvider(SessionFormat.Workshop);
-/// </code>
-/// </example>
 public sealed class EnumerationConverter<TEnumeration> : ValueConverter<TEnumeration, string>
     where TEnumeration : Enumeration<TEnumeration>
 {
