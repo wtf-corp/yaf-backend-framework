@@ -1,4 +1,4 @@
-using System.Text;
+using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -10,7 +10,7 @@ namespace YAF.Persistence.EfCore.PostgreSql;
 /// Turns the table and column names of the model, also the columns of complex types (<c>Price_Amount</c> → <c>price_amount</c>), into
 /// snake_case (01 §2.1, 05 §2). Names configured by hand are left as they are.
 /// </summary>
-internal sealed class SnakeCaseNamingConvention : IModelFinalizingConvention
+internal sealed partial class SnakeCaseNamingConvention : IModelFinalizingConvention
 {
     public void ProcessModelFinalizing(IConventionModelBuilder modelBuilder, IConventionContext<IConventionModelBuilder> context)
     {
@@ -33,31 +33,12 @@ internal sealed class SnakeCaseNamingConvention : IModelFinalizingConvention
         }
     }
 
-    /// <summary>Inserts an underscore before each word that starts with a capital letter and lower-cases the name.</summary>
-    internal static string ToSnakeCase(string name)
-    {
-        var result = new StringBuilder(name.Length + 8);
-        for (var i = 0; i < name.Length; i++)
-        {
-            var current = name[i];
-            if (char.IsUpper(current) && i > 0 && name[i - 1] != '_' && StartsWord(name, i))
-            {
-                result.Append('_');
-            }
+    /// <summary>Inserts an underscore where a word starts with a capital letter and lower-cases the name.</summary>
+    internal static string ToSnakeCase(string name) => string.Concat(WordStart().Replace(name, "_").Select(char.ToLowerInvariant));
 
-            result.Append(char.ToLowerInvariant(current));
-        }
-
-        return result.ToString();
-    }
-
-    // A capital starts a word after a lower-case letter or a digit, and as the last capital of an acronym followed by a lower-case letter.
-    private static bool StartsWord(string name, int index)
-    {
-        var previous = name[index - 1];
-        return char.IsLower(previous) || char.IsDigit(previous)
-            || (char.IsUpper(previous) && index + 1 < name.Length && char.IsLower(name[index + 1]));
-    }
+    // A capital starts a word after a lower-case letter or a digit, and as the last capital of an acronym before a lower-case letter.
+    [GeneratedRegex("(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 1000)]
+    private static partial Regex WordStart();
 
     // The properties declared on a type and, recursively, on its complex properties' types.
     private static IEnumerable<IConventionProperty> Properties(IConventionTypeBase type)

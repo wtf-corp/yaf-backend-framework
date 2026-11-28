@@ -16,8 +16,7 @@
     <PackageReference Include="xunit.v3" />
   </ItemGroup>
 
-  <!-- The generic host (Host.CreateEmptyApplicationBuilder) that AddYafPostgres is tested on; the package itself needs only the hosting
-       abstractions of the base framework. -->
+  <!-- The generic host the tests start; the package needs only the hosting abstractions of the base framework. -->
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
