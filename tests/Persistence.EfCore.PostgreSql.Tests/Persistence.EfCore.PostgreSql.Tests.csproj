@@ -16,6 +16,11 @@
     <PackageReference Include="xunit.v3" />
   </ItemGroup>
 
+  <!-- The generic host the tests start; the package needs only the hosting abstractions of the base framework. -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
   <!-- A project reference carries neither the analyzers nor YAF.Core.props, so the fixtures get both here as an app gets them from the
        package (specs/0009-domain/research.md §6). -->
   <ItemGroup>
