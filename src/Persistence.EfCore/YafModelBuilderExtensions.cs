@@ -12,7 +12,11 @@ public static class YafModelBuilderExtensions
     /// </summary>
     /// <param name="modelBuilder">The builder of the context's model.</param>
     /// <param name="context">The context whose model is built.</param>
-    /// <remarks>Without this call the model fails to build with an <see cref="InvalidOperationException"/>.</remarks>
+    /// <remarks>
+    /// It maps every <c>Money</c>, <c>Period</c> and <c>DateRange</c> member of the model's entity types as a complex property, one
+    /// column per component (<c>Price_Amount</c>, <c>Price_Currency</c>); a nullable member gets nullable columns. Without this call the
+    /// model fails to build with an <see cref="InvalidOperationException"/>.
+    /// </remarks>
     /// <example>
     /// <code language="csharp">
     /// protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -26,6 +30,7 @@ public static class YafModelBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
         ArgumentNullException.ThrowIfNull(context);
+        TypedMemberConventions.MapComplexTypes(modelBuilder);
         modelBuilder.HasAnnotation(YafModelCheckConvention.AppliedAnnotation, true);
     }
 }

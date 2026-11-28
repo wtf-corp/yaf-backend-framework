@@ -1,11 +1,12 @@
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 
 namespace YAF.Persistence.EfCore.Conventions;
 
 /// <summary>
-/// Fails the model of a YAF context when <c>ApplyYafModel</c> was not called or a <see langword="string"/> property has no maximum length
-/// (05 §2). It runs last among the finalizing conventions, so the provider's own lengths are already set.
+/// Fails the model of a YAF context when <c>ApplyYafModel</c> was not called or a <see langword="string"/> property, also one inside a
+/// complex type, has no maximum length (05 §2). It runs last among the finalizing conventions, so the provider's own lengths are already set.
 /// </summary>
 internal sealed class YafModelCheckConvention : IModelFinalizingConvention
 {
@@ -21,7 +22,7 @@ internal sealed class YafModelCheckConvention : IModelFinalizingConvention
         }
 
         model.RemoveAnnotation(AppliedAnnotation);
-        var unbounded = model.GetEntityTypes().SelectMany(entityType => entityType.GetDeclaredProperties())
+        var unbounded = model.GetEntityTypes().SelectMany(Properties)
             .FirstOrDefault(property => property.ClrType == typeof(string) && property.GetMaxLength() is null);
         if (unbounded is not null)
         {
@@ -29,4 +30,9 @@ internal sealed class YafModelCheckConvention : IModelFinalizingConvention
                 $"The string property '{unbounded.DeclaringType.DisplayName()}.{unbounded.Name}' has no maximum length: set one with HasMaxLength.");
         }
     }
+
+    // The properties declared on a type and, recursively, on its complex properties' types.
+    private static IEnumerable<IConventionProperty> Properties(IConventionTypeBase type)
+        => type.GetDeclaredProperties()
+            .Concat(type.GetDeclaredComplexProperties().SelectMany(complexProperty => Properties(complexProperty.ComplexType)));
 }
