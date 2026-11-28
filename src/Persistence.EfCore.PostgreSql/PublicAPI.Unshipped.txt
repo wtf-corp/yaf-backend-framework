@@ -1,1 +1,3 @@
 #nullable enable
+YAF.Persistence.EfCore.PostgreSql.YafPostgresServiceCollectionExtensions
+static YAF.Persistence.EfCore.PostgreSql.YafPostgresServiceCollectionExtensions.AddYafPostgres<TContext>(this Microsoft.Extensions.Hosting.IHostApplicationBuilder! builder, string! connectionName) -> Microsoft.Extensions.Hosting.IHostApplicationBuilder!
