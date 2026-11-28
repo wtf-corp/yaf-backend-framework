@@ -31,6 +31,13 @@ YAF.Testing.FakeUnitOfWork.FakeUnitOfWork() -> void
 YAF.Testing.FakeUnitOfWork.FakeUnitOfWork(YAF.Application.UnitOfWork.IAggregateTracker! tracker, YAF.Application.UnitOfWork.IDomainEventPublisher! publisher) -> void
 YAF.Testing.FakeUnitOfWork.Rollbacks.get -> int
 YAF.Testing.FakeUnitOfWork.Rounds.get -> System.Collections.Generic.IReadOnlyList<int>!
+YAF.Testing.InMemoryRepository<TAggregate, TId>
+YAF.Testing.InMemoryRepository<TAggregate, TId>.AddAsync(TAggregate! aggregate, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask
+YAF.Testing.InMemoryRepository<TAggregate, TId>.FindAsync(TId id, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask<TAggregate?>
+YAF.Testing.InMemoryRepository<TAggregate, TId>.InMemoryRepository(YAF.Application.UnitOfWork.IAggregateTracker! tracker, System.Func<TAggregate!, TId>! idOf) -> void
+YAF.Testing.InMemoryRepository<TAggregate, TId>.RemoveAsync(TAggregate! aggregate, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask
+YAF.Testing.InMemoryRepository<TAggregate, TId>.Stored.get -> System.Collections.Generic.IReadOnlyCollection<TAggregate!>!
+YAF.Testing.InMemoryRepository<TAggregate, TId>.UpdateAsync(TAggregate! aggregate, System.Threading.CancellationToken ct) -> System.Threading.Tasks.ValueTask
 YAF.Testing.MementoAssert
 YAF.Testing.ResultAssert
 YAF.Testing.StateMachineAssert
