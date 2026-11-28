@@ -11,6 +11,17 @@ namespace Application.Tests.Registration;
 public sealed class RegistrationTests
 {
     [Fact]
+    public void AddHandlersFrom_ReadsTheAssemblysRegistry()
+    {
+        var services = new ServiceCollection();
+
+        services.AddYafApplication(app => app.AddHandlersFrom<RegistrationTests>());
+
+        services.Should().ContainSingle(descriptor => descriptor.ServiceType == typeof(IRequestHandler<Dispatching.PingCommand, Result>)
+            && descriptor.ImplementationType == typeof(Dispatching.PingCommandHandler) && descriptor.Lifetime == ServiceLifetime.Scoped);
+    }
+
+    [Fact]
     public void AddHandlers_HandBuiltRegistry_RegistersItsServices()
     {
         var services = new ServiceCollection();
