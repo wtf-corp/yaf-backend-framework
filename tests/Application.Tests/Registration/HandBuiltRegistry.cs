@@ -4,15 +4,16 @@ using YAF.Application.Registration;
 using YAF.Core.Results;
 using YAF.Domain.Events;
 
-[assembly: YafHandlers(typeof(Application.Tests.Registration.StubHandlerRegistry))]
-
 namespace Application.Tests.Registration;
 
-/// <summary>A hand-written stand-in for the generated registry (the generator is T26). Created by the attribute above.</summary>
-internal sealed class StubHandlerRegistry(IReadOnlyCollection<Type> declaredRequests, IReadOnlyCollection<Type> handledRequests)
+/// <summary>
+/// A hand-built stand-in for a generated registry, given to the builder directly. No <see cref="YafHandlersAttribute"/> names it: the
+/// attribute allows one per assembly, and that one is the generator's to emit.
+/// </summary>
+internal sealed class HandBuiltRegistry(IReadOnlyCollection<Type> declaredRequests, IReadOnlyCollection<Type> handledRequests)
     : IHandlerRegistry
 {
-    public StubHandlerRegistry()
+    public HandBuiltRegistry()
         : this([typeof(PingQuery)], [typeof(PingQuery)])
     {
     }
@@ -42,11 +43,11 @@ internal sealed class StubHandlerRegistry(IReadOnlyCollection<Type> declaredRequ
     }
 }
 
-/// <summary>Request types the stub declares and handles; only their types are used, so they are abstract.</summary>
+/// <summary>Request types the registry declares and handles; only their types are used, so they are abstract.</summary>
 internal abstract record PingQuery : IQuery<Result>;
 
 /// <summary>A second request type, declared without a handler in one test.</summary>
 internal abstract record PongQuery : IQuery<Result>;
 
-/// <summary>The service the stub registers; not a handler, so that no generator treats this assembly as declaring one.</summary>
+/// <summary>The service the registry registers; not a handler, so that no generator treats this assembly as declaring one.</summary>
 internal sealed class PingHandlerStandIn;

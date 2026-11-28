@@ -1,3 +1,4 @@
+using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using YAF.Application;
@@ -10,13 +11,26 @@ namespace Application.Tests.Registration;
 public sealed class RegistrationTests
 {
     [Fact]
-    public void AddHandlersFrom_ReadsTheAssemblysRegistry()
+    public void AddHandlers_HandBuiltRegistry_RegistersItsServices()
     {
         var services = new ServiceCollection();
 
-        services.AddYafApplication(app => app.AddHandlersFrom<RegistrationTests>());
+        services.AddYafApplication(app => app.AddHandlers(ThisAssembly, new HandBuiltRegistry()));
 
         services.Should().ContainSingle(descriptor => descriptor.ServiceType == typeof(PingHandlerStandIn));
+    }
+
+    [Fact]
+    public void AddHandlers_SameAssemblyTwice_RegistersOnce()
+    {
+        var services = new ServiceCollection();
+
+        services.AddYafApplication(app => app
+            .AddHandlers(ThisAssembly, new HandBuiltRegistry())
+            .AddHandlers(ThisAssembly, new HandBuiltRegistry()));
+
+        services.Should().ContainSingle(descriptor => descriptor.ServiceType == typeof(PingHandlerStandIn));
+        ((ApplicationRegistrations)Instance(services, typeof(ApplicationRegistrations))).Registries.Should().ContainSingle();
     }
 
     [Fact]
@@ -33,11 +47,11 @@ public sealed class RegistrationTests
     public void AddYafApplication_CalledTwice_RegistersOnce()
     {
         var once = new ServiceCollection();
-        once.AddYafApplication(app => app.AddHandlersFrom<RegistrationTests>());
+        once.AddYafApplication(app => app.AddHandlers(ThisAssembly, new HandBuiltRegistry()));
         var twice = new ServiceCollection();
 
-        twice.AddYafApplication(app => app.AddHandlersFrom<RegistrationTests>());
-        twice.AddYafApplication(app => app.AddHandlersFrom<RegistrationTests>());
+        twice.AddYafApplication(app => app.AddHandlers(ThisAssembly, new HandBuiltRegistry()));
+        twice.AddYafApplication(app => app.AddHandlers(ThisAssembly, new HandBuiltRegistry()));
 
         twice.Select(descriptor => descriptor.ServiceType).Should().Equal(once.Select(descriptor => descriptor.ServiceType));
     }
@@ -56,7 +70,7 @@ public sealed class RegistrationTests
     [Fact]
     public async Task Startup_RequestHandledTwice_FailsNamingIt()
     {
-        var check = StartupCheck(new StubHandlerRegistry([], [typeof(PingQuery)]), new StubHandlerRegistry([], [typeof(PingQuery)]));
+        var check = StartupCheck(new HandBuiltRegistry([], [typeof(PingQuery)]), new HandBuiltRegistry([], [typeof(PingQuery)]));
 
         var act = () => check.StartAsync(TestContext.Current.CancellationToken);
 
@@ -66,7 +80,7 @@ public sealed class RegistrationTests
     [Fact]
     public async Task Startup_DeclaredRequestWithoutHandler_FailsNamingIt()
     {
-        var check = StartupCheck(new StubHandlerRegistry([typeof(PingQuery), typeof(PongQuery)], [typeof(PingQuery)]));
+        var check = StartupCheck(new HandBuiltRegistry([typeof(PingQuery), typeof(PongQuery)], [typeof(PingQuery)]));
 
         var act = () => check.StartAsync(TestContext.Current.CancellationToken);
 
@@ -76,12 +90,14 @@ public sealed class RegistrationTests
     [Fact]
     public async Task Startup_EachRequestHandledOnce_Starts()
     {
-        var check = StartupCheck(new StubHandlerRegistry([typeof(PingQuery)], []), new StubHandlerRegistry([], [typeof(PingQuery)]));
+        var check = StartupCheck(new HandBuiltRegistry([typeof(PingQuery)], []), new HandBuiltRegistry([], [typeof(PingQuery)]));
 
         var act = () => check.StartAsync(TestContext.Current.CancellationToken);
 
         await act.Should().NotThrowAsync();
     }
+
+    private static Assembly ThisAssembly => typeof(RegistrationTests).Assembly;
 
     /// <summary>The hosted service <c>AddYafApplication</c> registers, over the given registries (one assembly has only one registry).</summary>
     private static IHostedService StartupCheck(params IHandlerRegistry[] registries)
